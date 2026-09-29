@@ -126,7 +126,7 @@ ci: regress coverage formal envs crosscheck upf-tb
 	@echo "ci: OK"
 
 clean:
-	rm -rf lp/sim_build dv/*/sim_build dv/*/obj_dir dv/*/logs obj_dir coverage.info coverage.dat formal/*_prove formal/*_cover
+	rm -rf lp/sim_build metrics/_capture dv/*/sim_build dv/*/obj_dir dv/*/logs obj_dir coverage.info coverage.dat formal/*_prove formal/*_cover
 	rm -f dv/cocotb/results.xml dv/cocotb/results.json dv/cocotb/fcov.json dv/uvm/build.log
 	find . -name '__pycache__' -type d -prune -exec rm -rf {} + 2>/dev/null || true
 	@echo "clean: OK"

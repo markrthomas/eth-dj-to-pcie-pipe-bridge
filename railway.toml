@@ -1,0 +1,11 @@
+# Railway config-as-code: a BATCH job, not a web service (docs/PLAN.md §10).
+# The image ENTRYPOINT (docker/entrypoint.sh) runs every flow + metrics +
+# dashboard and exits; no startCommand, no healthcheck, never restarted.
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+restartPolicyType = "NEVER"
+# nightly full run (UTC); remove to run only on deploy
+cronSchedule = "17 3 * * *"

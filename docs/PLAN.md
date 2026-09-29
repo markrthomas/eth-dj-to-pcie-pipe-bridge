@@ -391,9 +391,12 @@ IDs are what `AGENT_HANDOFF.md` points at.
   of the TB (PMU sequencing + timing assumption), GREEN. rf moved to PD_AON (D14).
 
 ### M7 — Infra polish
-- [ ] **T7.1** GTKWave `.gtkw` per test + `wave_check.py`.
-- [ ] **T7.2** Metrics collectors + `dashboard.html` populated from real runs.
-- [ ] **T7.3** Railway job verified; swarm task file + agents finalized.
+- [x] **T7.1** GTKWave `.gtkw` per test + `wave_check.py` (7 sessions, checked vs fresh
+  VCD dumps; loaded headless in GTKWave locally).
+- [x] **T7.2** Metrics collectors + `dashboard.html` populated from real runs
+  (measured / estimated / not_attributable per value).
+- [x] **T7.3** Railway job defined (image built + run locally, green; not deployed to
+  Railway); swarm task file + agents finalized (swarm itself not run: needs an API key).
   **Gate: `make dashboard`, CI green, Railway job defined.**
 
 ### M8 — Close-out
