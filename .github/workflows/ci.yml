@@ -1,0 +1,50 @@
+# CI for eth-dj-pcie-pipe7_1-bridge — per ~/proj/DV_STANDARDS.md.
+# M0: regress (lint + Icarus smoke) is the real fast gate; coverage/formal are
+# stubs that exit 0 until M4/M5. OSS CAD Suite pinned to match ~/proj/dv_env.mk.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  OSS_CAD_SUITE_VERSION: "2026-04-13"
+
+jobs:
+  regress:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install OSS CAD Suite (Verilator + Icarus)
+        run: |
+          set -euo pipefail
+          url="https://github.com/YosysHQ/oss-cad-suite-build/releases/download/${OSS_CAD_SUITE_VERSION}/oss-cad-suite-linux-x64-${OSS_CAD_SUITE_VERSION//-/}.tgz"
+          curl -fsSL "$url" -o oss-cad-suite.tgz
+          tar -xzf oss-cad-suite.tgz
+          echo "$PWD/oss-cad-suite/bin" >> "$GITHUB_PATH"
+      - name: regress (lint + sim)
+        run: make regress
+
+  coverage:
+    runs-on: ubuntu-latest
+    needs: regress
+    steps:
+      - uses: actions/checkout@v4
+      - name: coverage
+        run: make coverage
+      - name: upload coverage.info
+        if: hashFiles('coverage.info') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage.info
+
+  formal:
+    runs-on: ubuntu-latest
+    needs: regress
+    steps:
+      - uses: actions/checkout@v4
+      - name: formal
+        run: make formal

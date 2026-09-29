@@ -1,0 +1,59 @@
+# personal scratch (docs/NOTES.md, if added, is a committed design doc)
+NOTES
+NOTES.md
+START_NOTES
+!docs/NOTES.md
+
+# editor swap files
+*.swp
+*.swo
+
+# simulation build / artifacts
+sim_build/
+dv/*/sim_build/
+dv/*/obj_dir/
+dv/*/obj_dir_dbg/
+obj_dir/
+obj_dir_dbg/
+__pycache__/
+*.pyc
+results.xml
+dv/cocotb/fcov.json
+*.fst
+*.vcd
+*.gtkw.bak
+
+# coverage
+coverage.info
+coverage.dat
+dv/vlt/coverage.info
+dv/vlt/coverage.dat
+annotated/
+
+# formal (generated task dirs; keep the .sby + *_fv.sv)
+formal/*/
+
+# UVM / commercial simulator artifacts
+dv/uvm/simv
+dv/uvm/simv.daidir/
+dv/uvm/csrc/
+dv/uvm/*.log
+dv/uvm/work/
+dv/uvm/transcript
+dv/uvm/*.fsdb
+dv/uvm/verdi*
+
+# large source specs (kept locally in docs/, not committed)
+docs/*.pdf
+docs/*.pdf:Zone.Identifier
+
+# per-run metrics captures (the .db and dashboard.html ARE committed)
+metrics/_capture/
+last-run-metrics.json
+docker/last-run-metrics.json
+
+# per-test debug logs
+logs/
+
+# pinned OSS CAD Suite if unpacked in-tree by the container image
+oss-cad-suite/
