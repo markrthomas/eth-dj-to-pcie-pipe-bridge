@@ -5,6 +5,12 @@ If a session ended, this is where you pick up. Read this, then
 
 ## Where things stand (update this block every session)
 
+- **2026-09-29 (c)** — Pickup session (cloud). Re-read all docs/RTL. Wrote
+  [`OPEN_DECISIONS.md`](OPEN_DECISIONS.md): lane count vs. 200G rate (x1 can't carry
+  it), flit payload semantics, widths/PCLK, tuser, missing `~/proj` siblings.
+  **M1/T1.1 is BLOCKED on owner answers to D1, D2, D5** (it is RTL behaviour).
+  `make regress` could not be re-run this session (shell tool unavailable); last
+  known state is green per (b).
 - **2026-09-29 (b)** — **Baseline set to PAM4 / PCIe Gen6 FLIT mode** (PLAN §12
   resolved) and **M0 scaffold landed**. This is now a **standalone git repo**
   (`git init`; remote `origin` = github.com/markrthomas/**eth-dj-to-pcie-pipe-bridge**
