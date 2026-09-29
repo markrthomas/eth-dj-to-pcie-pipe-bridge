@@ -385,8 +385,10 @@ IDs are what `AGENT_HANDOFF.md` points at.
 - [x] **T5.3** `ASSERTIONS.md`. **Gate: `make formal`** — GREEN locally (pinned OSS CAD Suite).
 
 ### M6 — Low power (UPF)
-- [ ] **T6.1** `lp/bridge.upf` + `pipe7_pmu` + `tb_pipe7_upf_power` +
+- [x] **T6.1** `lp/bridge.upf` + `pipe7_pmu` + `tb_pipe7_upf_power` +
   `docs/power_intent.md`; `make upf` (commercial run / OSS stub §9).
+  UPF **authored, not run** (no PA simulator). `make upf-tb` = functional Icarus run
+  of the TB (PMU sequencing + timing assumption), GREEN. rf moved to PD_AON (D14).
 
 ### M7 — Infra polish
 - [ ] **T7.1** GTKWave `.gtkw` per test + `wave_check.py`.

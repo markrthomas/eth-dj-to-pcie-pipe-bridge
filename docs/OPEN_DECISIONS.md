@@ -215,3 +215,27 @@ No DUT behaviour changes; verification-method decisions only.
   those registers, the proof fails to elaborate — intended.
 - **FIFO proof is black-box** (shadow counters from the handshakes, small W=4 /
   DEPTH=4 instance). Gray single-bit change is simulation-only (CD3).
+
+## D14. Power intent (M6)
+
+UPF is authored, not run (no OSS power-aware simulator). No RTL changes.
+
+- **`bridge_rf` in PD_AON** (PLAN §9 had it in PD_DP, retained): the AON control FSM
+  reads `pwr_req` from it and the CSR port is the only wake-up path, so it cannot be
+  powered off. With rf always-on, it needs no retention.
+- **PD_DP fully retained.** The RTL has no datapath-local reset / power-good, so
+  non-retained state would wake up corrupted with nothing to clear it. Retaining all
+  PD_DP state is correct because the FSM drains the datapath before P1/P2; it costs
+  retention area. **Owner decision needed** for the alternative (RTL: DP reset on
+  power-up + power-good into the FSM; retain only Rx counters).
+- **Isolation clamps:** 0 by default; 1 for the drain/idle flags the FSM reads
+  (`tx_cdc.rempty`, `tx_framer.idle`, `rx_ingress.idle`, `tx_gate.stopped`), so an
+  isolated datapath reads as drained. Rx counters read 0 over CSR while PD_DP is off.
+- **No FSM<->PMU handshake** (the DUT has no power ports): the DV-only PMU's
+  power-up (~6 pclk) must complete within the PHY's PhyStatus latency for P1->P0
+  (8 pclk in the DV model). `make upf-tb` checks this; a real design should add a
+  power-good input to the FSM (RTL change, open).
+- **PMU arming:** power-down only after a CSR request for P1/P2 (the post-reset
+  link-up also starts in P1 and must not power the datapath down).
+- `make upf-tb` (functional Icarus run of the power-aware TB) is added as a step in
+  the CI `regress` job; `make regress` itself is unchanged.

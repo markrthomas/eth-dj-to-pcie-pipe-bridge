@@ -19,7 +19,7 @@ RTL_TOP := $(RTL_DIR)/$(TOP).sv
 RTL_SRCS := $(RTL_DIR)/async_fifo.sv $(RTL_DIR)/tx_ingress_gate.sv $(RTL_DIR)/tx_framer.sv $(RTL_DIR)/tx_egress.sv $(RTL_DIR)/rx_ingress.sv $(RTL_DIR)/rx_deframer.sv $(RTL_DIR)/eth_egress.sv $(RTL_DIR)/pipe_msgbus.sv $(RTL_DIR)/bridge_ctrl_fsm.sv $(RTL_DIR)/bridge_rf.sv $(RTL_TOP)
 
 .PHONY: default help lint sim regress coverage formal ci envs crosscheck \
-        iverilog vlt uvm systemc cocotb waves upf metrics dashboard stress clean
+        iverilog vlt uvm systemc cocotb waves upf upf-tb metrics dashboard stress clean
 
 default: help
 
@@ -34,7 +34,8 @@ help:
 	@echo "  crosscheck all five envs agree with dv/common/scenarios.py"
 	@echo "  ci         regress + coverage + formal + all envs + crosscheck"
 	@echo "  waves      run a test with dump + open its GTKWave session (M7)"
-	@echo "  upf        power-aware sim (commercial; OSS stub)          (M6)"
+	@echo "  upf        power-aware sim: commercial only -> prints authored-not-run notice"
+	@echo "  upf-tb     functional Icarus run of the power-aware TB (PMU sequencing, no UPF)"
 	@echo "  metrics|dashboard   build metrics.db / dashboard.html      (M7)"
 	@echo "  clean      remove build artifacts"
 	@echo "  note: uvm needs a UVM-capable Verilator (>= 5.03x, e.g. OSS CAD Suite 2026-04-13)"
@@ -81,8 +82,15 @@ crosscheck:
 envs: iverilog vlt uvm systemc cocotb
 
 upf:
-	@echo "upf: [M6] authored power intent runs on a commercial PA tool; no OSS"
-	@echo "     power-aware simulator here. See docs/PLAN.md §9 / docs/power_intent.md."
+	@echo "upf: AUTHORED, NOT RUN.  lp/bridge.upf (IEEE 1801 / UPF 2.1) needs a commercial"
+	@echo "     power-aware simulator (VCS-NLP / Questa-PA / Xcelium-LP); none is available"
+	@echo "     here and no OSS tool models supplies/isolation/retention.  The UPF has not"
+	@echo "     been parsed or simulated.  See docs/power_intent.md for how to run it."
+	@echo "     'make upf-tb' runs the power-aware TB functionally (no power semantics)."
+
+# functional (NOT power-aware) Icarus run of lp/tb_pipe7_upf_power: PMU sequencing
+upf-tb:
+	$(MAKE) -C lp upf-tb
 
 metrics dashboard:
 	@echo "$@: [M7 stub] metrics dashboard not wired yet (docs/PLAN.md T7.2)"
@@ -93,11 +101,11 @@ waves:
 stress:
 	@echo "stress: [later] randomized long-run stimulus not added yet"
 
-ci: regress coverage formal envs crosscheck
+ci: regress coverage formal envs crosscheck upf-tb
 	@echo "ci: OK"
 
 clean:
-	rm -rf dv/*/sim_build dv/*/obj_dir dv/*/logs obj_dir coverage.info coverage.dat formal/*_prove formal/*_cover
+	rm -rf lp/sim_build dv/*/sim_build dv/*/obj_dir dv/*/logs obj_dir coverage.info coverage.dat formal/*_prove formal/*_cover
 	rm -f dv/cocotb/results.xml dv/cocotb/results.json dv/cocotb/fcov.json dv/uvm/build.log
 	find . -name '__pycache__' -type d -prune -exec rm -rf {} + 2>/dev/null || true
 	@echo "clean: OK"
