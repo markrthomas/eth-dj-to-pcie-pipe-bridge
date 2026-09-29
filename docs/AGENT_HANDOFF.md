@@ -5,6 +5,16 @@ If a session ended, this is where you pick up. Read this, then
 
 ## Where things stand (update this block every session)
 
+- **2026-09-29 (k)** — **M8 close-out** (branch `claude/m8-closeout`). Self-review of
+  M4–M7; docs refreshed (README status/quick start, PLAN §5/§8/§12 + success-criteria
+  table, gotchas); `make stress` implemented (vlt, 20 seeds, all checks). All of
+  M4–M7 landed via PRs #5–#8 (the owner merged #5–#7). **Open for the owner:** D14
+  (DP reset/power-good vs full retention; FSM<->PMU handshake), D10 (timeout
+  proceeds), D8 msgbus address/framing vs the PIPE 7.1 spec, D1 lane count;
+  running `lp/bridge.upf` on a commercial PA tool; a Railway deploy; a first swarm
+  run. Known gaps: framer single-buffered (`c_b2b_flits` unhit), no latency metric,
+  cocotb has no SVA.
+
 - **2026-09-29 (j)** — **M7 done** (branch `claude/m7-infra`, on top of M6).
   `dv/waves/` (7 generated `.gtkw`, `wave_dump.sv` behind `WAVES=1`, `wave_check.py`;
   `make wave-<test>`, `wave-check-all`), `metrics/` (schema, `collect.py`,
@@ -137,9 +147,16 @@ If a session ended, this is where you pick up. Read this, then
   avoid handshake races. (memory `cocotb-apb-slave-timing`,
   `pyvsc-functional-coverage`)
 - **PyVSC functional coverage:** install pyvsc into `/usr/bin/python3`.
-- **UVM on Verilator:** OSS CAD Suite's Verilator can't run UVM. Use
-  `~/verilator` (5.050, UVM-capable) + `~/uvm-verilator` (Accellera UVM
-  1800.2-2020 3.2); **keep `VERILATOR_ROOT` unset**. (memory `oss-uvm-verilator`)
+- **UVM on Verilator:** needs Verilator >= 5.03x. The pinned OSS CAD Suite
+  2026-04-13 (Verilator 5.047) works; apt Verilator 5.020 fails on uvm-core
+  (`PKGNODECL`). `dv/uvm/Makefile` clones uvm-core at a pinned commit.
+  **Keep `VERILATOR_ROOT` unset.**
+- **Formal:** `make formal` needs the pinned suite (yosys-slang plugin; native
+  Yosys rejects module-header package imports). Native Yosys silently turns
+  hierarchical references into free wires — only use them in slang-read harnesses.
+- **Docker:** `.dockerignore` strips trailing slashes (`dir/*/` excludes files).
+  Behind a TLS-intercepting proxy build with `--network host`, proxy build args
+  and `--secret id=extra_ca,src=<pem>`.
 - **UPF:** no OSS power-aware simulator exists here; `make upf` is authored +
   documented, run on a commercial tool, OSS-stubbed. (see `PLAN.md` §9)
 - **Icarus + SV struct literals:** Icarus-11 can't compile SV struct literals /

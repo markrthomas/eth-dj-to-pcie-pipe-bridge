@@ -205,7 +205,7 @@ All five drive the **same DUT** and reuse the shared BFMs/checkers in
 |---|---|---|---|---|
 | 1 | `dv/iverilog/` | Icarus Verilog | Directed SystemVerilog TB | Fast, dependency-light golden directed tests; first bring-up. |
 | 2 | `dv/vlt/` | Verilator (C++) | `sim_main.cpp` harness | Fast regression + the **coverage** vehicle (`--coverage` → `coverage.info`). |
-| 3 | `dv/uvm/` | Verilator + Accellera UVM | UVM (agents/seq/scoreboard) | Constrained-random UVM. Use `~/verilator` (5.050, UVM-capable) + `~/uvm-verilator` per memory `[[oss-uvm-verilator]]`; **keep `VERILATOR_ROOT` unset**. Local-only if the OSS UVM flow is too slow for CI. |
+| 3 | `dv/uvm/` | Verilator + Accellera UVM | UVM (agents/seq/scoreboard) | UVM on Verilator >= 5.03x (pinned OSS CAD Suite 5.047; apt 5.020 cannot compile uvm-core). uvm-core cloned at a pinned commit by the Makefile; **keep `VERILATOR_ROOT` unset**. Runs in CI (~2 min, D12). |
 | 4 | `dv/systemc/` | Verilator → SystemC | `sc_main.cpp` + verilated SystemC model | Transaction-level/system co-sim; reference model cross-check. |
 | 5 | `dv/cocotb/` | cocotb + **PyUVM** | Python UVM (Icarus or Verilator) | Rich constrained-random + **functional coverage** (PyVSC per memory `[[pyvsc-functional-coverage]]`). Watch the cocotb handshake-race + `ICARUS_BIN_DIR=/usr/bin` gotchas in `[[cocotb-apb-slave-timing]]`. |
 
@@ -257,13 +257,13 @@ Exactly the `DV_STANDARDS.md` contract, plus this repo's extras:
 | `make sim` | Primary directed sim (env 1 iverilog or env 2 vlt). |
 | `make regress` | `lint` + `sim` — the fast CI gate. |
 | `make coverage` | Verilator `--coverage` + lcov → `coverage.info`. |
-| `make formal` | SymbiYosys BMC + cover on flow-control modules. |
+| `make formal` | SymbiYosys PDR prove + cover (formal/*.sby; D13). |
 | `make ci` | `regress` + `coverage` + `formal` + all-env smoke. |
 | `make <env>` | `iverilog` / `vlt` / `uvm` / `systemc` / `cocotb` run each env. |
 | `make waves` / `wave-<test>` | Run a test with dump + open its `dv/waves/*.gtkw`. |
 | `make upf` | Power-aware sim (commercial; OSS prints a stub — §9). |
 | `make metrics` / `make dashboard` | Collect run data → `metrics.db` → `dashboard.html`. |
-| `make stress` | Randomized long-run stimulus. |
+| `make stress` | All scenarios on the Verilator env across `STRESS_SEEDS` seeds (gap/backpressure patterns). |
 | `make clean` | Remove all build artifacts. |
 
 Python is the glue (collectors, dashboard, wave-check, swarm task rendering) —
@@ -400,10 +400,22 @@ IDs are what `AGENT_HANDOFF.md` points at.
   **Gate: `make dashboard`, CI green, Railway job defined.**
 
 ### M8 — Close-out
-- [ ] Self-review the full diff, update `~/proj/README.md` + `DV_STANDARDS.md`
-  status table, open the PR **ready for review** (per `~/proj/CLAUDE.md`),
-  merge + delete branch once CI is green and the human sign-off gate (RTL
-  behavior change) is cleared.
+- [x] Self-review of the M4–M7 diffs; stale docs fixed (README, PLAN §5/§8/§12,
+  handoff gotchas); `make stress` implemented (was a stub).
+- [ ] ~~Update `~/proj/README.md` + `DV_STANDARDS.md` status table~~ — not possible:
+  `~/proj` is not in this container (D5). PRs are opened as **drafts** and merged by
+  the owner (session rule, D6); branch deletion is left to the owner.
+
+**Success criteria (§1) status at close-out**
+
+| # | Criterion | Status |
+|---|---|---|
+| 1 | `make regress` green locally + CI | Met |
+| 2 | `make ci` green; line coverage ≥ 80% | Met locally (pinned suite); CI runs the same jobs split up. Line+branch 95.7% |
+| 3 | Five envs build + pass smoke | Met (all five in CI; crosscheck job) |
+| 4 | SVA bound + passing in Verilator and cocotb flows; formal proves flow-control safety | SVA in vlt/systemc/uvm, **not cocotb** (Icarus, D13); formal proofs pass |
+| 5 | UPF documented + runnable (commercial; OSS stub) | Authored + documented; **never run** (no PA tool); `upf-tb` functional only |
+| 6 | Dashboard renders; GTKWave per test; Railway job defined | Met; image built + run locally; **not deployed** to Railway |
 
 ---
 
@@ -416,8 +428,8 @@ IDs are what `AGENT_HANDOFF.md` points at.
 - **RESOLVED (2026-09-29):** PIPE generation = **Gen6 (64 GT/s, PAM4, FLIT
   mode)** — pairs with the 802.3dj PAM4 side ("start with PAM4"). Keep the
   datapath rate-parametric so earlier NRZ gens remain a parameter fallback.
-- **[OPEN]** UVM-on-Verilator in CI vs. local-only (speed). Default local-only,
-  document in `dv/uvm/README.md`.
+- **RESOLVED (M4, D12):** UVM-on-Verilator runs in CI (~2 min with the pinned
+  Verilator 5.047); documented in `dv/uvm/README.md`.
 
 ## 13. Conventions
 - Match surrounding workspace style; keep `rtl/` assertion-free (SVA via bind).
