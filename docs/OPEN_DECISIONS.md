@@ -1,7 +1,13 @@
 # OPEN DECISIONS — need owner sign-off before M1 RTL
 
-Status: **proposal, nothing here is implemented.** No RTL behaviour was changed.
-Each item lists a recommended default; none is adopted until the owner says so.
+Status: **ADOPTED 2026-09-29** — owner delegated D1–D6 to the implementing agent
+("use your best judgement"); the recommended defaults below were adopted as written
+and M1 implements them. The owner may still overrule any item.
+Adopted: D1(a) x1 functional-only, lane-parametric; D2(1) opaque byte tunnel with
+the flit format in `eth_dj_pipe7_pkg.sv` (2B header, 240B payload, zeroed
+DLP/FEC/CRC); D3 256b/64b as sim params; D4 AXI4-S, `eth_tuser` NOT carried in M1;
+D5 sibling repos unavailable -> fresh implementations (async FIFO etc.); D6 PRs
+are drafts per session rules.
 Numbers below are back-of-envelope and must be checked against the PIPE 7.1 and
 802.3dj specs before being frozen (marked *verify*).
 
