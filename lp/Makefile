@@ -12,13 +12,16 @@ RTL_SRCS := $(RTL_DIR)/async_fifo.sv $(RTL_DIR)/tx_ingress_gate.sv $(RTL_DIR)/tx
 TB_DEPS  := $(COMMON)/eth_mac_model.sv $(COMMON)/pipe_phy_model.sv $(COMMON)/pipe_phy_ctrl_model.sv \
             $(COMMON)/eth_sink_model.sv
 BUILD    := sim_build
+WAVES    ?= 0
+WFLAGS    = $(if $(filter 1,$(WAVES)),-DDUMP_TOP=tb_pipe7_upf_power ../dv/waves/wave_dump.sv)
+WRUN      = $(if $(filter 1,$(WAVES)),+dumpfile=$(BUILD)/upf_tb.vcd)
 
 .PHONY: upf-tb clean
 upf-tb:
 	@mkdir -p $(BUILD)
-	$(IVERILOG) -g2012 -I $(RTL_DIR) -I $(COMMON) -I ../dv/iverilog -o $(BUILD)/upf_tb.vvp \
+	$(IVERILOG) -g2012 $(WFLAGS) -I $(RTL_DIR) -I $(COMMON) -I ../dv/iverilog -o $(BUILD)/upf_tb.vvp \
 	  tb_pipe7_upf_power.sv pipe7_pmu.sv $(TB_DEPS) $(RTL_SRCS)
-	$(VVP) $(BUILD)/upf_tb.vvp | tee $(BUILD)/upf_tb.log
+	$(VVP) $(BUILD)/upf_tb.vvp $(WRUN) | tee $(BUILD)/upf_tb.log
 	@grep -q "UPF-TB PASS" $(BUILD)/upf_tb.log
 
 clean:

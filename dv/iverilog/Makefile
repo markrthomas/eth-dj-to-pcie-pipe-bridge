@@ -12,6 +12,10 @@ RTL_SRCS := $(RTL_DIR)/async_fifo.sv $(RTL_DIR)/tx_ingress_gate.sv $(RTL_DIR)/tx
             $(RTL_DIR)/pipe_msgbus.sv $(RTL_DIR)/bridge_ctrl_fsm.sv $(RTL_DIR)/bridge_rf.sv \
             $(RTL_DIR)/eth_dj_pipe7_bridge.sv
 BUILD    := sim_build
+# WAVES=1: add dv/waves/wave_dump.sv as a second top and dump sim_build/<test>.vcd
+WAVES    ?= 0
+WFLAGS    = $(if $(filter 1,$(WAVES)),-DDUMP_TOP=tb_$@ ../waves/wave_dump.sv)
+WRUN      = $(if $(filter 1,$(WAVES)),+dumpfile=$(BUILD)/$@.vcd)
 
 .PHONY: smoke tx loop pm rxovf scen all clean
 all: smoke tx loop pm rxovf scen
@@ -19,39 +23,39 @@ all: smoke tx loop pm rxovf scen
 LOOP_TB_DEPS := $(COMMON)/eth_mac_model.sv $(COMMON)/pipe_phy_model.sv $(COMMON)/pipe_phy_ctrl_model.sv $(COMMON)/eth_sink_model.sv
 smoke:
 	@mkdir -p $(BUILD)
-	$(IVERILOG) -g2012 -I $(RTL_DIR) -I $(COMMON) -o $(BUILD)/smoke.vvp tb_smoke.sv $(COMMON)/pipe_phy_ctrl_model.sv $(RTL_SRCS)
-	$(VVP) $(BUILD)/smoke.vvp | tee $(BUILD)/smoke.log
+	$(IVERILOG) -g2012 $(WFLAGS) -I $(RTL_DIR) -I $(COMMON) -o $(BUILD)/smoke.vvp tb_smoke.sv $(COMMON)/pipe_phy_ctrl_model.sv $(RTL_SRCS)
+	$(VVP) $(BUILD)/smoke.vvp $(WRUN) | tee $(BUILD)/smoke.log
 	@grep -q "SMOKE PASS" $(BUILD)/smoke.log
 
 tx:
 	@mkdir -p $(BUILD)
-	$(IVERILOG) -g2012 -I $(RTL_DIR) -I $(COMMON) -o $(BUILD)/tx.vvp tb_tx.sv $(COMMON)/eth_mac_model.sv $(COMMON)/pipe_phy_model.sv $(COMMON)/pipe_phy_ctrl_model.sv $(RTL_SRCS)
-	$(VVP) $(BUILD)/tx.vvp | tee $(BUILD)/tx.log
+	$(IVERILOG) -g2012 $(WFLAGS) -I $(RTL_DIR) -I $(COMMON) -o $(BUILD)/tx.vvp tb_tx.sv $(COMMON)/eth_mac_model.sv $(COMMON)/pipe_phy_model.sv $(COMMON)/pipe_phy_ctrl_model.sv $(RTL_SRCS)
+	$(VVP) $(BUILD)/tx.vvp $(WRUN) | tee $(BUILD)/tx.log
 	@grep -q "TX PASS" $(BUILD)/tx.log
 
 loop:
 	@mkdir -p $(BUILD)
-	$(IVERILOG) -g2012 -I $(RTL_DIR) -I $(COMMON) -o $(BUILD)/loop.vvp tb_loop.sv $(COMMON)/eth_mac_model.sv $(COMMON)/pipe_phy_model.sv $(COMMON)/pipe_phy_ctrl_model.sv $(COMMON)/eth_sink_model.sv $(RTL_SRCS)
-	$(VVP) $(BUILD)/loop.vvp | tee $(BUILD)/loop.log
+	$(IVERILOG) -g2012 $(WFLAGS) -I $(RTL_DIR) -I $(COMMON) -o $(BUILD)/loop.vvp tb_loop.sv $(COMMON)/eth_mac_model.sv $(COMMON)/pipe_phy_model.sv $(COMMON)/pipe_phy_ctrl_model.sv $(COMMON)/eth_sink_model.sv $(RTL_SRCS)
+	$(VVP) $(BUILD)/loop.vvp $(WRUN) | tee $(BUILD)/loop.log
 	@grep -q "LOOP PASS" $(BUILD)/loop.log
 
 pm:
 	@mkdir -p $(BUILD)
-	$(IVERILOG) -g2012 -I $(RTL_DIR) -I $(COMMON) -I . -o $(BUILD)/pm.vvp tb_pm.sv $(LOOP_TB_DEPS) $(RTL_SRCS)
-	$(VVP) $(BUILD)/pm.vvp | tee $(BUILD)/pm.log
+	$(IVERILOG) -g2012 $(WFLAGS) -I $(RTL_DIR) -I $(COMMON) -I . -o $(BUILD)/pm.vvp tb_pm.sv $(LOOP_TB_DEPS) $(RTL_SRCS)
+	$(VVP) $(BUILD)/pm.vvp $(WRUN) | tee $(BUILD)/pm.log
 	@grep -q "PM PASS" $(BUILD)/pm.log
 
 rxovf:
 	@mkdir -p $(BUILD)
-	$(IVERILOG) -g2012 -I $(RTL_DIR) -I $(COMMON) -I . -o $(BUILD)/rxovf.vvp tb_rxovf.sv $(LOOP_TB_DEPS) $(RTL_SRCS)
-	$(VVP) $(BUILD)/rxovf.vvp | tee $(BUILD)/rxovf.log
+	$(IVERILOG) -g2012 $(WFLAGS) -I $(RTL_DIR) -I $(COMMON) -I . -o $(BUILD)/rxovf.vvp tb_rxovf.sv $(LOOP_TB_DEPS) $(RTL_SRCS)
+	$(VVP) $(BUILD)/rxovf.vvp $(WRUN) | tee $(BUILD)/rxovf.log
 	@grep -q "RXOVF PASS" $(BUILD)/rxovf.log
 
 # shared five-scenario set (dv/common/scenarios.py) -> sim_build/results.json
 scen:
 	@mkdir -p $(BUILD)
-	$(IVERILOG) -g2012 -I $(RTL_DIR) -I $(COMMON) -I . -o $(BUILD)/scen.vvp tb_scen.sv $(LOOP_TB_DEPS) $(RTL_SRCS)
-	$(VVP) $(BUILD)/scen.vvp | tee $(BUILD)/scen.log
+	$(IVERILOG) -g2012 $(WFLAGS) -I $(RTL_DIR) -I $(COMMON) -I . -o $(BUILD)/scen.vvp tb_scen.sv $(LOOP_TB_DEPS) $(RTL_SRCS)
+	$(VVP) $(BUILD)/scen.vvp $(WRUN) | tee $(BUILD)/scen.log
 	@grep -q "SCEN PASS" $(BUILD)/scen.log
 	python3 $(COMMON)/crosscheck.py $(BUILD)/results.json
 
