@@ -28,6 +28,18 @@ Options: (a) keep x1 and treat it as a **functional-only** bring-up target with
 (c) add explicit rate-ratio parameters. **Recommend (a) for M1–M3, with the
 datapath lane-parametric, and re-decide at M4.** *Needs owner decision.*
 
+**Resolution (owner delegated, 2026-09-29): keep x1 as the default; x4 is the minimum
+for one 200G lane and is now CI-checked.** The lane count is a compile-time bump:
+`-DPIPE_NLANES_OVERRIDE=N` (pkg) gives `PIPE_BUS_W = 64*N` and `FLIT_BEATS = 32/N`.
+`make lanes4` runs Verilator lint at x4 plus the whole iverilog suite (smoke, tx, loop,
+pm, rxovf, scen + golden cross-check) at 4 lanes — all pass, with identical frame/flit
+counts and CRCs to x1. It runs in the CI `regress` job; `make regress` itself is
+unchanged and stays x1. Not covered at x4: the vlt/systemc/uvm/cocotb envs, formal, and
+SVA (the x4 check is Icarus + lint only). N must divide 32 (8 beats at x4, 4 at x8,
+2 at x16); other values are not checked. Throughput at x1 stays functional-only (the
+single-buffered framer also halves it). Re-decide the default when a real rate target
+is fixed.
+
 ## D2. What does the bridge put inside a flit? (semantic decision)
 
 PLAN says "adapt Ethernet frames and frame them onto FLITs" but not *what the
@@ -117,6 +129,17 @@ Datapath framing is unchanged across rates (PCIe 6 flit mode applies at every ra
 once negotiated); **width change is a PHY handshake only** — the datapath width is a
 compile-time parameter (`PIPE_DATA_W`).
 
+**Resolution: NOT verified — kept as a clearly marked placeholder.** The PIPE 7.1 spec
+is not available in this environment (only a web search, which confirmed the general
+mechanism — a controller issues a *write committed* and waits for *WriteAck* — but not
+the 4-bit command encodings, address map or the split `cmd`/`data` framing). So
+`MB_*` codes, `MB_ADDR_PAM4_TXCTL = 8'h01` and the two-cycle framing remain
+**unverified assumptions**. They are isolated in `eth_dj_pipe7_pkg.sv` (constants) and
+`pipe_msgbus.sv` (framing), so correcting them is a local change; the DV PHY model
+mirrors them, so tests passing says nothing about spec conformance. **Action for the
+owner / integrator: check these against the PIPE 7.1 PHY register map before any
+integration.**
+
 ## D9. Rx flow control: drop + abort the damaged frame (M3)
 
 PIPE Rx has no backpressure; if the Ethernet sink is slower than the PIPE rate
@@ -137,6 +160,18 @@ The FSM waits `PHY_TIMEOUT` (1024) pclk for PhyStatus (or write_ack). On timeout
 **sets a sticky ERR bit and treats the operation as complete** so a dead PHY cannot
 wedge the control plane; software sees ERR[0]/ERR[1]. Alternative (hold in an error
 state until reset) is safer for a real PHY; owner to confirm.
+
+**Resolution: keep "sticky ERR and proceed"; do not change the RTL.** Holding in an
+error state would need a new FSM state, a recovery path and re-proving formal + all five
+envs, and it is unverifiable without a real PHY (the DV model is the only PHY). The
+present behaviour never wedges the control plane and is visible (ERR[0]/ERR[1], W1C,
+plus `ev_phy_timeout`). Accepted risk: after a PhyStatus timeout the bridge continues as
+if the PHY had complied, so a truly dead PHY would receive flits into the void until
+software reads ERR. **Also noted:** `PHY_TIMEOUT = 1024` pclk is a *simulation* value.
+A vendor PIPE document (Efinix, not the spec) describes a controller waiting on the
+order of **10 ms** for a WriteAck; at ~1 GHz that is ~10^7 cycles. The integrator should
+raise `PHY_TIMEOUT` (the pkg constant) to the spec/PHY figure; the timeout tests use the
+small value to stay fast. Revisit the hold-in-error alternative when a real PHY exists.
 
 ## D11. Drain semantics and P0s (M3)
 
@@ -239,6 +274,17 @@ UPF is authored, not run (no OSS power-aware simulator). No RTL changes.
   link-up also starts in P1 and must not power the datapath down).
 - `make upf-tb` (functional Icarus run of the power-aware TB) is added as a step in
   the CI `regress` job; `make regress` itself is unchanged.
+
+**Resolution: accept the current design — full PD_DP retention, `bridge_rf` in PD_AON,
+no FSM<->PMU handshake; no RTL change.** Rationale: the alternative (datapath reset on
+power-up + a power-good input into the FSM) changes the frozen top-level port list,
+the FSM, the PMU, the power TB and the formal proofs, and its only benefit is retention
+area, which cannot be measured without a power-aware tool that is not available here.
+Full retention is always correct given that the FSM drains the datapath before P1/P2,
+and the PMU-latency assumption (power-up within the PhyStatus latency) is checked by
+`make upf-tb`. **Revisit when the UPF can be run on a commercial tool** and area is
+measurable; at that point a power-good input is the recommended RTL change. The UPF
+remains authored-not-run.
 
 ## D15. Infra (M7)
 
