@@ -369,11 +369,13 @@ IDs are what `AGENT_HANDOFF.md` points at.
   **Gate: `make regress` incl. power-cycle scenario — GREEN.**
 
 ### M4 — Fill out the five environments
-- [ ] **T4.1** Env 2 (Verilator C++) + coverage vehicle → `coverage.info`.
-- [ ] **T4.2** Env 5 (cocotb+PyUVM) with PyVSC functional coverage.
-- [ ] **T4.3** Env 3 (UVM-on-Verilator) and Env 4 (SystemC).
-- [ ] **T4.4** All five agree on the shared scenario set.
-  **Gate: `make ci` green, coverage ≥ 80%.**
+- [x] **T4.1** Env 2 (Verilator C++) + coverage vehicle → `coverage.info`
+  (line+branch 95.7% with Verilator 5.047, floor 80%).
+- [x] **T4.2** Env 5 (cocotb+PyUVM) with PyVSC functional coverage (`fcov.json`, reported, not gated).
+- [x] **T4.3** Env 3 (UVM-on-Verilator, CI job with the pinned Verilator 5.047) and Env 4 (SystemC).
+- [x] **T4.4** All five agree on the shared scenario set (`dv/common/scenarios.py`,
+  `crosscheck.py`; decisions in OPEN_DECISIONS D12).
+  **Gate: `make ci` green, coverage ≥ 80%.** (formal still a stub until M5)
 
 ### M5 — SVA + formal
 - [ ] **T5.1** `dv/sva/` property set §7, bound in vlt + cocotb.

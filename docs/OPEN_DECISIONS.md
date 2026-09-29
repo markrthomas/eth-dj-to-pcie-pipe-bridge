@@ -149,3 +149,41 @@ Rx data outside P0, and the Rx CDC FIFO keeps draining to Ethernet in any state.
 Rx capture is not gated by power state. P0s is **not supported**: a P0s request sets
 ERR[2] and is treated as P0. After reset the Ethernet ingress is closed
 (`eth_tready=0`) until the FSM reaches ST_ACTIVE.
+
+## D12. DV environments and the cross-check contract (M4)
+
+No DUT behaviour changes in M4; these are verification-method decisions.
+
+- **Golden model.** `dv/common/scenarios.py` defines the five shared scenarios
+  (`single`, `corners`, `random`, `pm_cycle`, `rate_change`): frame lengths (fixed
+  lists or a 31-bit LCG, identical constants in SV/C++/Python), the control op, and
+  the expected `frames/bytes/flits/crc32/pmcnt/errors`. Every env writes a
+  `results.json`; `dv/common/crosscheck.py` compares each one with `expected()`.
+  Expected PMCNT = 2 after every reset (P1->P0 + PAM4 msgbus write) + 2 for
+  `pm_cycle` (P0->P1, P1->P0) + 3 for `rate_change` (Gen6->Gen5, Gen5->Gen6, PAM4
+  re-send). This pins down current M3 behaviour; if D8/D10/D11 change, update
+  `scenarios.py`, not the envs.
+- **Harness shape.** All envs use PIPE Tx looped to PIPE Rx, a PHY control model
+  (PhyStatus + msgbus target), a DUT reset before each scenario, 10% MAC gaps and a
+  90%-ready Ethernet sink. The randomness for gaps/ready differs per env (it is not
+  part of the contract); only the end results must match.
+- **`make regress` gains `scen`** (Icarus run of the shared set, ~2 s). No existing
+  regress check was changed or removed.
+- **Coverage metric.** "Line coverage" for the PLAN §6 80% floor = Verilator
+  `v_line` + `v_branch` points hit / total over `rtl/` (from `dv/vlt`, which also
+  runs two coverage-only scenarios: `pm_full` and `rxovf`). Toggle coverage is
+  reported, not gated. `eth_egress.sv` is pure `assign`s and has no line points.
+  `coverage.info` is written by `verilator_coverage --write-info` from the
+  line/branch points only.
+- **vlt + SystemC share one C++ harness** (`dv/common/cpp/bridge_bfm.h`), so the
+  SystemC env mainly cross-checks SystemC kernel scheduling against plain Verilator
+  C++; it is not an independent checker implementation. iverilog, cocotb and UVM
+  have their own scoreboards.
+- **UVM runs in CI** (its own job), overriding PLAN §12's "local-only" default: with
+  the pinned OSS CAD Suite (Verilator 5.047) the build + run takes ~2 min. Accellera
+  `uvm-core` is cloned by `dv/uvm/Makefile` at a pinned commit (not vendored).
+  apt Verilator 5.020 cannot compile uvm-core (`PKGNODECL`), so `make uvm` needs the
+  pinned suite (or any Verilator >= 5.03x) on PATH.
+- **cocotb** runs on apt Icarus (`ICARUS_BIN_DIR=/usr/bin`), cocotb 1.8.1, pyuvm
+  5.0.0, pyvsc. PyVSC functional coverage is exported to `dv/cocotb/fcov.json` and
+  reported, **not gated** (no floor was specified).

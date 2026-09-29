@@ -5,6 +5,20 @@ If a session ended, this is where you pick up. Read this, then
 
 ## Where things stand (update this block every session)
 
+- **2026-09-29 (g)** — **M4 done** (branch `claude/m4-dv-envs`, stacked on the
+  unmerged M3 branch). All five DV envs run the shared scenario set
+  (`dv/common/scenarios.py` golden model, `crosscheck.py`): `dv/iverilog/tb_scen.sv`
+  (in `make regress`), `dv/vlt` (C++ harness `dv/common/cpp/bridge_bfm.h` + coverage:
+  line+branch 95.7% on Verilator 5.047 / 95.3% on 5.020, floor 80%), `dv/systemc`
+  (same C++ harness under Verilator `--sc`), `dv/cocotb` (cocotb 1.8.1 + pyuvm 5.0.0
+  + PyVSC `fcov.json`, apt Icarus), `dv/uvm` (Accellera uvm-core cloned at a pinned
+  commit, Verilator `--binary --timing`). `make crosscheck`: all five agree. Two
+  mutants (last-byte corruption in `eth_egress`, PMCNT off-by-one) killed in all
+  five envs. No RTL changes. Decisions in `OPEN_DECISIONS.md` D12. **Env gotchas:**
+  `make uvm` needs Verilator >= 5.03x (apt 5.020 fails on uvm-core); cocotb Makefile
+  forces the python3 cocotb-config ahead of the OSS CAD Suite's. **Next: M5** (SVA +
+  formal).
+
 - **2026-09-29 (f)** — **M3 done** (branch `claude/m3-control-plane`, based on main
   after PR #3 merged). Added `rtl/{pipe_msgbus,bridge_ctrl_fsm,bridge_rf,tx_ingress_gate}.sv`,
   a pclk-domain CSR port on the top, `dv/common/pipe_phy_ctrl_model.sv` (PhyStatus +
