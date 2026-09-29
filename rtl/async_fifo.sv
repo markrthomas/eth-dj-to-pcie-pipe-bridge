@@ -23,8 +23,12 @@ module async_fifo #(
   logic [W-1:0] mem [0:DEPTH-1];
 
   // ---- write side ----------------------------------------------------------
+  // All pointer/synchroniser nets declared up front (declare-before-use for
+  // strict simulators).
   logic [AW:0] wbin, wgray, wbin_n, wgray_n;
+  logic [AW:0] rbin, rgray, rbin_n, rgray_n;
   logic [AW:0] rgray_w1, rgray_w2;          // rptr synchronised into wclk
+  logic [AW:0] wgray_r1, wgray_r2;          // wptr synchronised into rclk
 
   assign wbin_n  = wbin + (AW+1)'(winc && !wfull);
   assign wgray_n = (wbin_n >> 1) ^ wbin_n;
@@ -52,8 +56,6 @@ module async_fifo #(
   end
 
   // ---- read side -----------------------------------------------------------
-  logic [AW:0] rbin, rgray, rbin_n, rgray_n;
-  logic [AW:0] wgray_r1, wgray_r2;          // wptr synchronised into rclk
 
   assign rbin_n  = rbin + (AW+1)'(rinc && !rempty);
   assign rgray_n = (rbin_n >> 1) ^ rbin_n;
