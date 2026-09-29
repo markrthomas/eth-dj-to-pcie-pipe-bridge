@@ -5,6 +5,14 @@ If a session ended, this is where you pick up. Read this, then
 
 ## Where things stand (update this block every session)
 
+- **2026-09-29 (f)** — Owner delegated D1/D8/D10/D14 ("most logical action"); recorded
+  in `OPEN_DECISIONS.md`. **D1:** x1 default kept; `PIPE_NLANES_OVERRIDE` + `make lanes4`
+  (lint + iverilog suite at x4, in CI) added and passing. **D8:** could NOT verify the
+  msgbus encodings/address against PIPE 7.1 (spec unavailable) — still a placeholder,
+  flagged for the integrator. **D10, D14:** kept as-is with rationale (no RTL change);
+  `PHY_TIMEOUT=1024` is a sim value, real ~10 ms. Not verified at x4: vlt/systemc/uvm/
+  cocotb, formal, SVA.
+
 - **2026-09-29 (k)** — **M8 close-out** (branch `claude/m8-closeout`). Self-review of
   M4–M7; docs refreshed (README status/quick start, PLAN §5/§8/§12 + success-criteria
   table, gotchas); `make stress` implemented (vlt, 20 seeds, all checks). All of

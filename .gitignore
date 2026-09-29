@@ -64,3 +64,4 @@ dv/uvm/build.log
 dv/cocotb/results.json
 dv/*/logs/
 formal/*.log
+sim_build_x*/

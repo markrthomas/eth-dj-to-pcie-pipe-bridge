@@ -32,6 +32,8 @@ jobs:
         run: make regress
       - name: power-aware TB, functional only (PMU sequencing; UPF itself is not run)
         run: make upf-tb
+      - name: x4-lane elaboration + full iverilog suite (PIPE_NLANES_OVERRIDE=4)
+        run: make lanes4
       - name: GTKWave sessions vs fresh dumps (static check; no GUI in CI)
         run: make wave-check-all
       - name: dashboard renders from the committed metrics.db

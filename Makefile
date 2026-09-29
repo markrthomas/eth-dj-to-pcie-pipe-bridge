@@ -124,11 +124,21 @@ wave-check-all:
 stress:
 	$(MAKE) -C dv/vlt stress STRESS_SEEDS=$(or $(STRESS_SEEDS),20)
 
-ci: regress coverage formal envs crosscheck upf-tb
+# x4-lane elaboration check (OPEN_DECISIONS D1): Verilator lint + the whole iverilog
+# suite with PIPE_NLANES_OVERRIDE=4 (256b PIPE bus, 8 beats/flit). Not part of `regress`.
+LANES ?= 4
+.PHONY: lanes4
+lanes4:
+	$(VERILATOR) --lint-only -Wall -DPIPE_NLANES_OVERRIDE=$(LANES) -I$(RTL_DIR) --top-module $(TOP) $(RTL_SRCS)
+	$(MAKE) -C dv/iverilog BUILD=sim_build_x$(LANES) IVEXTRA=-DPIPE_NLANES_OVERRIDE=$(LANES) smoke tx loop pm rxovf
+	$(MAKE) -C dv/iverilog IVEXTRA=-DPIPE_NLANES_OVERRIDE=$(LANES) scen
+	@echo "lanes4: OK (x$(LANES))"
+
+ci: regress coverage formal envs crosscheck upf-tb lanes4
 	@echo "ci: OK"
 
 clean:
-	rm -rf lp/sim_build metrics/_capture dv/*/sim_build dv/*/obj_dir dv/*/logs obj_dir coverage.info coverage.dat formal/*_prove formal/*_cover
+	rm -rf lp/sim_build metrics/_capture dv/*/sim_build dv/*/sim_build_x* dv/*/obj_dir dv/*/logs obj_dir coverage.info coverage.dat formal/*_prove formal/*_cover
 	rm -f dv/cocotb/results.xml dv/cocotb/results.json dv/cocotb/fcov.json dv/uvm/build.log
 	find . -name '__pycache__' -type d -prune -exec rm -rf {} + 2>/dev/null || true
 	@echo "clean: OK"
