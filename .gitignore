@@ -57,3 +57,9 @@ logs/
 
 # pinned OSS CAD Suite if unpacked in-tree by the container image
 oss-cad-suite/
+
+# UVM library clone (dv/uvm/Makefile fetches it)
+dv/uvm/uvm-core
+dv/uvm/build.log
+dv/cocotb/results.json
+dv/*/logs/
