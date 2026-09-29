@@ -7,7 +7,9 @@ If a session ended, this is where you pick up. Read this, then
 
 - **2026-09-29 (b)** — **Baseline set to PAM4 / PCIe Gen6 FLIT mode** (PLAN §12
   resolved) and **M0 scaffold landed**. This is now a **standalone git repo**
-  (`git init`, private GitHub remote). Present: `rtl/eth_dj_pipe7_pkg.sv` (PAM4/
+  (`git init`; remote `origin` = github.com/markrthomas/**eth-dj-to-pcie-pipe-bridge**
+  — note the GitHub repo name differs from this local dir name). Present:
+  `rtl/eth_dj_pipe7_pkg.sv` (PAM4/
   Gen6 params + enums), `rtl/eth_dj_pipe7_bridge.sv` (top stub, ports frozen per
   §2), `dv/iverilog/tb_smoke.sv` + Makefile, stub Makefiles for `dv/{vlt,uvm,
   systemc,cocotb}`, placeholder READMEs for `dv/{common,sva,waves}`, `formal/`,
