@@ -1,7 +1,46 @@
-# dv/vlt — simple Verilator C++ environment (DV env 2) + coverage vehicle.
-# M0 stub. Builds at M4 (docs/PLAN.md T4.1): sim_main.cpp harness + --coverage.
-.PHONY: smoke clean
-smoke:
-	@echo "dv/vlt smoke: [M4 stub] Verilator C++ TB not built yet (docs/PLAN.md T4.1)"
+# dv/vlt — DV env 2: plain Verilator C++ harness (sim_main.cpp) + coverage vehicle.
+# smoke    : build + run the five cross-check scenarios and two coverage-only
+#            scenarios (logs/results.json, logs/coverage.dat), then crosscheck.
+# coverage : smoke, then verilator_coverage -> ../../coverage.info (lcov format)
+#            and a line-coverage summary for rtl/ (floor COV_FLOOR %).
+# trace    : rerun with +trace -> logs/vlt.fst
+# Do NOT set VERILATOR_ROOT.
+VERILATOR    ?= verilator
+VERILATOR_COV ?= verilator_coverage
+RTL_DIR  := ../../rtl
+COMMON   := ../common
+TOP      := eth_dj_pipe7_bridge
+RTL_SRCS := $(RTL_DIR)/async_fifo.sv $(RTL_DIR)/tx_ingress_gate.sv $(RTL_DIR)/tx_framer.sv \
+            $(RTL_DIR)/tx_egress.sv $(RTL_DIR)/rx_ingress.sv $(RTL_DIR)/rx_deframer.sv \
+            $(RTL_DIR)/eth_egress.sv $(RTL_DIR)/pipe_msgbus.sv $(RTL_DIR)/bridge_ctrl_fsm.sv \
+            $(RTL_DIR)/bridge_rf.sv $(RTL_DIR)/$(TOP).sv
+COV_FLOOR ?= 80
+JOBS     ?= $(shell nproc 2>/dev/null || echo 4)
+BIN      := obj_dir/V$(TOP)
+
+.PHONY: smoke build coverage trace clean
+build: $(BIN)
+
+$(BIN): sim_main.cpp $(COMMON)/cpp/bridge_bfm.h $(RTL_SRCS)
+	$(VERILATOR) --cc --exe --build -j $(JOBS) -O2 --x-assign unique --x-initial unique \
+	  --coverage-line --coverage-toggle --trace-fst \
+	  -I$(RTL_DIR) --top-module $(TOP) -CFLAGS "-I$(abspath $(COMMON)/cpp) -O1" \
+	  $(RTL_SRCS) sim_main.cpp
+
+smoke: $(BIN)
+	@mkdir -p logs
+	./$(BIN) | tee logs/vlt.log
+	@grep -q "VLT PASS" logs/vlt.log
+	python3 $(COMMON)/crosscheck.py logs/results.json
+
+coverage: smoke
+	VERILATOR_COV=$(VERILATOR_COV) python3 cov_summary.py logs/coverage.dat --info ../../coverage.info \
+	  --json logs/coverage_summary.json --floor $(COV_FLOOR)
+
+trace: $(BIN)
+	@mkdir -p logs
+	./$(BIN) +trace | tee logs/vlt.log
+	@grep -q "VLT PASS" logs/vlt.log
+
 clean:
-	rm -rf obj_dir coverage.info coverage.dat
+	rm -rf obj_dir logs coverage.info coverage.dat

@@ -2,6 +2,7 @@
 # smoke: reset + link-up contract (tb_smoke.sv).  tx: M1 frame->flit directed test (tb_tx.sv).
 # loop: M2 eth->pipe->eth loopback (tb_loop.sv).  pm: M3 power/rate/width/cfg under traffic
 # (tb_pm.sv).  rxovf: M3 Rx overload drop/abort policy (tb_rxovf.sv).
+# scen: shared cross-env scenario set (tb_scen.sv, dv/common/scenarios.py).
 IVERILOG ?= iverilog
 VVP      ?= vvp
 RTL_DIR  := ../../rtl
@@ -12,8 +13,8 @@ RTL_SRCS := $(RTL_DIR)/async_fifo.sv $(RTL_DIR)/tx_ingress_gate.sv $(RTL_DIR)/tx
             $(RTL_DIR)/eth_dj_pipe7_bridge.sv
 BUILD    := sim_build
 
-.PHONY: smoke tx loop pm rxovf all clean
-all: smoke tx loop pm rxovf
+.PHONY: smoke tx loop pm rxovf scen all clean
+all: smoke tx loop pm rxovf scen
 
 LOOP_TB_DEPS := $(COMMON)/eth_mac_model.sv $(COMMON)/pipe_phy_model.sv $(COMMON)/pipe_phy_ctrl_model.sv $(COMMON)/eth_sink_model.sv
 smoke:
@@ -45,6 +46,14 @@ rxovf:
 	$(IVERILOG) -g2012 -I $(RTL_DIR) -I $(COMMON) -I . -o $(BUILD)/rxovf.vvp tb_rxovf.sv $(LOOP_TB_DEPS) $(RTL_SRCS)
 	$(VVP) $(BUILD)/rxovf.vvp | tee $(BUILD)/rxovf.log
 	@grep -q "RXOVF PASS" $(BUILD)/rxovf.log
+
+# shared five-scenario set (dv/common/scenarios.py) -> sim_build/results.json
+scen:
+	@mkdir -p $(BUILD)
+	$(IVERILOG) -g2012 -I $(RTL_DIR) -I $(COMMON) -I . -o $(BUILD)/scen.vvp tb_scen.sv $(LOOP_TB_DEPS) $(RTL_SRCS)
+	$(VVP) $(BUILD)/scen.vvp | tee $(BUILD)/scen.log
+	@grep -q "SCEN PASS" $(BUILD)/scen.log
+	python3 $(COMMON)/crosscheck.py $(BUILD)/results.json
 
 clean:
 	rm -rf $(BUILD)
