@@ -19,7 +19,7 @@ RTL_TOP := $(RTL_DIR)/$(TOP).sv
 RTL_SRCS := $(RTL_DIR)/async_fifo.sv $(RTL_DIR)/tx_ingress_gate.sv $(RTL_DIR)/tx_framer.sv $(RTL_DIR)/tx_egress.sv $(RTL_DIR)/rx_ingress.sv $(RTL_DIR)/rx_deframer.sv $(RTL_DIR)/eth_egress.sv $(RTL_DIR)/pipe_msgbus.sv $(RTL_DIR)/bridge_ctrl_fsm.sv $(RTL_DIR)/bridge_rf.sv $(RTL_TOP)
 
 .PHONY: default help lint sim regress coverage formal ci envs crosscheck \
-        iverilog vlt uvm systemc cocotb waves upf upf-tb metrics dashboard stress clean
+        iverilog vlt uvm systemc cocotb waves wave-check-all upf upf-tb metrics dashboard stress clean
 
 default: help
 
@@ -33,10 +33,12 @@ help:
 	@echo "  iverilog|vlt|uvm|systemc|cocotb   run one DV environment (shared scenarios)"
 	@echo "  crosscheck all five envs agree with dv/common/scenarios.py"
 	@echo "  ci         regress + coverage + formal + all envs + crosscheck"
-	@echo "  waves      run a test with dump + open its GTKWave session (M7)"
+	@echo "  waves|wave-<test>  run a test with a VCD dump, check + open dv/waves/<test>.gtkw"
+	@echo "  wave-check-all     check every test's .gtkw against a fresh dump (no GUI)"
 	@echo "  upf        power-aware sim: commercial only -> prints authored-not-run notice"
 	@echo "  upf-tb     functional Icarus run of the power-aware TB (PMU sequencing, no UPF)"
-	@echo "  metrics|dashboard   build metrics.db / dashboard.html      (M7)"
+	@echo "  metrics    run+time METRICS_FLOWS, collect artifacts -> metrics/metrics.db"
+	@echo "  dashboard  render metrics/metrics.db -> metrics/dashboard.html"
 	@echo "  clean      remove build artifacts"
 	@echo "  note: uvm needs a UVM-capable Verilator (>= 5.03x, e.g. OSS CAD Suite 2026-04-13)"
 
@@ -92,11 +94,30 @@ upf:
 upf-tb:
 	$(MAKE) -C lp upf-tb
 
-metrics dashboard:
-	@echo "$@: [M7 stub] metrics dashboard not wired yet (docs/PLAN.md T7.2)"
+# metrics: run + time the flows, then collect real artifacts into metrics/metrics.db
+# (every value tagged measured / estimated / not_attributable); dashboard: render it.
+METRICS_FLOWS ?= regress,coverage,systemc,cocotb,formal,upf-tb
+metrics:
+	python3 metrics/collect.py --run $(METRICS_FLOWS) --note "$(METRICS_NOTE)"
 
-waves:
-	@echo "waves: [M7 stub] per-test GTKWave sessions not added yet (docs/PLAN.md T7.1)"
+dashboard:
+	python3 metrics/dashboard.py
+
+# per-test waves: run with a VCD dump, check the GTKWave session against it, open it
+# if gtkwave + a display are available.  `make waves` = loop; tests: WAVE_TESTS.
+WAVE_TESTS := smoke tx loop pm rxovf scen upf
+waves: wave-loop
+
+wave-%:
+	@if [ "$*" = "upf" ]; then $(MAKE) -C lp upf-tb WAVES=1; else $(MAKE) -C dv/iverilog $* WAVES=1; fi
+	python3 dv/waves/wave_check.py check $* $$(if [ "$*" = "upf" ]; then echo lp/sim_build/upf_tb.vcd; else echo dv/iverilog/sim_build/$*.vcd; fi)
+	@if command -v gtkwave >/dev/null 2>&1 && [ -n "$$DISPLAY" ]; then \
+	  gtkwave -a dv/waves/$*.gtkw $$(if [ "$*" = "upf" ]; then echo lp/sim_build/upf_tb.vcd; else echo dv/iverilog/sim_build/$*.vcd; fi) & \
+	else echo "wave-$*: gtkwave/DISPLAY not available; open with: gtkwave -a dv/waves/$*.gtkw <dump>"; fi
+
+# every test's session checked against a fresh dump (no GUI)
+wave-check-all:
+	@for t in $(WAVE_TESTS); do $(MAKE) --no-print-directory wave-$$t DISPLAY= || exit 1; done
 
 stress:
 	@echo "stress: [later] randomized long-run stimulus not added yet"
@@ -105,7 +126,7 @@ ci: regress coverage formal envs crosscheck upf-tb
 	@echo "ci: OK"
 
 clean:
-	rm -rf lp/sim_build dv/*/sim_build dv/*/obj_dir dv/*/logs obj_dir coverage.info coverage.dat formal/*_prove formal/*_cover
+	rm -rf lp/sim_build metrics/_capture dv/*/sim_build dv/*/obj_dir dv/*/logs obj_dir coverage.info coverage.dat formal/*_prove formal/*_cover
 	rm -f dv/cocotb/results.xml dv/cocotb/results.json dv/cocotb/fcov.json dv/uvm/build.log
 	find . -name '__pycache__' -type d -prune -exec rm -rf {} + 2>/dev/null || true
 	@echo "clean: OK"

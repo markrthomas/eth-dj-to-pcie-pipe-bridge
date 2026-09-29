@@ -5,6 +5,17 @@ If a session ended, this is where you pick up. Read this, then
 
 ## Where things stand (update this block every session)
 
+- **2026-09-29 (j)** — **M7 done** (branch `claude/m7-infra`, on top of M6).
+  `dv/waves/` (7 generated `.gtkw`, `wave_dump.sv` behind `WAVES=1`, `wave_check.py`;
+  `make wave-<test>`, `wave-check-all`), `metrics/` (schema, `collect.py`,
+  `dashboard.py`, committed `metrics.db` + `dashboard.html` from a real run),
+  `Dockerfile` + `.dockerignore` + `docker/{entrypoint,swarm}.sh` + `swarm-task.md`,
+  `railway.toml`, `.claude/agents/*` (4 agents), `.github/workflows/swarm.yml`
+  (manual). The image was built and run here (all 7 flows + crosscheck green inside
+  the container); **not deployed to Railway; swarm not run** (no API key). D15.
+  **Gotcha:** `.dockerignore` strips trailing slashes — `formal/*/` excluded all of
+  `formal/`. **Next: M8** close-out.
+
 - **2026-09-29 (i)** — **M6 done** (branch `claude/m6-upf`, on top of M5). `lp/bridge.upf`
   (UPF 2.1: PD_AON = ctrl/msgbus/rf/glue, PD_DP = datapath, header switch, iso clamp 0 /
   clamp 1 on drain flags, full PD_DP retention), `lp/pipe7_pmu.sv` (DV-only),

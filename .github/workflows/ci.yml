@@ -32,6 +32,10 @@ jobs:
         run: make regress
       - name: power-aware TB, functional only (PMU sequencing; UPF itself is not run)
         run: make upf-tb
+      - name: GTKWave sessions vs fresh dumps (static check; no GUI in CI)
+        run: make wave-check-all
+      - name: dashboard renders from the committed metrics.db
+        run: make dashboard
       - uses: actions/upload-artifact@v4
         if: always()
         with:
