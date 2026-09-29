@@ -37,7 +37,8 @@ help:
 	@echo "  wave-check-all     check every test's .gtkw against a fresh dump (no GUI)"
 	@echo "  upf        power-aware sim: commercial only -> prints authored-not-run notice"
 	@echo "  upf-tb     functional Icarus run of the power-aware TB (PMU sequencing, no UPF)"
-	@echo "  metrics|dashboard   build metrics.db / dashboard.html      (M7)"
+	@echo "  metrics    run+time METRICS_FLOWS, collect artifacts -> metrics/metrics.db"
+	@echo "  dashboard  render metrics/metrics.db -> metrics/dashboard.html"
 	@echo "  clean      remove build artifacts"
 	@echo "  note: uvm needs a UVM-capable Verilator (>= 5.03x, e.g. OSS CAD Suite 2026-04-13)"
 
@@ -93,8 +94,14 @@ upf:
 upf-tb:
 	$(MAKE) -C lp upf-tb
 
-metrics dashboard:
-	@echo "$@: [M7 stub] metrics dashboard not wired yet (docs/PLAN.md T7.2)"
+# metrics: run + time the flows, then collect real artifacts into metrics/metrics.db
+# (every value tagged measured / estimated / not_attributable); dashboard: render it.
+METRICS_FLOWS ?= regress,coverage,systemc,cocotb,formal,upf-tb
+metrics:
+	python3 metrics/collect.py --run $(METRICS_FLOWS) --note "$(METRICS_NOTE)"
+
+dashboard:
+	python3 metrics/dashboard.py
 
 # per-test waves: run with a VCD dump, check the GTKWave session against it, open it
 # if gtkwave + a display are available.  `make waves` = loop; tests: WAVE_TESTS.
