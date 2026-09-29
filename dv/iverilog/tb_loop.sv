@@ -28,22 +28,35 @@ module tb_loop;
   wire                     eth_rx_tvalid, eth_rx_tready, eth_rx_tlast;
   wire [ETH_DATA_W-1:0]    eth_rx_tdata;
   wire [ETH_KEEP_W-1:0]    eth_rx_tkeep;
+  wire [ETH_USER_W-1:0]    eth_rx_tuser;
   pipe_pwr_e               pipe_powerdown;
+  pipe_rate_e              pipe_rate;
+  wire [1:0]               pipe_width;
+  wire                     pipe_phy_status;
+  wire [MSGBUS_CMD_W-1:0]  m2p_cmd, p2m_cmd;
+  wire [MSGBUS_DATA_W-1:0] m2p_data, p2m_data;
 
   eth_dj_pipe7_bridge dut (
     .eth_clk(eth_clk), .eth_rst_n(eth_rst_n),
     .eth_tvalid(eth_tvalid), .eth_tready(eth_tready), .eth_tdata(eth_tdata),
     .eth_tkeep(eth_tkeep), .eth_tlast(eth_tlast), .eth_tuser(eth_tuser),
     .eth_rx_tvalid(eth_rx_tvalid), .eth_rx_tready(eth_rx_tready), .eth_rx_tdata(eth_rx_tdata),
-    .eth_rx_tkeep(eth_rx_tkeep), .eth_rx_tlast(eth_rx_tlast), .eth_rx_tuser(),
+    .eth_rx_tkeep(eth_rx_tkeep), .eth_rx_tlast(eth_rx_tlast), .eth_rx_tuser(eth_rx_tuser),
     .pclk(pclk), .pipe_rst_n(pipe_rst_n),
     .pipe_tx_data(pipe_tx_data), .pipe_tx_data_valid(pipe_tx_data_valid),
     .pipe_tx_start_block(pipe_tx_start_block),
     .pipe_rx_data(pipe_tx_data), .pipe_rx_data_valid(pipe_tx_data_valid),
     .pipe_rx_start_block(pipe_tx_start_block),
-    .pipe_rate(), .pipe_width(), .pipe_powerdown(pipe_powerdown),
-    .pipe_phy_status(1'b0), .pipe_rx_valid(1'b0), .pipe_rx_elec_idle(1'b1),
-    .pipe_m2p_cmd(), .pipe_m2p_data(), .pipe_p2m_cmd('0), .pipe_p2m_data('0)
+    .pipe_rate(pipe_rate), .pipe_width(pipe_width), .pipe_powerdown(pipe_powerdown),
+    .pipe_phy_status(pipe_phy_status), .pipe_rx_valid(1'b0), .pipe_rx_elec_idle(1'b1),
+    .pipe_m2p_cmd(m2p_cmd), .pipe_m2p_data(m2p_data), .pipe_p2m_cmd(p2m_cmd), .pipe_p2m_data(p2m_data),
+    .csr_valid(1'b0), .csr_write(1'b0), .csr_addr('0), .csr_wdata('0), .csr_rdata()
+  );
+
+  pipe_phy_ctrl_model phyc (
+    .pclk(pclk), .pipe_rst_n(pipe_rst_n), .powerdown(pipe_powerdown), .rate(pipe_rate),
+    .width(pipe_width), .tx_data_valid(pipe_tx_data_valid), .m2p_cmd(m2p_cmd),
+    .m2p_data(m2p_data), .phy_status(pipe_phy_status), .p2m_cmd(p2m_cmd), .p2m_data(p2m_data)
   );
 
   eth_mac_model mac (
@@ -60,7 +73,7 @@ module tb_loop;
   eth_sink_model sink (
     .eth_clk(eth_clk), .eth_rst_n(eth_rst_n), .eth_rx_tvalid(eth_rx_tvalid),
     .eth_rx_tready(eth_rx_tready), .eth_rx_tdata(eth_rx_tdata),
-    .eth_rx_tkeep(eth_rx_tkeep), .eth_rx_tlast(eth_rx_tlast)
+    .eth_rx_tkeep(eth_rx_tkeep), .eth_rx_tlast(eth_rx_tlast), .eth_rx_err(eth_rx_tuser[0])
   );
 
   always #2.5 eth_clk = ~eth_clk;   // 200 MHz
@@ -132,9 +145,14 @@ module tb_loop;
     if (checked != N)                 begin $display("FAIL: %0d/%0d frames received", checked, N); errors++; end
     if (phy.flits != exp_flits)       begin $display("FAIL: %0d flits, expected %0d", phy.flits, exp_flits); errors++; end
     if (phy.frames != N)              begin $display("FAIL: PHY saw %0d frames, expected %0d", phy.frames, N); errors++; end
+    if (sink.err_frames != 0)         begin $display("FAIL: %0d frame(s) flagged err", sink.err_frames); errors++; end
     if (sink.errors != 0)             begin $display("FAIL: %0d sink error(s)", sink.errors); errors++; end
-    if (dut.rx_dropped_flits != 0 || dut.rx_lock_errors != 0 || dut.rx_bad_flits != 0)
-      begin $display("FAIL: rx dropped=%0d lock_err=%0d bad=%0d", dut.rx_dropped_flits, dut.rx_lock_errors, dut.rx_bad_flits); errors++; end
+    if (dut.rx_dropped_flits != 0 || dut.rx_lock_errors != 0 || dut.rx_bad_flits != 0 || dut.rx_aborted_frames != 0)
+      begin $display("FAIL: rx dropped=%0d lock_err=%0d bad=%0d aborted=%0d", dut.rx_dropped_flits,
+                     dut.rx_lock_errors, dut.rx_bad_flits, dut.rx_aborted_frames); errors++; end
+    if (phyc.errors != 0)             begin $display("FAIL: %0d PHY-ctrl error(s)", phyc.errors); errors++; end
+    if (phyc.mb_writes != 1 || phyc.regs[MB_ADDR_PAM4_TXCTL] !== PAM4CFG_RST)
+      begin $display("FAIL: expected one PAM4 msgbus write at link-up, saw %0d", phyc.mb_writes); errors++; end
     if (phy.errors != 0)              begin $display("FAIL: %0d PHY-model error(s)", phy.errors); errors++; end
 
     if (errors == 0)

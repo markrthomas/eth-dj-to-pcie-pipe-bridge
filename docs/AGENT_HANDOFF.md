@@ -5,6 +5,20 @@ If a session ended, this is where you pick up. Read this, then
 
 ## Where things stand (update this block every session)
 
+- **2026-09-29 (f)** — **M3 done** (branch `claude/m3-control-plane`, based on main
+  after PR #3 merged). Added `rtl/{pipe_msgbus,bridge_ctrl_fsm,bridge_rf,tx_ingress_gate}.sv`,
+  a pclk-domain CSR port on the top, `dv/common/pipe_phy_ctrl_model.sv` (PhyStatus +
+  msgbus target + "no Tx outside P0/during a change" checker), `dv/iverilog/{tb_pm,tb_rxovf}.sv`
+  + `loop_harness.svh`; smoke now checks the reset/link-up contract. Decisions D7–D11 in
+  `OPEN_DECISIONS.md` (CSR port, msgbus usage, Rx drop+abort with `eth_rx_tuser[0]`,
+  timeout-proceeds, drain at frame boundary / no P0s). `make regress` (lint + smoke tx
+  loop pm rxovf) GREEN on apt Icarus 12 / Verilator 5.020 **and** on the CI-pinned OSS
+  CAD Suite 2026-04-13 (Icarus 14-devel, Verilator 5.047) unpacked locally. New checks
+  mutation-tested (5 mutants, all killed). **Icarus gotcha:** a bare wildcard-imported
+  pkg constant used directly in a port connection becomes an implicit 1-bit net — copy
+  it to a local wire first. Limitations: width change is handshake-only; pclk assumed
+  running in P2; Rx frame-level state not drained. **Next action: M4** (five DV envs).
+
 - **2026-09-29 (e)** — **M2 done** (branch `claude/m2-rx-loopback`). Added
   `rtl/{rx_ingress,rx_deframer,eth_egress}.sv` (Rx CDC = second `async_fifo`),
   `dv/common/eth_sink_model.sv`, `dv/iverilog/tb_loop.sv` (eth->bridge->PIPE looped

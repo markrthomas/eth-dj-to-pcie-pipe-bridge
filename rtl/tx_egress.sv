@@ -19,7 +19,8 @@ module tx_egress
 
   output logic [PIPE_BUS_W-1:0]       pipe_tx_data,
   output logic                        pipe_tx_data_valid,
-  output logic                        pipe_tx_start_block
+  output logic                        pipe_tx_start_block,
+  output logic                        busy
 );
   localparam int unsigned CW = $clog2(FLIT_BEATS);
 
@@ -27,6 +28,8 @@ module tx_egress
   logic [CW-1:0] cnt_q;
 
   wire start = !busy_q && flit_valid && tx_en;
+
+  assign busy = busy_q;
 
   assign flit_taken = busy_q && (int'(cnt_q) == FLIT_BEATS - 1);
 

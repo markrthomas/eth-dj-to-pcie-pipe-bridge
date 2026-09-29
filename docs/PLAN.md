@@ -361,10 +361,12 @@ IDs are what `AGENT_HANDOFF.md` points at.
   **Gate: `make regress` — GREEN.**
 
 ### M3 — Control plane
-- [ ] **T3.1** `pipe_msgbus` + `bridge_ctrl_fsm` + `bridge_rf`: P0↔P1↔P2, rate
-  and width change with datapath drain.
-- [ ] **T3.2** Directed power-cycle + rate-change tests.
-  **Gate: `make regress` incl. power-cycle scenario.**
+- [x] **T3.1** `pipe_msgbus` + `bridge_ctrl_fsm` + `bridge_rf` (+ `tx_ingress_gate`,
+  CSR port): P0↔P1↔P2, rate and width change with datapath drain, PAM4 Tx control
+  over the message bus; Rx overload drop + frame-abort policy (OPEN_DECISIONS D7–D11).
+- [x] **T3.2** Directed power-cycle + rate/width/cfg tests under traffic
+  (`dv/iverilog/tb_pm.sv`), Rx overload test (`tb_rxovf.sv`), link-up smoke.
+  **Gate: `make regress` incl. power-cycle scenario — GREEN.**
 
 ### M4 — Fill out the five environments
 - [ ] **T4.1** Env 2 (Verilator C++) + coverage vehicle → `coverage.info`.
