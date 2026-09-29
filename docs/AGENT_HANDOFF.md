@@ -5,6 +5,18 @@ If a session ended, this is where you pick up. Read this, then
 
 ## Where things stand (update this block every session)
 
+- **2026-09-29 (d)** — **M1 done** (branch `claude/m1-tx-datapath`). Owner delegated
+  D1/D2/D5, recommended defaults adopted (see `OPEN_DECISIONS.md`). Added
+  `rtl/{async_fifo,tx_framer,tx_egress}.sv`, flit-format params in the pkg,
+  `dv/common/{eth_mac_model,pipe_phy_model}.sv`, `dv/iverilog/tb_tx.sv`.
+  `make regress` GREEN (lint + smoke + tx). Behaviour notes: `pipe_powerdown` is now
+  held at **P0** (M1 placeholder, was P1; M3 ctrl FSM must own it); `eth_tuser` not
+  carried; DLP/FEC/CRC zero; framer is single-buffered (half throughput); Rx path
+  still a stub. Environment: needed `apt install iverilog verilator` (Icarus 12,
+  Verilator 5.020); Icarus lacks `break`, array literals, and mis-drives an enum
+  output that is also read internally. **Next action: T2.1** Rx path
+  (`rx_ingress`/`rx_cdc`/`rx_deframer`/`eth_egress`) + loopback scoreboard.
+
 - **2026-09-29 (c)** — Pickup session (cloud). Re-read all docs/RTL. Wrote
   [`OPEN_DECISIONS.md`](OPEN_DECISIONS.md): lane count vs. 200G rate (x1 can't carry
   it), flit payload semantics, widths/PCLK, tuser, missing `~/proj` siblings.

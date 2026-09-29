@@ -345,13 +345,15 @@ IDs are what `AGENT_HANDOFF.md` points at.
   reset defaults. **Gate: `make regress` (lint + smoke) — GREEN.**
 
 ### M1 — Datapath bring-up (one direction, Tx: eth→pipe, Gen6 FLIT / PAM4)
-- [ ] **T1.1** `eth_ingress` + `tx_cdc` + `tx_gearbox` + `tx_framer` (256B FLIT
+- [x] **T1.1** (done; `async_fifo` as tx_cdc, `tx_framer` = byte packer + flit
+  assembly, `tx_egress` = 256b->64b flit serialiser, i.e. the gearbox is folded into
+  the framer/egress pair; no separate eth_ingress) `eth_ingress` + `tx_cdc` + `tx_gearbox` + `tx_framer` (256B FLIT
   assembly) + `tx_egress`. Reuse a workspace async FIFO. Remove the M0 lint
   waivers as signals get consumed.
-- [ ] **T1.2** `eth_mac_model` + `pipe_phy_model` (Gen6 FLIT-aware) BFMs in
+- [x] **T1.2** `eth_mac_model` + `pipe_phy_model` (Gen6 FLIT-aware) BFMs in
   `dv/common/`.
-- [ ] **T1.3** Env 1 (iverilog) directed "send one frame → one FLIT" test.
-  **Gate: `make sim`.**
+- [x] **T1.3** Env 1 (iverilog) directed "send one frame → one FLIT" test
+  (`dv/iverilog/tb_tx.sv`: 115 frames, 531 flits). **Gate: `make sim` — GREEN.**
 
 ### M2 — Reverse datapath (Rx: pipe→eth) + loopback
 - [ ] **T2.1** `rx_ingress`/`rx_cdc`/`rx_deframer`/`eth_egress`.

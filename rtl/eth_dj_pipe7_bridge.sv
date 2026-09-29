@@ -1,11 +1,10 @@
 // ============================================================================
 // eth_dj_pipe7_bridge.sv — TOP of the 802.3dj Ethernet <-> PCIe PIPE 7.1 bridge.
 //
-// STATUS: M0 SCAFFOLD.  Ports are frozen per docs/PLAN.md §2 (PAM4/Gen6
-// baseline); the body is an intentional stub — all outputs are driven to a
-// defined reset value and inputs are not yet consumed.  The lint waivers below
-// are M0-ONLY and MUST be removed as the datapath/control modules (see
-// docs/PLAN.md §3 module inventory) are filled in (M1+).
+// STATUS: M1 — Tx path (eth -> PIPE) implemented; Rx path, control FSM and message
+// bus are still M0 stubs (outputs tied off, inputs unconsumed).  Ports are frozen
+// per docs/PLAN.md §2 (PAM4/Gen6 baseline).  The UNUSEDSIGNAL waiver below covers
+// the still-unconsumed Rx/status/msgbus inputs and MUST be removed as M2/M3 land.
 // ============================================================================
 `include "eth_dj_pipe7_pkg.sv"
 
@@ -66,7 +65,41 @@ module eth_dj_pipe7_bridge
   //            rx_ingress/rx_cdc/rx_deframer/eth_egress; add bridge_ctrl_fsm,
   //            pipe_msgbus, bridge_rf.  Remove the waiver above when done.
 
-  assign eth_tready         = 1'b0;
+  // ---- M1 Tx path: eth AXI-S -> async FIFO -> flit framer -> PIPE serialiser ----
+  logic                                 tx_fifo_full;
+  logic [ETH_DATA_W+ETH_KEEP_W:0]       tx_fifo_rdata;
+  logic                                 tx_fifo_empty, tx_fifo_rinc;
+  logic                                 flit_valid, flit_taken;
+  logic [FLIT_BYTES*8-1:0]              flit;
+
+  assign eth_tready = !tx_fifo_full;
+
+  // eth_tuser is not carried in M1 (docs/OPEN_DECISIONS.md D4).
+  async_fifo #(.W(ETH_DATA_W+ETH_KEEP_W+1), .DEPTH(FIFO_DEPTH)) u_tx_cdc (
+    .wclk   (eth_clk),   .wrst_n (eth_rst_n),
+    .winc   (eth_tvalid && eth_tready),
+    .wdata  ({eth_tlast, eth_tkeep, eth_tdata}),
+    .wfull  (tx_fifo_full),
+    .rclk   (pclk),      .rrst_n (pipe_rst_n),
+    .rinc   (tx_fifo_rinc),
+    .rdata  (tx_fifo_rdata),
+    .rempty (tx_fifo_empty)
+  );
+
+  tx_framer u_tx_framer (
+    .clk (pclk), .rst_n (pipe_rst_n),
+    .fifo_rdata (tx_fifo_rdata), .fifo_empty (tx_fifo_empty), .fifo_rinc (tx_fifo_rinc),
+    .flit_valid (flit_valid), .flit (flit), .flit_taken (flit_taken)
+  );
+
+  tx_egress u_tx_egress (
+    .clk (pclk), .rst_n (pipe_rst_n),
+    .tx_en (1'b1),   // M1: link held in P0; M3 ctrl FSM drives this
+    .flit_valid (flit_valid), .flit (flit), .flit_taken (flit_taken),
+    .pipe_tx_data (pipe_tx_data),
+    .pipe_tx_data_valid (pipe_tx_data_valid),
+    .pipe_tx_start_block (pipe_tx_start_block)
+  );
 
   assign eth_rx_tvalid      = 1'b0;
   assign eth_rx_tdata       = '0;
@@ -74,13 +107,12 @@ module eth_dj_pipe7_bridge
   assign eth_rx_tlast       = 1'b0;
   assign eth_rx_tuser       = '0;
 
-  assign pipe_tx_data       = '0;
-  assign pipe_tx_data_valid = 1'b0;
-  assign pipe_tx_start_block= 1'b0;
-
   assign pipe_rate          = RATE_GEN6;   // PAM4 baseline
   assign pipe_width         = 2'b00;
-  assign pipe_powerdown     = PWR_P1;      // start in low power until brought up
+  // M1 PLACEHOLDER: no control FSM yet, so the link is held in P0 to let the Tx
+  // path run.  TODO(M3): bridge_ctrl_fsm owns powerdown (reset value P1 -> P0 via
+  // the message bus) and must drain flits before leaving P0.
+  assign pipe_powerdown     = PWR_P0;
 
   assign pipe_m2p_cmd       = '0;
   assign pipe_m2p_data      = '0;

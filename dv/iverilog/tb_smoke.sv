@@ -73,16 +73,16 @@ module tb_smoke;
     pipe_rst_n = 1'b1;
     repeat (20) @(posedge pclk);
 
-    // M0 stub contract: no Tx traffic, PIPE reports Gen6 (PAM4) rate and starts
-    // in a low-power state until the control FSM brings the link to P0 (M3).
+    // Reset-state contract: no Tx traffic, PIPE reports Gen6 (PAM4) rate.  Until
+    // the M3 control FSM exists the link is held in P0 (M1 placeholder).
     if (pipe_tx_data_valid !== 1'b0) begin
-      $display("FAIL: pipe_tx_data_valid should be 0 in M0 stub"); errors++;
+      $display("FAIL: pipe_tx_data_valid should be 0 with no traffic"); errors++;
     end
     if (pipe_rate !== RATE_GEN6) begin
       $display("FAIL: pipe_rate should be RATE_GEN6 (PAM4 baseline)"); errors++;
     end
-    if (pipe_powerdown !== PWR_P1) begin
-      $display("FAIL: pipe_powerdown should be PWR_P1 in M0 stub"); errors++;
+    if (pipe_powerdown !== PWR_P0) begin
+      $display("FAIL: pipe_powerdown should be PWR_P0 (M1 placeholder)"); errors++;
     end
 
     if (errors == 0)

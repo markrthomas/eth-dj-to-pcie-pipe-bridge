@@ -38,6 +38,17 @@ package eth_dj_pipe7_pkg;
   // treats the FEC/CRC bytes as passthrough in the first cut (see pam4_notes).
   localparam int unsigned FLIT_BYTES = 256;
 
+  // ---- Bridge flit format (docs/OPEN_DECISIONS.md D2, adopted) --------------
+  // Ethernet frame bytes are tunnelled opaquely in the flit payload area:
+  //   byte 0        : {5'b0, eof, sof, valid}   (valid=1 for every emitted flit)
+  //   byte 1        : payload byte count in this flit (0..FLIT_PAYLOAD_B)
+  //   bytes 2..241  : frame bytes (FLIT_PAYLOAD_B = 240), zero padded
+  //   bytes 242..247: DLP placeholder (zero), 248..255: FEC/CRC placeholder (zero)
+  // PIPE Tx serialises the flit LSB-byte first, PIPE_BUS_W bits per pclk beat.
+  localparam int unsigned FLIT_HDR_B     = 2;
+  localparam int unsigned FLIT_PAYLOAD_B = 240;
+  localparam int unsigned FLIT_BEATS     = FLIT_BYTES * 8 / PIPE_BUS_W;
+
   // ---- PIPE 7.x message bus (4-bit command interface) ----------------------
   localparam int unsigned MSGBUS_CMD_W  = 4;
   localparam int unsigned MSGBUS_DATA_W = 8;
