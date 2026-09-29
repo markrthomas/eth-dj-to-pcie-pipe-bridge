@@ -23,7 +23,7 @@ SVA_FLAGS := $(if $(filter 1,$(SVA)),--assert --coverage-user)
 JOBS     ?= $(shell nproc 2>/dev/null || echo 4)
 BIN      := obj_dir/V$(TOP)
 
-.PHONY: smoke build coverage trace clean
+.PHONY: smoke build coverage trace stress clean
 build: $(BIN)
 
 $(BIN): sim_main.cpp $(COMMON)/cpp/bridge_bfm.h $(RTL_SRCS) $(SVA_SRCS)
@@ -46,6 +46,17 @@ trace: $(BIN)
 	@mkdir -p logs
 	./$(BIN) +trace | tee logs/vlt.log
 	@grep -q "VLT PASS" logs/vlt.log
+
+# stress: rerun all 7 scenarios with STRESS_SEEDS different seeds (the seed drives
+# MAC gaps / sink backpressure; every scoreboard, SVA and golden-model check applies)
+STRESS_SEEDS ?= 20
+stress: $(BIN)
+	@mkdir -p logs
+	@set -e; for s in $$(seq 1 $(STRESS_SEEDS)); do \
+	  ./$(BIN) +seed=$$s > logs/stress_$$s.log 2>&1 || { tail -5 logs/stress_$$s.log; echo "STRESS FAIL: seed $$s"; exit 1; }; \
+	  grep -q "VLT PASS" logs/stress_$$s.log || { echo "STRESS FAIL: seed $$s"; exit 1; }; \
+	  python3 $(COMMON)/crosscheck.py logs/results.json > logs/stress_$$s.xchk || { cat logs/stress_$$s.xchk; echo "STRESS FAIL: seed $$s crosscheck"; exit 1; }; \
+	done; echo "STRESS PASS: $(STRESS_SEEDS) seeds x 7 scenarios"
 
 clean:
 	rm -rf obj_dir logs coverage.info coverage.dat

@@ -1,9 +1,9 @@
 # =============================================================================
 # eth-dj-pcie-pipe7_1-bridge — root DV gate.
 #
-# Standard targets per ~/proj/DV_STANDARDS.md.  `lint`, `sim` (Icarus directed
-# tests + shared scenario set), `coverage` (Verilator, >= 80% line+branch) and
-# the five DV environments are real; see docs/PLAN.md §11 for what is still a stub.
+# Standard targets per ~/proj/DV_STANDARDS.md.  All targets are real except
+# `upf`, which prints an "authored, not run" notice (no OSS power-aware
+# simulator; `upf-tb` runs the power-aware TB functionally).  See docs/PLAN.md §8.
 #
 # Toolchain: Verilator + Icarus from the workspace OSS CAD Suite. Do NOT set
 # VERILATOR_ROOT (breaks the UVM-on-Verilator flow — see docs/AGENT_HANDOFF.md).
@@ -39,6 +39,7 @@ help:
 	@echo "  upf-tb     functional Icarus run of the power-aware TB (PMU sequencing, no UPF)"
 	@echo "  metrics    run+time METRICS_FLOWS, collect artifacts -> metrics/metrics.db"
 	@echo "  dashboard  render metrics/metrics.db -> metrics/dashboard.html"
+	@echo "  stress     vlt env, all scenarios x STRESS_SEEDS (default 20) seeds"
 	@echo "  clean      remove build artifacts"
 	@echo "  note: uvm needs a UVM-capable Verilator (>= 5.03x, e.g. OSS CAD Suite 2026-04-13)"
 
@@ -55,7 +56,7 @@ iverilog:
 regress: lint sim
 	@echo "regress: OK"
 
-# ---- stubs (exit 0) until their milestone ----------------------------------
+# ---- coverage / formal / environments ---------------------------------------
 coverage:
 	$(MAKE) -C dv/vlt coverage
 
@@ -119,8 +120,9 @@ wave-%:
 wave-check-all:
 	@for t in $(WAVE_TESTS); do $(MAKE) --no-print-directory wave-$$t DISPLAY= || exit 1; done
 
+# multi-seed Verilator run of all scenarios (seed = MAC gap / sink backpressure pattern)
 stress:
-	@echo "stress: [later] randomized long-run stimulus not added yet"
+	$(MAKE) -C dv/vlt stress STRESS_SEEDS=$(or $(STRESS_SEEDS),20)
 
 ci: regress coverage formal envs crosscheck upf-tb
 	@echo "ci: OK"
