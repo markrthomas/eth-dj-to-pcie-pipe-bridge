@@ -1,10 +1,10 @@
 // ============================================================================
 // eth_dj_pipe7_bridge.sv — TOP of the 802.3dj Ethernet <-> PCIe PIPE 7.1 bridge.
 //
-// STATUS: M1 — Tx path (eth -> PIPE) implemented; Rx path, control FSM and message
-// bus are still M0 stubs (outputs tied off, inputs unconsumed).  Ports are frozen
+// STATUS: M2 — Tx (eth -> PIPE) and Rx (PIPE -> eth) datapaths implemented; control
+// FSM and message bus are still M0 stubs (outputs tied off, inputs unconsumed).  Ports are frozen
 // per docs/PLAN.md §2 (PAM4/Gen6 baseline).  The UNUSEDSIGNAL waiver below covers
-// the still-unconsumed Rx/status/msgbus inputs and MUST be removed as M2/M3 land.
+// the still-unconsumed status/msgbus inputs and eth_tuser and MUST be removed as M2/M3 land.
 // ============================================================================
 `include "eth_dj_pipe7_pkg.sv"
 
@@ -101,11 +101,45 @@ module eth_dj_pipe7_bridge
     .pipe_tx_start_block (pipe_tx_start_block)
   );
 
-  assign eth_rx_tvalid      = 1'b0;
-  assign eth_rx_tdata       = '0;
-  assign eth_rx_tkeep       = '0;
-  assign eth_rx_tlast       = 1'b0;
-  assign eth_rx_tuser       = '0;
+  // ---- M2 Rx path: PIPE flit capture -> deframer -> async FIFO -> eth AXI-S ----
+  logic                            rx_flit_valid, rx_flit_taken;
+  logic [FLIT_BYTES*8-1:0]         rx_flit;
+  logic [ETH_DATA_W+ETH_KEEP_W:0]  rx_fifo_wdata, rx_fifo_rdata;
+  logic                            rx_fifo_winc, rx_fifo_full, rx_fifo_empty, rx_fifo_rinc;
+  logic [15:0]                     rx_dropped_flits, rx_lock_errors, rx_bad_flits;  // DV-visible
+
+  rx_ingress u_rx_ingress (
+    .clk (pclk), .rst_n (pipe_rst_n),
+    .pipe_rx_data (pipe_rx_data), .pipe_rx_data_valid (pipe_rx_data_valid),
+    .pipe_rx_start_block (pipe_rx_start_block),
+    .flit_valid (rx_flit_valid), .flit (rx_flit), .flit_taken (rx_flit_taken),
+    .dropped_flits (rx_dropped_flits), .lock_errors (rx_lock_errors)
+  );
+
+  rx_deframer u_rx_deframer (
+    .clk (pclk), .rst_n (pipe_rst_n),
+    .flit_valid (rx_flit_valid), .flit (rx_flit), .flit_taken (rx_flit_taken),
+    .fifo_wdata (rx_fifo_wdata), .fifo_winc (rx_fifo_winc), .fifo_full (rx_fifo_full),
+    .bad_flits (rx_bad_flits)
+  );
+
+  async_fifo #(.W(ETH_DATA_W+ETH_KEEP_W+1), .DEPTH(FIFO_DEPTH)) u_rx_cdc (
+    .wclk   (pclk),      .wrst_n (pipe_rst_n),
+    .winc   (rx_fifo_winc),
+    .wdata  (rx_fifo_wdata),
+    .wfull  (rx_fifo_full),
+    .rclk   (eth_clk),   .rrst_n (eth_rst_n),
+    .rinc   (rx_fifo_rinc),
+    .rdata  (rx_fifo_rdata),
+    .rempty (rx_fifo_empty)
+  );
+
+  eth_egress u_eth_egress (
+    .fifo_rdata (rx_fifo_rdata), .fifo_empty (rx_fifo_empty), .fifo_rinc (rx_fifo_rinc),
+    .eth_rx_tvalid (eth_rx_tvalid), .eth_rx_tready (eth_rx_tready),
+    .eth_rx_tdata (eth_rx_tdata), .eth_rx_tkeep (eth_rx_tkeep),
+    .eth_rx_tlast (eth_rx_tlast), .eth_rx_tuser (eth_rx_tuser)
+  );
 
   assign pipe_rate          = RATE_GEN6;   // PAM4 baseline
   assign pipe_width         = 2'b00;

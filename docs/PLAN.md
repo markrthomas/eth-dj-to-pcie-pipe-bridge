@@ -356,9 +356,9 @@ IDs are what `AGENT_HANDOFF.md` points at.
   (`dv/iverilog/tb_tx.sv`: 115 frames, 531 flits). **Gate: `make sim` — GREEN.**
 
 ### M2 — Reverse datapath (Rx: pipe→eth) + loopback
-- [ ] **T2.1** `rx_ingress`/`rx_cdc`/`rx_deframer`/`eth_egress`.
-- [ ] **T2.2** Loopback scoreboard (frame in == frame out).
-  **Gate: `make regress`.**
+- [x] **T2.1** `rx_ingress`/`rx_cdc`/`rx_deframer`/`eth_egress`.
+- [x] **T2.2** Loopback scoreboard (frame in == frame out): `dv/iverilog/tb_loop.sv`.
+  **Gate: `make regress` — GREEN.**
 
 ### M3 — Control plane
 - [ ] **T3.1** `pipe_msgbus` + `bridge_ctrl_fsm` + `bridge_rf`: P0↔P1↔P2, rate

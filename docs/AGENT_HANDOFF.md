@@ -5,6 +5,20 @@ If a session ended, this is where you pick up. Read this, then
 
 ## Where things stand (update this block every session)
 
+- **2026-09-29 (e)** — **M2 done** (branch `claude/m2-rx-loopback`). Added
+  `rtl/{rx_ingress,rx_deframer,eth_egress}.sv` (Rx CDC = second `async_fifo`),
+  `dv/common/eth_sink_model.sv`, `dv/iverilog/tb_loop.sv` (eth->bridge->PIPE looped
+  to Rx->bridge->eth, 115 frames incl. gapped source + 90%-ready sink).
+  `make regress` GREEN (lint + smoke + tx + loop); Rx mutation-checked.
+  Limitations: PIPE Rx has no backpressure — a flit completing while the previous
+  is still being deframed is DROPPED (`dut.rx_dropped_flits`, checked 0 in the TB);
+  a sink slower than ~4 GB/s or long stalls would drop. Real credit/flow control
+  is undesigned (needs an owner decision, likely M3). sof not checked in RTL.
+  **CI gotcha:** the pinned OSS CAD Suite Icarus is stricter than apt Icarus 12 —
+  declare nets before use. **Next action: T3.1** control plane (`pipe_msgbus`,
+  `bridge_ctrl_fsm`, `bridge_rf`; P0/P1/P2, rate/width change with drain) — this
+  replaces the M1 hardwired P0 / `tx_en=1`.
+
 - **2026-09-29 (d)** — **M1 done** (branch `claude/m1-tx-datapath`). Owner delegated
   D1/D2/D5, recommended defaults adopted (see `OPEN_DECISIONS.md`). Added
   `rtl/{async_fifo,tx_framer,tx_egress}.sv`, flit-format params in the pkg,
