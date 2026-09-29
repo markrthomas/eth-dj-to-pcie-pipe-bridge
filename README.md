@@ -9,11 +9,11 @@ optional AI agent swarm.
 mode)** and the 802.3dj side is **200G/lane PAM4** — both ends are PAM4-native.
 See [`docs/pam4_notes.md`](docs/pam4_notes.md).
 
-> **Status: M0 scaffold complete.** Standalone git repo initialized; RTL package
-> + top stub, the five `dv/` environment dirs, root `Makefile`, and CI are in
-> place. **`make regress` (lint + Icarus smoke) is green.** No datapath behavior
-> yet (M1). Start at [`docs/PLAN.md`](docs/PLAN.md); if you are an AI agent
-> picking up the work, start at [`docs/AGENT_HANDOFF.md`](docs/AGENT_HANDOFF.md).
+> **Status: M3 (control plane) complete.** Tx + Rx datapaths, the PIPE control
+> plane (P0/P1/P2, rate/width change with drain, PAM4 Tx control over the message
+> bus, CSRs) and five Icarus directed tests are in; **`make regress` is green.**
+> Progress and next steps: [`docs/PLAN.md`](docs/PLAN.md) §11 and
+> [`docs/AGENT_HANDOFF.md`](docs/AGENT_HANDOFF.md).
 
 ## What this bridge does
 

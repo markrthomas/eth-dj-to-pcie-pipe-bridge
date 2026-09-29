@@ -53,6 +53,36 @@ package eth_dj_pipe7_pkg;
   localparam int unsigned MSGBUS_CMD_W  = 4;
   localparam int unsigned MSGBUS_DATA_W = 8;
 
+  // Command codes (PIPE 5+ message-bus command encodings).  Bridge-specific
+  // framing on this repo's split cmd/data port (docs/OPEN_DECISIONS.md D8):
+  //   committed write = cycle 0 {MB_WR_C, addr}, cycle 1 {MB_NOP, wdata};
+  //   the PHY completes it with one cycle of {MB_WR_ACK, addr}.
+  localparam logic [3:0] MB_NOP    = 4'h0;
+  localparam logic [3:0] MB_WR_UC  = 4'h1;
+  localparam logic [3:0] MB_WR_C   = 4'h2;
+  localparam logic [3:0] MB_RD     = 4'h3;
+  localparam logic [3:0] MB_RD_CPL = 4'h4;
+  localparam logic [3:0] MB_WR_ACK = 4'h5;
+  // PHY register that receives the PAM4 Tx control (precoding enable / preset).
+  // Bridge-defined placeholder address: *verify* against the PIPE 7.1 PHY
+  // register map before tape-in (docs/OPEN_DECISIONS.md D8).
+  localparam logic [7:0] MB_ADDR_PAM4_TXCTL = 8'h01;
+
+  // Cycles the control plane waits for PhyStatus / a message-bus write_ack
+  // before flagging a timeout (docs/OPEN_DECISIONS.md D10).
+  localparam int unsigned PHY_TIMEOUT = 1024;
+
+  // ---- bridge_rf CSR map (pclk domain, docs/OPEN_DECISIONS.md D7) ----------
+  localparam int unsigned CSR_ADDR_W = 8;
+  localparam logic [7:0] CSR_CTRL    = 8'h00;  // RW  [1:0] pwr_req [4:2] rate_req [6:5] width_req
+  localparam logic [7:0] CSR_PAM4CFG = 8'h04;  // RW  [7:0] PAM4 Tx control sent over the msgbus
+  localparam logic [7:0] CSR_STATUS  = 8'h08;  // RO  see bridge_rf.sv
+  localparam logic [7:0] CSR_ERR     = 8'h0C;  // W1C [0] phystatus timeout [1] msgbus timeout [2] bad pwr req
+  localparam logic [7:0] CSR_RXCNT0  = 8'h10;  // RO  [15:0] dropped flits [31:16] lock errors
+  localparam logic [7:0] CSR_RXCNT1  = 8'h14;  // RO  [15:0] bad/orphan flits [31:16] aborted frames
+  localparam logic [7:0] CSR_PMCNT   = 8'h18;  // RO  [15:0] completed power/rate/width/cfg operations
+  localparam logic [7:0] PAM4CFG_RST = 8'h01;  // precoding enabled, preset 0
+
   // ---- Elastic / CDC buffering --------------------------------------------
   localparam int unsigned FIFO_DEPTH = 32;               // [OPEN] size vs burst
 
@@ -77,12 +107,13 @@ package eth_dj_pipe7_pkg;
   // ---- bridge control FSM --------------------------------------------------
   typedef enum logic [2:0] {
     ST_RESET     = 3'd0,
-    ST_CFG       = 3'd1,   // program rf via message bus
+    ST_CFG       = 3'd1,   // send PAM4 Tx control to the PHY over the message bus
     ST_ACTIVE    = 3'd2,   // P0, datapath running
     ST_DRAIN     = 3'd3,   // flush datapath before a PM / rate / width change
     ST_RATE_CHG  = 3'd4,
     ST_WIDTH_CHG = 3'd5,
-    ST_LOWPWR    = 3'd6    // P1/P2
+    ST_LOWPWR    = 3'd6,   // P1/P2
+    ST_PWR_CHG   = 3'd7    // powerdown change in flight (waiting for PhyStatus)
   } bridge_state_e;
 
   /* verilator lint_on UNUSEDPARAM */

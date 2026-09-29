@@ -21,7 +21,8 @@ module tx_framer
 
   output logic                                flit_valid,
   output logic [FLIT_BYTES*8-1:0]             flit,
-  input  logic                                flit_taken
+  input  logic                                flit_taken,
+  output logic                                idle        // no partial or completed flit held
 );
   localparam int unsigned OFFW = $clog2(ETH_KEEP_W + 1);
   localparam int unsigned FILLW = $clog2(FLIT_PAYLOAD_B + 1);
@@ -108,6 +109,7 @@ module tx_framer
   end
 
   assign flit_valid = valid_q;
+  assign idle       = !valid_q && (fill_q == '0) && (in_off_q == '0);
   assign flit       = flit_q;
 
 endmodule : tx_framer

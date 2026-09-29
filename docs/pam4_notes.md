@@ -53,8 +53,10 @@ PHY-agnostic — the PAM4 electrical/FEC layer is out of scope (see PLAN §1).
 - `rtl/eth_dj_pipe7_pkg.sv`: `PAM4_BITS_PER_SYM=2`, `FLIT_BYTES=256`,
   `pipe_rate_e` with `RATE_GEN6` as the baseline, `MSGBUS_*` for the PAM4/PM
   handshakes.
-- `rtl/eth_dj_pipe7_bridge.sv` M0 stub drives `pipe_rate = RATE_GEN6` and starts
-  in `PWR_P1` until the control FSM (M3) brings the link to P0.
+- `rtl/eth_dj_pipe7_bridge.sv` resets with `pipe_rate = RATE_GEN6` and `PWR_P1`;
+  the M3 control FSM brings the link to P0 and sends the PAM4 Tx control
+  (precoding/preset, `PAM4CFG`) over the message bus whenever the link is at Gen6
+  (docs/OPEN_DECISIONS.md D8).
 - `docs/PLAN.md` §2–§3: framer/deframer are FLIT-based; message bus carries the
   PAM4 controls.
 
