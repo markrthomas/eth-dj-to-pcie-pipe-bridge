@@ -375,12 +375,14 @@ IDs are what `AGENT_HANDOFF.md` points at.
 - [x] **T4.3** Env 3 (UVM-on-Verilator, CI job with the pinned Verilator 5.047) and Env 4 (SystemC).
 - [x] **T4.4** All five agree on the shared scenario set (`dv/common/scenarios.py`,
   `crosscheck.py`; decisions in OPEN_DECISIONS D12).
-  **Gate: `make ci` green, coverage ≥ 80%.** (formal still a stub until M5)
+  **Gate: `make ci` green, coverage ≥ 80%.**
 
 ### M5 — SVA + formal
-- [ ] **T5.1** `dv/sva/` property set §7, bound in vlt + cocotb.
-- [ ] **T5.2** `formal/*.sby` for CDC/credit/message-bus safety; BMC + cover.
-- [ ] **T5.3** `ASSERTIONS.md`. **Gate: `make formal`.**
+- [x] **T5.1** `dv/sva/` property set §7, bound in vlt + systemc + uvm (Verilator
+  `--assert`); cocotb runs on Icarus, which has no concurrent SVA (D13).
+- [x] **T5.2** `formal/*.sby` for CDC/credit/message-bus safety; PDR prove + cover
+  (`async_fifo`, `ingress_gate`, `ctrl` = ctrl FSM + msgbus + tx_egress).
+- [x] **T5.3** `ASSERTIONS.md`. **Gate: `make formal`** — GREEN locally (pinned OSS CAD Suite).
 
 ### M6 — Low power (UPF)
 - [ ] **T6.1** `lp/bridge.upf` + `pipe7_pmu` + `tb_pipe7_upf_power` +

@@ -5,6 +5,17 @@ If a session ended, this is where you pick up. Read this, then
 
 ## Where things stand (update this block every session)
 
+- **2026-09-29 (h)** — **M5 done** (branch `claude/m5-sva-formal`, on top of M4).
+  `dv/sva/{bridge_sva,async_fifo_sva}.sv` bound (`bind`) into the DUT in the Verilator
+  envs (vlt/systemc/uvm, `--assert`; `SVA=0` to drop); 21 property groups + 12 covers
+  (11 hit; `c_b2b_flits` unhit because the framer is single-buffered). `formal/`:
+  `async_fifo.sby` (multiclock, black-box, W=4/DEPTH=4), `ingress_gate.sby`, `ctrl.sby`
+  (ctrl FSM + msgbus + tx_egress, via yosys-slang); all PDR-proven + covers reached,
+  `make formal` ~75 s. `ASSERTIONS.md` lists every property + mutation evidence.
+  Decisions D13. **Gotchas:** `make formal` needs the pinned OSS CAD Suite (slang
+  plugin); Yosys' native parser silently turns hierarchical refs into free wires —
+  never use them outside slang-read harnesses. **Next: M6** (UPF).
+
 - **2026-09-29 (g)** — **M4 done** (branch `claude/m4-dv-envs`, stacked on the
   unmerged M3 branch). All five DV envs run the shared scenario set
   (`dv/common/scenarios.py` golden model, `crosscheck.py`): `dv/iverilog/tb_scen.sv`

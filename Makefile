@@ -29,7 +29,7 @@ help:
 	@echo "  sim        Icarus directed tests: smoke tx loop pm rxovf scen"
 	@echo "  regress    lint + sim  — the fast CI gate"
 	@echo "  coverage   Verilator C++ env with --coverage -> coverage.info (floor 80%)"
-	@echo "  formal     SymbiYosys BMC + cover                          (M5)"
+	@echo "  formal     SymbiYosys prove (PDR) + cover on formal/*.sby (OSS CAD Suite)"
 	@echo "  iverilog|vlt|uvm|systemc|cocotb   run one DV environment (shared scenarios)"
 	@echo "  crosscheck all five envs agree with dv/common/scenarios.py"
 	@echo "  ci         regress + coverage + formal + all envs + crosscheck"
@@ -56,8 +56,9 @@ regress: lint sim
 coverage:
 	$(MAKE) -C dv/vlt coverage
 
+# SymbiYosys prove + cover (formal/*.sby); needs the pinned OSS CAD Suite on PATH
 formal:
-	@echo "formal: [M5 stub] SymbiYosys properties not written yet (docs/PLAN.md T5.2)"
+	$(MAKE) -C formal
 
 vlt:
 	$(MAKE) -C dv/vlt smoke
@@ -96,7 +97,7 @@ ci: regress coverage formal envs crosscheck
 	@echo "ci: OK"
 
 clean:
-	rm -rf dv/*/sim_build dv/*/obj_dir dv/*/logs obj_dir coverage.info coverage.dat
+	rm -rf dv/*/sim_build dv/*/obj_dir dv/*/logs obj_dir coverage.info coverage.dat formal/*_prove formal/*_cover
 	rm -f dv/cocotb/results.xml dv/cocotb/results.json dv/cocotb/fcov.json dv/uvm/build.log
 	find . -name '__pycache__' -type d -prune -exec rm -rf {} + 2>/dev/null || true
 	@echo "clean: OK"

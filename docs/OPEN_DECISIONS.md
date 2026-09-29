@@ -187,3 +187,31 @@ No DUT behaviour changes in M4; these are verification-method decisions.
 - **cocotb** runs on apt Icarus (`ICARUS_BIN_DIR=/usr/bin`), cocotb 1.8.1, pyuvm
   5.0.0, pyvsc. PyVSC functional coverage is exported to `dv/cocotb/fcov.json` and
   reported, **not gated** (no floor was specified).
+
+## D13. Assertions and formal (M5)
+
+No DUT behaviour changes; verification-method decisions only.
+
+- **SVA runs in the Verilator envs only.** `dv/sva` checkers are bound (`bind`) in
+  `dv/vlt`, `dv/systemc`, `dv/uvm` with `--assert`. PLAN T5.1 said "vlt + cocotb";
+  cocotb runs on Icarus, which cannot evaluate concurrent SVA, so cocotb is not a
+  SVA host. (Moving cocotb to Verilator would change that; not done.)
+- **Sim SVA covers are reported, not gated.** `c_b2b_flits` is currently unhit
+  because the Tx framer is single-buffered (M1 limitation) — kept as a visible
+  gap rather than removed.
+- **Coverage accounting:** `cov_summary.py` now counts only `rtl/` line/branch/
+  toggle points (the bound checkers add their own points, which must not inflate
+  the 80% floor). Numbers are unchanged from M4.
+- **Formal = PDR prove + BMC cover**, not BMC-only as PLAN §8 says: `abc pdr` gives
+  unbounded proofs in seconds (whole `make formal` ~75 s), so there was no reason to
+  settle for a bounded result. Every `.sby` also has a `cover` task.
+- **Formal frontend:** `ctrl.sby` uses the yosys-slang plugin (native Yosys cannot
+  parse module-header package imports). It needs the pinned OSS CAD Suite; apt
+  Yosys cannot run `make formal`. The CI `formal` job now installs the suite.
+- **Hierarchical references in `ctrl_fv.sv`:** four `h_*` helper invariants read the
+  RTL timers (`u_ctrl.tmr_q`, `u_mb.st_q`, `u_mb.tmr_q`). They are proven like any
+  other assertion; they only exist so PDR converges (without them the two
+  PHY_TIMEOUT-bound properties did not finish in 10+ minutes). If the RTL renames
+  those registers, the proof fails to elaborate — intended.
+- **FIFO proof is black-box** (shadow counters from the handshakes, small W=4 /
+  DEPTH=4 instance). Gray single-bit change is simulation-only (CD3).
