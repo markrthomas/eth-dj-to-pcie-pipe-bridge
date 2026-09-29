@@ -6,6 +6,8 @@ Usage: cov_summary.py <coverage.dat> --info <out.info> [--floor PCT] [--json out
 * "line" coverage = Verilator v_line + v_branch points hit / total, per rtl file
   and overall (this is what the PLAN §6 >= 80% floor is checked against).
 * toggle coverage = v_toggle points hit / total (reported, not gated).
+* SVA cover properties (dv/sva, v_user points) are listed with their hit
+  counts (reported, not gated; an unhit cover is printed as UNHIT).
 * coverage.info is produced by verilator_coverage --write-info from a copy of the
   .dat that holds only the line/branch points, so lcov line data is not
   polluted by per-bit toggle points.
@@ -37,7 +39,7 @@ def parse(path):
                     fields[k] = v
             page = fields.get("page", "")
             kind = page.split("/", 1)[0].replace("v_", "")
-            pts.append((kind, fields.get("f", "?"), int(m.group(2)), line))
+            pts.append((kind, fields.get("f", "?"), int(m.group(2)), line, fields.get("h", "?")))
     return pts
 
 
@@ -57,10 +59,13 @@ def main():
 
     per = collections.defaultdict(lambda: [0, 0])      # file -> [hit, total] (line+branch)
     tog = [0, 0]
+    covers = {}
     keep = []
     with open(a.dat, "rb") as fh:
         header = [l.decode("latin-1") for l in fh if not l.startswith(b"C ")]
-    for kind, f, cnt, raw in pts:
+    for kind, f, cnt, raw, hier in pts:
+        if kind in ("line", "branch", "toggle") and "rtl/" not in f.replace("\\", "/"):
+            continue                     # only rtl/ is measured (not the dv/sva checkers)
         if kind in ("line", "branch"):
             per[os.path.basename(f)][0] += cnt > 0
             per[os.path.basename(f)][1] += 1
@@ -68,6 +73,9 @@ def main():
         elif kind == "toggle":
             tog[0] += cnt > 0
             tog[1] += 1
+        elif kind == "user":
+            name = hier.split(".", 1)[-1]
+            covers[name] = covers.get(name, 0) + cnt
 
     lb_dat = a.dat + ".linebranch"
     with open(lb_dat, "w", encoding="latin-1") as fh:
@@ -84,9 +92,13 @@ def main():
         h, t = per[f]
         print(f"{f:<24} {h:>5}/{t:<5} {100.0 * h / t:5.1f}%")
     print(f"{'TOTAL':<24} {hit:>5}/{tot:<5} {pct:5.1f}%   (toggle {tog[0]}/{tog[1]} = {tpct:.1f}%, not gated)")
+    if covers:
+        print(f"SVA covers: {sum(1 for v in covers.values() if v)}/{len(covers)} hit (not gated)")
+        for n in sorted(covers):
+            print(f"  {n:<60} {covers[n]:>8}{'' if covers[n] else '  UNHIT'}")
     if a.json:
         with open(a.json, "w") as fh:
-            json.dump({"line_branch_pct": round(pct, 2), "line_branch_hit": hit, "line_branch_total": tot,
+            json.dump({"sva_covers": covers, "line_branch_pct": round(pct, 2), "line_branch_hit": hit, "line_branch_total": tot,
                        "toggle_pct": round(tpct, 2), "toggle_hit": tog[0], "toggle_total": tog[1],
                        "per_file": {f: {"hit": v[0], "total": v[1]} for f, v in per.items()}}, fh, indent=2)
     if pct < a.floor:
