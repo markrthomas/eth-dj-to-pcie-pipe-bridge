@@ -5,6 +5,15 @@ If a session ended, this is where you pick up. Read this, then
 
 ## Where things stand (update this block every session)
 
+- **2026-09-29 (i)** — **M6 done** (branch `claude/m6-upf`, on top of M5). `lp/bridge.upf`
+  (UPF 2.1: PD_AON = ctrl/msgbus/rf/glue, PD_DP = datapath, header switch, iso clamp 0 /
+  clamp 1 on drain flags, full PD_DP retention), `lp/pipe7_pmu.sv` (DV-only),
+  `lp/tb_pipe7_upf_power.sv`, `docs/power_intent.md`, D14. **The UPF has never been
+  parsed or simulated** (no PA tool). `make upf` prints that; `make upf-tb` runs the TB
+  functionally on Icarus (PMU order + no-handshake timing assumption + traffic across
+  P1/P2) and is a CI regress-job step. Open items needing the owner: DP reset/power-good
+  (RTL) vs full retention; FSM<->PMU handshake. **Next: M7** (infra).
+
 - **2026-09-29 (h)** — **M5 done** (branch `claude/m5-sva-formal`, on top of M4).
   `dv/sva/{bridge_sva,async_fifo_sva}.sv` bound (`bind`) into the DUT in the Verilator
   envs (vlt/systemc/uvm, `--assert`; `SVA=0` to drop); 21 property groups + 12 covers

@@ -30,6 +30,8 @@ jobs:
           echo "$PWD/oss-cad-suite/bin" >> "$GITHUB_PATH"
       - name: regress (lint + sim)
         run: make regress
+      - name: power-aware TB, functional only (PMU sequencing; UPF itself is not run)
+        run: make upf-tb
       - uses: actions/upload-artifact@v4
         if: always()
         with:

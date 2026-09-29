@@ -1,0 +1,93 @@
+## ============================================================================
+## lp/bridge.upf — power intent for eth_dj_pipe7_bridge (IEEE 1801-2013, UPF 2.1)
+##
+## STATUS: AUTHORED, NOT RUN.  No OSS tool here reads UPF; this file has not been
+## parsed or simulated by any tool (see docs/power_intent.md).  It must be
+## checked on a commercial power-aware flow (VCS-NLP / Questa-PA / Xcelium-LP)
+## before anything is claimed about it.
+##
+## Scope: the power-aware TB top tb_pipe7_upf_power (lp/tb_pipe7_upf_power.sv):
+##   u_dut  = eth_dj_pipe7_bridge            u_pmu = pipe7_pmu (DV-only sequencer)
+## The DUT has no power ports; all controls come from u_pmu.
+##
+##   PD_AON (always on) : TB, DUT top glue, u_ctrl (bridge_ctrl_fsm), u_msgbus
+##                        (pipe_msgbus), u_rf (bridge_rf), u_pmu
+##   PD_DP  (switchable): the Tx and Rx datapath, both clock domains
+##                        (eth_clk: u_tx_gate, u_tx_cdc write side, u_rx_cdc read
+##                        side, u_eth_egress; pclk: u_tx_framer, u_tx_egress,
+##                        u_rx_ingress, u_rx_deframer)
+## bridge_rf is in PD_AON (not PD_DP as PLAN §9 first proposed): the FSM reads
+## pwr_req from it and the CSR port is the only wake-up path (OPEN_DECISIONS D14).
+## ============================================================================
+upf_version 2.1
+
+set_scope /tb_pipe7_upf_power
+
+## ---- supplies -----------------------------------------------------------------
+create_supply_port VDD -direction in
+create_supply_port VSS -direction in
+create_supply_net  VDD
+create_supply_net  VSS
+create_supply_net  VDD_DP
+connect_supply_net VDD -ports VDD
+connect_supply_net VSS -ports VSS
+
+create_supply_set SS_AON -function {power VDD}    -function {ground VSS}
+create_supply_set SS_DP  -function {power VDD_DP} -function {ground VSS}
+
+## ---- power domains --------------------------------------------------------------
+create_power_domain PD_AON -include_scope -supply {primary SS_AON}
+
+create_power_domain PD_DP -supply {primary SS_DP} -elements { \
+  u_dut/u_tx_gate    u_dut/u_tx_cdc     u_dut/u_tx_framer  u_dut/u_tx_egress \
+  u_dut/u_rx_ingress u_dut/u_rx_deframer u_dut/u_rx_cdc    u_dut/u_eth_egress }
+
+## ---- power switch (header, controlled by the PMU) --------------------------------
+create_power_switch SW_DP -domain PD_DP \
+  -input_supply_port  {vin  VDD} \
+  -output_supply_port {vout VDD_DP} \
+  -control_port       {en   u_pmu/dp_pwr_en} \
+  -on_state           {sw_on  vin {en}} \
+  -off_state          {sw_off {!en}}
+
+## ---- isolation (PD_DP outputs into PD_AON and to the DUT ports) -------------------
+## Default clamp 0: eth_tready, eth_rx_tvalid/tdata/tkeep/tlast/tuser,
+## pipe_tx_data/valid/start_block, egress busy, Rx counters -> no traffic, no
+## spurious handshakes while PD_DP is off.
+set_isolation ISO_DP_0 -domain PD_DP -applies_to outputs \
+  -isolation_supply_set SS_AON -clamp_value 0 \
+  -isolation_signal u_pmu/dp_iso_en -isolation_sense high -location parent
+
+## Clamp 1: the drain/idle indications the AON control FSM reads, so an isolated
+## datapath reads as "empty, idle, ingress stopped" (never as busy / in-frame).
+set_isolation ISO_DP_1 -domain PD_DP \
+  -elements { u_dut/u_tx_cdc/rempty u_dut/u_tx_framer/idle u_dut/u_rx_ingress/idle \
+              u_dut/u_tx_gate/stopped } \
+  -isolation_supply_set SS_AON -clamp_value 1 \
+  -isolation_signal u_pmu/dp_iso_en -isolation_sense high -location parent
+
+## ---- retention ------------------------------------------------------------------------
+## The RTL has no datapath-local reset / power-good input, so non-retained PD_DP
+## state would come back corrupted with nothing to clear it.  First cut: retain
+## ALL PD_DP sequential state (the datapath is drained before power-down, so the
+## retained pointers/flags are consistent and the FIFO arrays hold no live data).
+## An area-optimised alternative (retain only the Rx diagnostic counters and add a
+## DP reset on power-up) needs an RTL change — see docs/power_intent.md.
+set_retention RET_DP -domain PD_DP -retention_supply_set SS_AON \
+  -save_signal    {u_pmu/dp_save    high} \
+  -restore_signal {u_pmu/dp_restore high}
+
+## ---- level shifters -------------------------------------------------------------------
+## Single voltage (VDD for both domains when on): none required.
+
+## ---- power states ------------------------------------------------------------------------
+add_power_state SS_AON \
+  -state ON  {-supply_expr {power == `{FULL_ON, 0.80} && ground == `{FULL_ON, 0.00}}}
+add_power_state SS_DP \
+  -state ON  {-supply_expr {power == `{FULL_ON, 0.80} && ground == `{FULL_ON, 0.00}}} \
+  -state OFF {-supply_expr {power == `{OFF}}}
+
+add_power_state PD_DP \
+  -state DP_ON  {-logic_expr {SS_DP == ON}} \
+  -state DP_OFF {-logic_expr {SS_DP == OFF}}
+## Legal system states: link P0 -> DP_ON only; P1/P2 -> DP_ON or DP_OFF.
