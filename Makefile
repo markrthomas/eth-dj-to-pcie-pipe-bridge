@@ -16,7 +16,7 @@ IVERILOG  ?= iverilog
 RTL_DIR := rtl
 TOP     := eth_dj_pipe7_bridge
 RTL_TOP := $(RTL_DIR)/$(TOP).sv
-RTL_SRCS := $(RTL_DIR)/async_fifo.sv $(RTL_DIR)/tx_framer.sv $(RTL_DIR)/tx_egress.sv $(RTL_TOP)
+RTL_SRCS := $(RTL_DIR)/async_fifo.sv $(RTL_DIR)/tx_framer.sv $(RTL_DIR)/tx_egress.sv $(RTL_DIR)/rx_ingress.sv $(RTL_DIR)/rx_deframer.sv $(RTL_DIR)/eth_egress.sv $(RTL_TOP)
 
 .PHONY: default help lint sim regress coverage formal ci \
         iverilog vlt uvm systemc cocotb waves upf metrics dashboard stress clean
@@ -45,7 +45,7 @@ lint:
 sim: iverilog
 
 iverilog:
-	$(MAKE) -C dv/iverilog smoke tx
+	$(MAKE) -C dv/iverilog smoke tx loop
 
 regress: lint sim
 	@echo "regress: OK"
