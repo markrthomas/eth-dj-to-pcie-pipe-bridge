@@ -2,7 +2,8 @@
 # regress (lint + Icarus directed + shared scenarios) is the fast gate; coverage
 # (Verilator, >= 80% line+branch) and the four other DV environments run after it,
 # and `crosscheck` requires all five environments to agree with the golden model
-# (dv/common/scenarios.py).  formal is a stub until M5.
+# (dv/common/scenarios.py).  formal runs SymbiYosys prove + cover (formal/*.sby).
+# dv/sva assertions are bound in the Verilator envs (coverage, systemc, uvm).
 # OSS CAD Suite pinned to match ~/proj/dv_env.mk; cocotb==1.8.1.
 name: ci
 
@@ -142,5 +143,12 @@ jobs:
     needs: regress
     steps:
       - uses: actions/checkout@v4
-      - name: formal
+      - name: Install OSS CAD Suite (sby, yosys + slang, abc, yices)
+        run: |
+          set -euo pipefail
+          url="https://github.com/YosysHQ/oss-cad-suite-build/releases/download/${OSS_CAD_SUITE_VERSION}/oss-cad-suite-linux-x64-${OSS_CAD_SUITE_VERSION//-/}.tgz"
+          curl -fsSL "$url" -o oss-cad-suite.tgz
+          tar -xzf oss-cad-suite.tgz
+          echo "$PWD/oss-cad-suite/bin" >> "$GITHUB_PATH"
+      - name: formal (prove + cover)
         run: make formal

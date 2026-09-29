@@ -1,0 +1,22 @@
+# CDC FIFO safety (async_fifo, W=4 DEPTH=4): prove (PDR, unbounded) + cover.
+[tasks]
+prove
+cover
+
+[options]
+prove: mode prove
+cover: mode cover
+cover: depth 60
+multiclock on
+
+[engines]
+prove: abc pdr
+cover: smtbmc yices
+
+[script]
+read -formal -sv async_fifo.sv async_fifo_fv.sv
+prep -top async_fifo_fv
+
+[files]
+../rtl/async_fifo.sv
+async_fifo_fv.sv

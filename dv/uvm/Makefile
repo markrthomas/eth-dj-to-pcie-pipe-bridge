@@ -15,10 +15,12 @@ RTL_SRCS  := $(RTL_DIR)/async_fifo.sv $(RTL_DIR)/tx_ingress_gate.sv $(RTL_DIR)/t
              $(RTL_DIR)/tx_egress.sv $(RTL_DIR)/rx_ingress.sv $(RTL_DIR)/rx_deframer.sv \
              $(RTL_DIR)/eth_egress.sv $(RTL_DIR)/pipe_msgbus.sv $(RTL_DIR)/bridge_ctrl_fsm.sv \
              $(RTL_DIR)/bridge_rf.sv $(RTL_DIR)/eth_dj_pipe7_bridge.sv
+SVA       ?= 1
+SVA_SRCS  := $(if $(filter 1,$(SVA)),../sva/async_fifo_sva.sv ../sva/bridge_sva.sv)
 JOBS      ?= $(shell nproc 2>/dev/null || echo 4)
 BIN       := obj_dir/Vtb_uvm_top
 VFLAGS    := --binary --timing -j $(JOBS) -Wno-fatal -Wno-lint -Wno-style -Wno-SYMRSVDWORD \
-             -Wno-CONSTRAINTIGN -Wno-MISINDENT -Wno-ZERODLY +define+UVM_NO_DPI \
+             -Wno-CONSTRAINTIGN -Wno-MISINDENT -Wno-ZERODLY +define+UVM_NO_DPI --assert \
              +incdir+$(UVM_HOME) -I$(RTL_DIR) -I$(COMMON) --top-module tb_uvm_top
 
 .PHONY: smoke build clean
@@ -28,8 +30,8 @@ $(UVM_HOME)/uvm_pkg.sv:
 	git clone -q $(UVM_REPO) uvm-core && git -C uvm-core checkout -q $(UVM_REF)
 
 $(BIN): $(UVM_HOME)/uvm_pkg.sv bridge_if.sv bridge_uvm_pkg.sv tb_uvm_top.sv $(RTL_SRCS) \
-        $(COMMON)/scenarios.svh $(COMMON)/eth_dj_pat.svh
-	$(VERILATOR) $(VFLAGS) $(UVM_HOME)/uvm_pkg.sv $(RTL_SRCS) bridge_if.sv bridge_uvm_pkg.sv tb_uvm_top.sv \
+        $(COMMON)/scenarios.svh $(COMMON)/eth_dj_pat.svh $(SVA_SRCS)
+	$(VERILATOR) $(VFLAGS) $(UVM_HOME)/uvm_pkg.sv $(RTL_SRCS) $(SVA_SRCS) bridge_if.sv bridge_uvm_pkg.sv tb_uvm_top.sv \
 	  > build.log 2>&1 || (tail -40 build.log; exit 1)
 
 smoke: $(BIN)

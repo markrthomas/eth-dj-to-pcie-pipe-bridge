@@ -1,0 +1,21 @@
+# Ethernet ingress drain gate (tx_ingress_gate): prove (PDR, unbounded) + cover.
+[tasks]
+prove
+cover
+
+[options]
+prove: mode prove
+cover: mode cover
+cover: depth 20
+
+[engines]
+prove: abc pdr
+cover: smtbmc yices
+
+[script]
+read -formal -sv tx_ingress_gate.sv ingress_gate_fv.sv
+prep -top ingress_gate_fv
+
+[files]
+../rtl/tx_ingress_gate.sv
+ingress_gate_fv.sv

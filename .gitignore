@@ -63,3 +63,4 @@ dv/uvm/uvm-core
 dv/uvm/build.log
 dv/cocotb/results.json
 dv/*/logs/
+formal/*.log
