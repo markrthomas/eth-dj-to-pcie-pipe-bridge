@@ -34,8 +34,7 @@ module tb_uvm_top;
     .pipe_rx_data(pif.tx_data), .pipe_rx_data_valid(pif.tx_valid), .pipe_rx_start_block(pif.tx_sb),
     .pipe_rate(rate_e), .pipe_width(pif.width), .pipe_powerdown(pd_e),
     .pipe_phy_status(pif.phy_status), .pipe_rx_valid(1'b0), .pipe_rx_elec_idle(1'b1),
-    .pipe_m2p_cmd(pif.m2p_cmd), .pipe_m2p_data(pif.m2p_data),
-    .pipe_p2m_cmd(pif.p2m_cmd), .pipe_p2m_data(pif.p2m_data),
+    .pipe_m2p_msgbus(pif.m2p_msgbus), .pipe_p2m_msgbus(pif.p2m_msgbus),
     .csr_valid(pif.csr_valid), .csr_write(pif.csr_write), .csr_addr(pif.csr_addr),
     .csr_wdata(pif.csr_wdata), .csr_rdata(pif.csr_rdata)
   );
