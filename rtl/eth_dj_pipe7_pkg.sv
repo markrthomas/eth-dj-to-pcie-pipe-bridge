@@ -69,11 +69,13 @@ package eth_dj_pipe7_pkg;
   localparam logic [3:0] MB_RD     = 4'h3;
   localparam logic [3:0] MB_RD_CPL = 4'h4;
   localparam logic [3:0] MB_WR_ACK = 4'h5;
-  // PHY register that receives the PAM4 Tx control byte.  12'h400..12'h40A is the
-  // PHY Tx Control block in the sibling model; the exact sub-offset for PAM4 is
-  // NOT pinned there either (12'h406 is its working offset for PAM4RestrictedLevels),
-  // and the meaning of our PAM4CFG byte (precoding enable / preset) is a
-  // bridge-defined placeholder.  *Verify both against the PIPE 7.1 PHY register map.*
+  // PHY register that receives the PAM4 Tx control byte.  PIPE 7.1 (ref 643108) Table 7-1:
+  // 12'h400..12'h40A are TX1 "PHY Tx Control0..10" (Control0/1 are N/A for the SerDes
+  // architecture), so 12'h406 = "PHY Tx Control6" is a valid PHY register.  What is NOT
+  // confirmed: that Tx Control6 is the register that carries PAM4 precoding / restricted
+  // levels (its bit fields were not in the excerpt), nor the meaning of our PAM4CFG byte
+  // (precoding enable / preset), which is a bridge-defined placeholder.
+  // (docs/OPEN_DECISIONS.md D8)
   localparam logic [MB_ADDR_W-1:0] MB_ADDR_PAM4_TXCTL = 12'h406;
 
   // Cycles the control plane waits for PhyStatus / a message-bus write_ack
