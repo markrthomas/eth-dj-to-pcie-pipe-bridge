@@ -128,11 +128,31 @@ module eth_dj_pipe7_bridge
   // directly in a port connection into an implicit 1-bit net.
   wire [MB_ADDR_W-1:0] mb_addr = MB_ADDR_TX_PRESET;
 
+  // The MAC-side message-bus target answers PHY-initiated reads/writes and shares the M2P bus
+  // with the master below (docs/OPEN_DECISIONS.md D8).
+  logic                 mb_m_req, mb_tx_active, mb_tgt_tx;
+  logic [MB_ADDR_W-1:0] mb_m_addr;
+  logic [7:0]           mb_m_wdata;
+  logic [MSGBUS_W-1:0]  mb_m_m2p;
+  logic [15:0]          mb_phy_wr_cnt, mb_phy_rd_cnt, mb_drop_cnt;
+  logic [MB_ADDR_W-1:0] mb_last_wr_addr;
+  logic [7:0]           mb_last_wr_data;
+
+  msgbus_mac_tgt u_msgbus_tgt (
+    .clk (pclk), .rst_n (pipe_rst_n),
+    .fsm_req (mb_req), .fsm_addr (mb_addr), .fsm_wdata (pam4cfg),
+    .m_req (mb_m_req), .m_addr (mb_m_addr), .m_wdata (mb_m_wdata),
+    .m_tx_active (mb_tx_active), .m_m2p (mb_m_m2p),
+    .p2m (pipe_p2m_msgbus), .m2p (pipe_m2p_msgbus),
+    .tgt_tx (mb_tgt_tx), .phy_wr_cnt (mb_phy_wr_cnt), .phy_rd_cnt (mb_phy_rd_cnt),
+    .drop_cnt (mb_drop_cnt), .last_wr_addr (mb_last_wr_addr), .last_wr_data (mb_last_wr_data)
+  );
+
   pipe_msgbus u_msgbus (
     .clk (pclk), .rst_n (pipe_rst_n),
-    .req (mb_req), .addr (mb_addr), .wdata (pam4cfg),
-    .busy (mb_busy), .done (mb_done), .timeout (mb_timeout),
-    .m2p (pipe_m2p_msgbus), .p2m (pipe_p2m_msgbus)
+    .req (mb_m_req), .addr (mb_m_addr), .wdata (mb_m_wdata),
+    .busy (mb_busy), .done (mb_done), .timeout (mb_timeout), .tx_active (mb_tx_active),
+    .m2p (mb_m_m2p), .p2m (pipe_p2m_msgbus)
   );
 
   assign pipe_rate      = pipe_rate_e'(rate_v);
@@ -213,7 +233,8 @@ module eth_dj_pipe7_bridge
 
   // mb_busy / rx_dfr_idle are observation points for DV/SVA (dv/sva binds).
   /* verilator lint_off UNUSEDSIGNAL */
-  wire unused_obs = mb_busy ^ rx_dfr_idle;
+  wire unused_obs = mb_busy ^ rx_dfr_idle ^ mb_tgt_tx ^ (^mb_phy_wr_cnt) ^ (^mb_phy_rd_cnt)
+                  ^ (^mb_drop_cnt) ^ (^mb_last_wr_addr) ^ (^mb_last_wr_data);
   /* verilator lint_on UNUSEDSIGNAL */
 
 endmodule : eth_dj_pipe7_bridge

@@ -33,6 +33,7 @@ module pipe_msgbus
   output logic                     busy,
   output logic                     done,       // 1-cycle pulse: write_ack received
   output logic                     timeout,    // 1-cycle pulse: no write_ack
+  output logic                     tx_active,  // driving byte0/byte1 of its frame (arbiter hook)
 
   output logic [MSGBUS_W-1:0]      m2p,
   input  logic [MSGBUS_W-1:0]      p2m         // PHY -> MAC byte bus (framed by cycle count)
@@ -50,7 +51,8 @@ module pipe_msgbus
   wire       p2m_start = (p2m_rem_q == 2'd0) && (p2m != 8'h00);   // first byte of a transaction
   wire       p2m_ack   = p2m_start && (p2m[7:4] == MB_WR_ACK);
 
-  assign busy = (st_q != S_IDLE);
+  assign busy      = (st_q != S_IDLE);
+  assign tx_active = (st_q == S_ADDR) || (st_q == S_DATA);
 
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin

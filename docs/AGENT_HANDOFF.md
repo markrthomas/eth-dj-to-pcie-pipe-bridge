@@ -5,6 +5,15 @@ If a session ended, this is where you pick up. Read this, then
 
 ## Where things stand (update this block every session)
 
+- **2026-09-30 (l)** — **MAC-side message-bus target added** (`rtl/msgbus_mac_tgt.sv`, branch
+  `claude/msgbus-mac-target`): answers PHY write_committed with write_ack and PHY read with
+  read_completion (data 0 — no MAC register map, §7.2 unavailable), discards write_uncommitted, arbitrates
+  the M2P bus with the master (frame never interrupted; master priority). New `make -C dv/iverilog
+  msgbus_mac` (in `make regress`), mutation-checked; SVA MB6 added, MB5 bound +8. Formal (master+FSM) and all
+  envs incl. UVM re-run and pass locally. `pipe_msgbus` gained a `tx_active` output only. Removed the stale
+  `.claude/worktrees/` checkouts. **Still open:** multi-lane bus scaling (needs spec text), real Rx flow
+  control, MAC register map (§7.2), commercial UPF run, Railway deploy, first real swarm run.
+
 - **2026-09-30 (k)** — Owner pasted the PIPE 7.1 Rx Control tables (7.1.4..7.1.11). **PAM4RestrictedLevels
   is Rx Control1 `12'h004` bit 2** (not 12'h406); it is LTSSM-timed (set after a Gen6 rate change if Tx EQ
   is expected, cleared at TS0->TS1, PHY clears it on rate change). Owner chose **document-only**: the

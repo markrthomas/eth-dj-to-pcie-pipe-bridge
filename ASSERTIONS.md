@@ -36,7 +36,8 @@ are printed by `make coverage` (from `coverage.dat`, not gated). **Not bound:**
 | MB2 | write_ack/timeout consumed only in ST_CFG, and never both at once (`a_mb2_done_in_cfg`) | pclk | bridge_sva.sv |
 | MB3 | 8-bit byte-bus framing (D8): byte0 `{WR_C, addr[11:8]}`, byte1 `addr[7:0]`, then data; idle 8'h00 outside the frame (`a_mb3_byte0`, `a_mb3_byte1`, `a_mb3_idle`) | pclk | bridge_sva.sv |
 | MB4 | No PIPE pin change while a msgbus write is outstanding (`a_mb4_no_pin_chg_during_mb`) | pclk | bridge_sva.sv |
-| MB5 | ST_CFG lasts at most PHY_TIMEOUT+3 cycles (`a_mb5_cfg_bound`) | pclk | bridge_sva.sv |
+| MB5 | ST_CFG lasts at most PHY_TIMEOUT+8 cycles (`a_mb5_cfg_bound`; +5 for the MAC-side arbiter) | pclk | bridge_sva.sv |
+| MB6 | A MAC-side response (write_ack / read_completion) is never driven inside the master's 3-byte frame (`a_mb6_tgt_no_overlap`); `a_mb3_idle` allows non-idle M2P only while the target drives | pclk | bridge_sva.sv |
 | CD1 | True occupancy (wbin − rbin) ≤ DEPTH, checked on both clocks (`a_cd1_*`) | wclk, rclk | async_fifo_sva.sv |
 | CD2 | A read pops only written data; a write never lands on unread data (`a_cd2_*`) | wclk, rclk | async_fifo_sva.sv |
 | CD3 | Gray pointers change by at most one bit per clock (`a_cd3_*`) | wclk, rclk | async_fifo_sva.sv |

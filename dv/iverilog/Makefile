@@ -9,7 +9,7 @@ RTL_DIR  := ../../rtl
 COMMON   := ../common
 RTL_SRCS := $(RTL_DIR)/async_fifo.sv $(RTL_DIR)/tx_ingress_gate.sv $(RTL_DIR)/tx_framer.sv $(RTL_DIR)/tx_egress.sv \
             $(RTL_DIR)/rx_ingress.sv $(RTL_DIR)/rx_deframer.sv $(RTL_DIR)/eth_egress.sv \
-            $(RTL_DIR)/pipe_msgbus.sv $(RTL_DIR)/bridge_ctrl_fsm.sv $(RTL_DIR)/bridge_rf.sv \
+            $(RTL_DIR)/pipe_msgbus.sv $(RTL_DIR)/msgbus_mac_tgt.sv $(RTL_DIR)/bridge_ctrl_fsm.sv $(RTL_DIR)/bridge_rf.sv \
             $(RTL_DIR)/eth_dj_pipe7_bridge.sv
 BUILD    := sim_build
 # WAVES=1: add dv/waves/wave_dump.sv as a second top and dump sim_build/<test>.vcd
@@ -19,8 +19,8 @@ IVEXTRA  ?=
 WFLAGS    = $(if $(filter 1,$(WAVES)),-DDUMP_TOP=tb_$@ ../waves/wave_dump.sv)
 WRUN      = $(if $(filter 1,$(WAVES)),+dumpfile=$(BUILD)/$@.vcd)
 
-.PHONY: smoke tx loop pm rxovf scen msgbus all clean
-all: smoke tx loop pm rxovf scen msgbus
+.PHONY: smoke tx loop pm rxovf scen msgbus msgbus_mac all clean
+all: smoke tx loop pm rxovf scen msgbus msgbus_mac
 
 LOOP_TB_DEPS := $(COMMON)/eth_mac_model.sv $(COMMON)/pipe_phy_model.sv $(COMMON)/pipe_phy_ctrl_model.sv $(COMMON)/eth_sink_model.sv
 smoke:
@@ -67,6 +67,13 @@ msgbus:
 	$(IVERILOG) -g2012 $(IVEXTRA) -I $(RTL_DIR) -o $(BUILD)/msgbus.vvp tb_msgbus.sv $(RTL_DIR)/pipe_msgbus.sv
 	$(VVP) $(BUILD)/msgbus.vvp | tee $(BUILD)/msgbus.log
 	@grep -q "MSGBUS PASS" $(BUILD)/msgbus.log
+
+# MAC-side message-bus target + M2P arbiter with the master (PIPE 7.1 6.1.4)
+msgbus_mac:
+	@mkdir -p $(BUILD)
+	$(IVERILOG) -g2012 $(IVEXTRA) -I $(RTL_DIR) -o $(BUILD)/msgbus_mac.vvp tb_msgbus_mac.sv $(RTL_DIR)/pipe_msgbus.sv $(RTL_DIR)/msgbus_mac_tgt.sv
+	$(VVP) $(BUILD)/msgbus_mac.vvp | tee $(BUILD)/msgbus_mac.log
+	@grep -q "MSGBUS-MAC PASS" $(BUILD)/msgbus_mac.log
 
 clean:
 	rm -rf $(BUILD)
