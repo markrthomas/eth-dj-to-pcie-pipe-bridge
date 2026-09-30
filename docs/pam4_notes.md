@@ -23,7 +23,8 @@ here as:
    drive/observe these during bring-up and rate/width changes. (The sibling
    `ucie_rdi_to_pcie6_pipe7` already models `PAM4RestrictedLevels` / PhyTxControl
    in its UPF/PMU flow — reuse that.)
-3. **Precoding**: PAM4 links often enable Tx precoding to limit DFE error
+3. **Precoding** (see the register findings below: there is no message-bus precoding-enable
+   register in PIPE 7.1): PAM4 links often enable Tx precoding to limit DFE error
    propagation. It's a PHY function; the bridge just enables/sequences it via the
    message bus — no precoder RTL in the bridge.
 
@@ -59,6 +60,18 @@ PHY-agnostic — the PAM4 electrical/FEC layer is out of scope (see PLAN §1).
   (docs/OPEN_DECISIONS.md D8).
 - `docs/PLAN.md` §2–§3: framer/deframer are FLIT-based; message bus carries the
   PAM4 controls.
+
+## PAM4 controls on the PIPE 7.1 message bus (register findings, 2026-09-30)
+
+From PIPE 7.1 (ref 643108) Tables 7-1..7-22; details in `docs/OPEN_DECISIONS.md` D8:
+- The only PAM4-specific PHY register field is **`PAM4RestrictedLevels`, Rx Control1 (`12'h004`)
+  bit 2**, driven by *link-training* logic (set after a rate change to >= 64 GT/s when Tx EQ is
+  expected and before RxStandby deasserts; cleared at the TS0 -> TS1 transition; the PHY clears it
+  itself on a rate change). **This bridge does not write it** — integrators' LTSSM must own `12'h004`.
+- The 64 GT/s Tx presets are `LocalPresetIndex` (Tx Control5, `12'h405`, `100001b` = P0) and the
+  coefficients `TxDeemph_Cminus2/-1/0/+1` (`12'h409/402/403/404`). The bridge writes only the preset
+  index (`PAM4CFG`) at Gen6 link-up.
+- There is **no precoding-enable register**; precoding is not controllable over the message bus.
 
 ## Open PAM4-related decisions
 - Exact `PIPE_DATA_W` × `pclk` operating point for 64 GT/s (sets gearbox ratio).
