@@ -18,7 +18,7 @@ TOP     := eth_dj_pipe7_bridge
 RTL_TOP := $(RTL_DIR)/$(TOP).sv
 RTL_SRCS := $(RTL_DIR)/async_fifo.sv $(RTL_DIR)/tx_ingress_gate.sv $(RTL_DIR)/tx_framer.sv $(RTL_DIR)/tx_egress.sv $(RTL_DIR)/rx_ingress.sv $(RTL_DIR)/rx_deframer.sv $(RTL_DIR)/eth_egress.sv $(RTL_DIR)/pipe_msgbus.sv $(RTL_DIR)/msgbus_mac_tgt.sv $(RTL_DIR)/fc_ctl.sv $(RTL_DIR)/bridge_ctrl_fsm.sv $(RTL_DIR)/bridge_rf.sv $(RTL_TOP)
 
-.PHONY: default help lint sim regress coverage formal ci envs crosscheck \
+.PHONY: default help lint sim regress coverage formal ci envs envs-fc vlt-fc systemc-fc uvm-fc cocotb-fc crosscheck \
         iverilog vlt uvm systemc cocotb waves wave-check-all upf upf-tb metrics dashboard stress clean
 
 default: help
@@ -39,6 +39,7 @@ help:
 	@echo "  upf-tb     functional Icarus run of the power-aware TB (PMU sequencing, no UPF)"
 	@echo "  metrics    run+time METRICS_FLOWS, collect artifacts -> metrics/metrics.db"
 	@echo "  dashboard  render metrics/metrics.db -> metrics/dashboard.html"
+	@echo "  envs-fc    vlt/systemc/uvm/cocotb with link flow control ON (vlt-fc systemc-fc uvm-fc cocotb-fc)"
 	@echo "  stress     vlt env, all scenarios x STRESS_SEEDS (default 20) seeds"
 	@echo "  clean      remove build artifacts"
 	@echo "  note: uvm needs a UVM-capable Verilator (>= 5.03x, e.g. OSS CAD Suite 2026-04-13)"
@@ -76,6 +77,23 @@ systemc:
 
 cocotb:
 	$(MAKE) -C dv/cocotb smoke
+
+# Link flow control ON (D16, -DFLOW_CTRL_OVERRIDE) in the four non-iverilog envs; each runs
+# the shared scenarios + its own (FC-aware) checkers + crosscheck.  iverilog: `make -C dv/iverilog fc`
+# (part of `sim`).  Separate build/result dirs, default targets are unaffected.
+vlt-fc:
+	$(MAKE) -C dv/vlt fc
+
+systemc-fc:
+	$(MAKE) -C dv/systemc fc
+
+uvm-fc:
+	$(MAKE) -C dv/uvm fc
+
+cocotb-fc:
+	$(MAKE) -C dv/cocotb fc
+
+envs-fc: vlt-fc systemc-fc uvm-fc cocotb-fc
 
 ENV_RESULTS := dv/iverilog/sim_build/results.json dv/vlt/logs/results.json dv/uvm/logs/results.json \
                dv/systemc/logs/results.json dv/cocotb/results.json
@@ -135,11 +153,11 @@ lanes4:
 	$(MAKE) -C dv/iverilog IVEXTRA=-DPIPE_NLANES_OVERRIDE=$(LANES) scen
 	@echo "lanes4: OK (x$(LANES))"
 
-ci: regress coverage formal envs crosscheck upf-tb lanes4
+ci: regress coverage formal envs crosscheck envs-fc upf-tb lanes4
 	@echo "ci: OK"
 
 clean:
-	rm -rf lp/sim_build metrics/_capture dv/*/sim_build dv/*/sim_build_x* dv/*/obj_dir dv/*/logs obj_dir coverage.info coverage.dat formal/*_prove formal/*_cover
-	rm -f dv/cocotb/results.xml dv/cocotb/results.json dv/cocotb/fcov.json dv/uvm/build.log
+	rm -rf lp/sim_build metrics/_capture dv/*/sim_build dv/*/sim_build_x* dv/*/obj_dir dv/*/obj_dir_fc dv/*/fc_run dv/*/logs_fc dv/*/logs obj_dir coverage.info coverage.dat formal/*_prove formal/*_cover
+	rm -f dv/cocotb/results.xml dv/cocotb/results.json dv/cocotb/fcov.json dv/uvm/build.log dv/uvm/build_fc.log dv/cocotb/results_fc.xml dv/cocotb/results_fc.json dv/cocotb/fcov_fc.json
 	find . -name '__pycache__' -type d -prune -exec rm -rf {} + 2>/dev/null || true
 	@echo "clean: OK"

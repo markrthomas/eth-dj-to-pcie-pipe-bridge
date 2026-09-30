@@ -23,7 +23,7 @@ VFLAGS    := --binary --timing -j $(JOBS) -Wno-fatal -Wno-lint -Wno-style -Wno-S
              -Wno-CONSTRAINTIGN -Wno-MISINDENT -Wno-ZERODLY +define+UVM_NO_DPI --assert \
              +incdir+$(UVM_HOME) -I$(RTL_DIR) -I$(COMMON) --top-module tb_uvm_top
 
-.PHONY: smoke build clean
+.PHONY: smoke build fc clean
 build: $(BIN)
 
 $(UVM_HOME)/uvm_pkg.sv:
@@ -41,5 +41,18 @@ smoke: $(BIN)
 	@! grep -q "UVM_ERROR :\s*[1-9]" logs/uvm.log
 	python3 $(COMMON)/crosscheck.py logs/results.json
 
+# fc: same env/checkers with link flow control ON (-DFLOW_CTRL_OVERRIDE, D16); Rx is the Tx
+# loopback, so the DUT sees its own credit advertisements.  Separate build dir / results.
+FCDIR := obj_dir_fc
+fc: $(UVM_HOME)/uvm_pkg.sv bridge_if.sv bridge_uvm_pkg.sv tb_uvm_top.sv $(RTL_SRCS) \
+    $(COMMON)/scenarios.svh $(COMMON)/eth_dj_pat.svh $(SVA_SRCS)
+	$(VERILATOR) $(VFLAGS) -DFLOW_CTRL_OVERRIDE --Mdir $(FCDIR) $(UVM_HOME)/uvm_pkg.sv $(RTL_SRCS) $(SVA_SRCS) \
+	  bridge_if.sv bridge_uvm_pkg.sv tb_uvm_top.sv > build_fc.log 2>&1 || (tail -40 build_fc.log; exit 1)
+	@mkdir -p logs_fc
+	./$(FCDIR)/Vtb_uvm_top +UVM_TESTNAME=scen_test +results=logs_fc/results.json | tee logs_fc/uvm.log
+	@grep -q "UVM PASS" logs_fc/uvm.log
+	@! grep -q "UVM_ERROR :\s*[1-9]" logs_fc/uvm.log
+	python3 $(COMMON)/crosscheck.py logs_fc/results.json
+
 clean:
-	rm -rf obj_dir logs build.log
+	rm -rf obj_dir obj_dir_fc logs logs_fc build.log build_fc.log

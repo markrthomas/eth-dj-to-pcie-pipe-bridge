@@ -5,6 +5,16 @@ If a session ended, this is where you pick up. Read this, then
 
 ## Where things stand (update this block every session)
 
+- **2026-09-30 (p)** — **Flow control ON in vlt/systemc/uvm/cocotb** (branch `claude/fc-dv-envs`):
+  `make vlt-fc systemc-fc uvm-fc cocotb-fc` (= `make -C dv/<env> fc`, `make envs-fc`; hooked into the
+  CI jobs of each env and into `make ci`). Hypothesis confirmed: all four envs already loop pipe_tx
+  into pipe_rx, so **no credit-advertising peer was needed**; only a define (`-DFLOW_CTRL_OVERRIDE`)
+  plus FC-aware flit checkers. Each env's flit monitor now assembles the 32 beats and applies the
+  `pipe_phy_model.sv` checks (header, length, sof/eof, zero padding, seq == data flits since reset;
+  with FC on DLP bytes 242..245 exempt, credit-only flits legal, counted separately) - also with FC
+  off (new checks, default results unchanged). Each FC run also fails if no credit-only flit was seen.
+  vlt/systemc/cocotb run the coverage-only `rxovf` scenario with the expectation flipped (FC on:
+  0 aborted, all 60 frames good); UVM has no rxovf scenario. Details/mutation evidence: OPEN_DECISIONS D16.
 - **2026-09-30 (o)** — **Flow-control verification** (branch `claude/fc-verify`): `make -C dv/iverilog fc`
   (loop + pm + 5 scenarios with `-DFLOW_CTRL_OVERRIDE`, in regress) found and fixed a real bug
   (credit-only flit racing the DRAIN->change transition; `tx_idle` now includes `!fc_cr_req`).

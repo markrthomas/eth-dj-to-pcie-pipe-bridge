@@ -144,7 +144,10 @@ class ScenarioTest(uvm_test):
             await ClockCycles(self.dut.pclk, 20000)
             env.rx.ready_pct = 90
             env.mac.gap_pct = 10
-            ok &= env.sb.err_frames > 0
+            if be.FLOW_CTRL:   # credits make the same stimulus lossless: nothing aborted, all frames good
+                ok &= env.sb.err_frames == 0 and env.sb.frames == n
+            else:
+                ok &= env.sb.err_frames > 0
         if ctrl != "rxovf":
             ok &= await self.wait_frames(n)
         await ClockCycles(self.dut.pclk, 200)
@@ -168,9 +171,14 @@ class ScenarioTest(uvm_test):
         await self.run_scenario("pm_full", scenarios.lcg_lengths(13, 16), "pm_full", crosscheck=False)
         ovf = [n + 60 if n < 60 else n for n in scenarios.lcg_lengths(17, 60)]
         await self.run_scenario("rxovf", ovf, "rxovf", crosscheck=False)
-        with open(os.path.join(HERE, "results.json"), "w") as fh:
+        if be.FLOW_CTRL:
+            self.logger.info(f"FC credit-only flits={self.env.flit_mon.cr_flits}")
+            if self.env.flit_mon.cr_flits == 0:
+                self.errors += 1
+                self.logger.error("flow control on but no credit-only flit seen (FC not exercised)")
+        with open(os.environ.get("BRIDGE_RESULTS", os.path.join(HERE, "results.json")), "w") as fh:
             json.dump({"env": "cocotb", "scenarios": self.results}, fh, indent=2)
-        fc = self.cov.export(os.path.join(HERE, "fcov.json"))
+        fc = self.cov.export(os.environ.get("BRIDGE_FCOV", os.path.join(HERE, "fcov.json")))
         self.logger.info(f"functional coverage overall {fc['overall']}%")
         self.drop_objection()
 

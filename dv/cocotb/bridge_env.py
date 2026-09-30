@@ -134,32 +134,81 @@ class EthRxMonitor(uvm_component):
 
 
 # ----------------------------------------------------------------------- PIPE Tx
+FLOW_CTRL = os.environ.get("FLOW_CTRL", "0") == "1"   # link flow control ON (D16); set by `make fc`
+FLIT_BYTES, FLIT_HDR_B, FLIT_PAYLOAD_B, FLIT_FC_OFF, FLIT_BEATS = 256, 2, 240, 242, 32
+
+
 class FlitMonitor(uvm_component):
+    """Flit legality checker + counter (mirror of dv/common/pipe_phy_model.sv).
+
+    Checks header valid/reserved bits, payload length, sof/eof sequencing and zero padding.
+    With FLOW_CTRL the DLP bytes 242..245 carry seq/cl and are exempt from the zero check,
+    a flit with count 0 and sof = eof = 0 is a legal credit-only flit (cr_flits, not in
+    flits) and seq must equal the data flits sent since reset."""
+
     def build_phase(self):
         self.dut = cocotb.top
         self.flits = 0
+        self.cr_flits = 0
         self.errors = 0
         self.ap = uvm_analysis_port("ap", self)
+
+    def _err(self, msg):
+        self.errors += 1
+        self.logger.error(msg)
+
+    def _flit(self, fl, st):
+        hv, hsof, heof, plen = fl[0] & 1, (fl[0] >> 1) & 1, (fl[0] >> 2) & 1, fl[1]
+        if not hv:
+            self._err("header valid bit clear")
+        if fl[0] >> 3:
+            self._err("header reserved bits nonzero")
+        if plen > FLIT_PAYLOAD_B:
+            self._err("payload length > 240")
+        cr = FLOW_CTRL and plen == 0 and not hsof and not heof
+        if plen == 0 and not cr:
+            self._err("empty flit emitted")
+        if not cr and bool(hsof) == st["in_frame"]:
+            self._err("sof/frame state mismatch")
+        for b in range(FLIT_HDR_B + plen, FLIT_BYTES):
+            if FLOW_CTRL and FLIT_FC_OFF <= b < FLIT_FC_OFF + 4:
+                continue
+            if fl[b]:
+                self._err("nonzero padding/DLP/FEC byte")
+                break
+        if FLOW_CTRL:
+            seq = fl[FLIT_FC_OFF] | (fl[FLIT_FC_OFF + 1] << 8)
+            if seq != (st["sent"] & 0xFFFF):
+                self._err("flow-control seq field != data flits sent before")
+        if cr:
+            self.cr_flits += 1
+        else:
+            self.flits += 1
+            st["sent"] += 1
+            st["in_frame"] = not heof
 
     async def run_phase(self):
         d = self.dut
         beat = 0
+        fl = bytearray(FLIT_BYTES)
+        st = {"sent": 0, "in_frame": False}
         while True:
             await FallingEdge(d.pclk)
             if not ival(d.pipe_rst_n):
                 beat = 0
+                st["sent"] = 0
+                st["in_frame"] = False
                 continue
             v, sb = ival(d.pipe_tx_data_valid), ival(d.pipe_tx_start_block)
             if v:
                 if sb != (beat == 0):
-                    self.errors += 1
-                    self.logger.error("start_block not on flit beat 0")
-                if beat == 0:
-                    self.flits += 1
-                beat = (beat + 1) % 32
+                    self._err("start_block not on flit beat 0")
+                fl[beat * 8:beat * 8 + 8] = ival(d.pipe_tx_data).to_bytes(8, "little")
+                if beat == FLIT_BEATS - 1:
+                    self._flit(fl, st)
+                beat = (beat + 1) % FLIT_BEATS
             elif beat:
-                self.errors += 1
-                self.logger.error("data_valid dropped mid-flit")
+                self._err("data_valid dropped mid-flit")
                 beat = 0
 
 

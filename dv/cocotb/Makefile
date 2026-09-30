@@ -24,7 +24,18 @@ export PYTHONPATH := $(abspath .):$(COMMON):$(PYTHONPATH)
 COCOTB_SCRIPTS := $(shell python3 -c "import cocotb,os,sys,shutil;print(os.path.dirname(shutil.which('cocotb-config',path=os.path.dirname(sys.executable)+os.pathsep+os.environ['PATH'])))")
 export PATH := $(COCOTB_SCRIPTS):$(PATH)
 
-.PHONY: smoke
+.PHONY: smoke fc
+# fc: link flow control ON (-DFLOW_CTRL_OVERRIDE + FLOW_CTRL=1 for the Python checkers, D16).
+# Rx is the Tx loopback (cocotb_top.sv), so the DUT sees its own credit advertisements.
+# Separate build dir / result files; default smoke artefacts are untouched.
+fc:
+	rm -rf sim_build_fc results_fc.xml results_fc.json fcov_fc.json
+	$(MAKE) sim SIM_BUILD=sim_build_fc COMPILE_ARGS="-g2012 -I $(RTL_DIR) -DFLOW_CTRL_OVERRIDE" \
+	  COCOTB_RESULTS_FILE=results_fc.xml FLOW_CTRL=1 BRIDGE_RESULTS=$(abspath results_fc.json) \
+	  BRIDGE_FCOV=$(abspath fcov_fc.json)
+	python3 check_results.py results_fc.xml
+	python3 $(COMMON)/crosscheck.py results_fc.json
+
 smoke:
 	rm -f results.xml results.json fcov.json
 	$(MAKE) sim
@@ -34,4 +45,4 @@ smoke:
 include $(shell python3 -m cocotb.config --makefiles)/Makefile.sim
 
 clean::
-	rm -rf sim_build __pycache__ results.xml results.json fcov.json
+	rm -rf sim_build sim_build_fc __pycache__ results.xml results.json fcov.json results_fc.xml results_fc.json fcov_fc.json

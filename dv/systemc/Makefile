@@ -18,7 +18,7 @@ SVA_FLAGS := $(if $(filter 1,$(SVA)),--assert)
 JOBS      ?= $(shell nproc 2>/dev/null || echo 4)
 BIN       := obj_dir/V$(TOP)
 
-.PHONY: smoke build clean
+.PHONY: smoke build fc clean
 build: $(BIN)
 
 $(BIN): sc_main.cpp $(COMMON)/cpp/bridge_bfm.h $(RTL_SRCS) $(SVA_SRCS)
@@ -32,5 +32,18 @@ smoke: $(BIN)
 	@grep -q "SYSTEMC PASS" logs/systemc.log
 	python3 $(COMMON)/crosscheck.py logs/results.json
 
+# fc: link flow control ON (-DFLOW_CTRL_OVERRIDE, D16); Rx is the Tx loopback so the DUT
+# sees its own credit advertisements.  Separate build/run dirs.
+FCDIR := obj_dir_fc
+fc: sc_main.cpp $(COMMON)/cpp/bridge_bfm.h $(RTL_SRCS) $(SVA_SRCS)
+	$(VERILATOR) --sc --exe --build -j $(JOBS) -O2 $(SVA_FLAGS) -DFLOW_CTRL_OVERRIDE --Mdir $(FCDIR) \
+	  -I$(RTL_DIR) --top-module $(TOP) \
+	  -CFLAGS "-I$(abspath $(COMMON)/cpp) -std=c++17 -O1 -DFLOW_CTRL_OVERRIDE" -LDFLAGS "-L$(SYSTEMC_LIBDIR) -lsystemc" \
+	  $(RTL_SRCS) $(SVA_SRCS) sc_main.cpp
+	@mkdir -p fc_run/logs
+	cd fc_run && SC_COPYRIGHT_MESSAGE=DISABLE ../$(FCDIR)/V$(TOP) | tee logs/systemc.log
+	@grep -q "SYSTEMC PASS" fc_run/logs/systemc.log
+	python3 $(COMMON)/crosscheck.py fc_run/logs/results.json
+
 clean:
-	rm -rf obj_dir logs
+	rm -rf obj_dir obj_dir_fc fc_run logs
