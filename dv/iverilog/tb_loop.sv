@@ -150,7 +150,7 @@ module tb_loop;
       begin $display("FAIL: rx dropped=%0d lock_err=%0d bad=%0d aborted=%0d", dut.rx_dropped_flits,
                      dut.rx_lock_errors, dut.rx_bad_flits, dut.rx_aborted_frames); errors++; end
     if (phyc.errors != 0)             begin $display("FAIL: %0d PHY-ctrl error(s)", phyc.errors); errors++; end
-    if (phyc.mb_writes != 1 || phyc.regs[MB_ADDR_PAM4_TXCTL] !== PAM4CFG_RST)
+    if (phyc.mb_writes != 1 || phyc.regs[MB_ADDR_TX_PRESET] !== PAM4CFG_RST)
       begin $display("FAIL: expected one PAM4 msgbus write at link-up, saw %0d", phyc.mb_writes); errors++; end
     if (phy.errors != 0)              begin $display("FAIL: %0d PHY-model error(s)", phy.errors); errors++; end
 

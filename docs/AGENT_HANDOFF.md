@@ -5,6 +5,15 @@ If a session ended, this is where you pick up. Read this, then
 
 ## Where things stand (update this block every session)
 
+- **2026-09-30 (j)** — Owner pasted the PIPE 7.1 Tx Control tables (7.1.12..7.1.21). **Found a
+  real defect and fixed it:** `12'h406` is Tx Control6 = **FS**, not a PAM4 register, so every Gen6
+  link-up wrote a bogus FS. No PAM4-precoding register exists in Tx Control0..10. Owner chose to
+  write the **Tx preset index** instead: `MB_ADDR_TX_PRESET = 12'h405` (LocalPresetIndex[5:0];
+  bit 7 = GetLocalPresetCoefficients strobe, so the RF masks [7:6]); `PAM4CFG` reset 0x21 = 64 GT/s
+  P0. Precoding-enable is dropped (register not found). All envs + formal + SVA re-run and pass;
+  reserved-bit masking mutation-checked in `tb_pm`. **Still unknown:** where PAM4 precoding is
+  controlled (need the Rx Control registers), multi-lane bus scaling.
+
 - **2026-09-30 (i)** — Owner pasted PIPE 7.1 §6.1.4. **Message-bus framing + opcodes are now
   verified against the spec text** (Tables 6-9..6-14, Fig 6-1). Found + fixed a real bug: the
   master decoded every P2M byte as a command (a read_completion data byte `5_` looked like a
@@ -19,7 +28,7 @@ If a session ended, this is where you pick up. Read this, then
   register (old `8'h01` would have hit Rx Margin Control1). **Still unconfirmed:** that Tx
   Control6 carries PAM4 controls, the meaning of our PAM4CFG byte, and the framing/opcodes
   (§6.1.4, Table 6-10 not seen). Next: ask for §6.1.4.x + the Tx Control0..10 bit-field
-  tables (7.1.x), then verify/fix `pipe_msgbus` and `MB_ADDR_PAM4_TXCTL`/PAM4CFG.
+  tables (7.1.x), then verify/fix `pipe_msgbus` and `MB_ADDR_TX_PRESET`/PAM4CFG.
 
 - **2026-09-30 (g)** — **D8 message-bus interface fixed** (branch `claude/d8-msgbus-spec`).
   Cross-checking against the sibling `ucie-rdi-to-pcie6-pipe7` (which cites PIPE 7.1
@@ -27,7 +36,7 @@ If a session ended, this is where you pick up. Read this, then
   12-bit addresses**; the old 4-bit cmd + 8-bit data split ports were wrong. Top ports
   `pipe_m2p_msgbus[7:0]` / `pipe_p2m_msgbus[7:0]` replace the four old ones;
   `pipe_msgbus` sends `{WR_C,addr[11:8]}`, `addr[7:0]`, `data` and accepts `p2m[7:4]==WR_ACK`;
-  `MB_ADDR_PAM4_TXCTL` = 12'h406 (sibling's working offset — the PAM4 offset and the PAM4CFG
+  `MB_ADDR_TX_PRESET` = 12'h406 (sibling's working offset — the PAM4 offset and the PAM4CFG
   byte meaning remain **unverified vs the spec**, which is unreachable from this container).
   All envs ported and run: iverilog (`make regress`, `lanes4`), vlt (SVA on), systemc, cocotb,
   upf-tb, wave-check-all, formal (pinned OSS CAD Suite: all prove PASS, covers reached);

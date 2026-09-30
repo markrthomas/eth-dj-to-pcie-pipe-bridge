@@ -131,7 +131,7 @@ module tb_tx;
     if (checked != N)                 begin $display("FAIL: %0d/%0d frames received", checked, N); errors++; end
     if (phy.flits != exp_flits)       begin $display("FAIL: %0d flits, expected %0d", phy.flits, exp_flits); errors++; end
     if (phyc.errors != 0)             begin $display("FAIL: %0d PHY-ctrl error(s)", phyc.errors); errors++; end
-    if (phyc.mb_writes != 1 || phyc.regs[MB_ADDR_PAM4_TXCTL] !== PAM4CFG_RST)
+    if (phyc.mb_writes != 1 || phyc.regs[MB_ADDR_TX_PRESET] !== PAM4CFG_RST)
       begin $display("FAIL: expected one PAM4 msgbus write at link-up, saw %0d", phyc.mb_writes); errors++; end
     if (phy.errors != 0)              begin $display("FAIL: %0d PHY-model error(s)", phy.errors); errors++; end
 

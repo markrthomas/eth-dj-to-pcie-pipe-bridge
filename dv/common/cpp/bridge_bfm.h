@@ -28,7 +28,7 @@ constexpr int RATE_GEN5 = 4, RATE_GEN6 = 5;
 constexpr int ST_ACTIVE = 2;
 constexpr int MB_NOP = 0, MB_WR_C = 2, MB_WR_ACK = 5;
 constexpr int MB_ADDR_W = 12;
-constexpr int MB_ADDR_PAM4_TXCTL = 0x406;
+constexpr int MB_ADDR_TX_PRESET = 0x405;
 constexpr int CSR_CTRL = 0x00, CSR_PAM4CFG = 0x04, CSR_STATUS = 0x08, CSR_ERR = 0x0C,
               CSR_RXCNT0 = 0x10, CSR_RXCNT1 = 0x14, CSR_PMCNT = 0x18;
 
@@ -374,7 +374,7 @@ class Harness {
       case OP_IDLE: return op_t_ >= op.a;
       case OP_SINK: sink_ready_pct = op.a; return true;
       case OP_MUTE: mute_status_ = op.a != 0; return true;
-      case OP_WAIT_MB: return mb_writes_ >= 2 && mb_last_data_ == op.a && mb_last_addr_ == MB_ADDR_PAM4_TXCTL;
+      case OP_WAIT_MB: return mb_writes_ >= 2 && mb_last_data_ == op.a && mb_last_addr_ == MB_ADDR_TX_PRESET;
       case OP_EXPECT_ERR:
         in.csr_addr = CSR_ERR;
         if (pipe_in_.csr_addr == CSR_ERR && op_t_ > 2) {

@@ -148,9 +148,11 @@ module tb_pm;
     chk(phyc.width_changes == 2, "two width changes seen by the PHY");
 
     // PAM4CFG rewrite
-    csr_wr(CSR_PAM4CFG, 32'h35);
+    csr_wr(CSR_PAM4CFG, 32'hF5);            // bits [7:6] set: must be masked (bit 7 = coefficient-request strobe)
     wait_mb(3, "PAM4CFG write");
-    chk(phyc.last_mb_addr == MB_ADDR_PAM4_TXCTL && phyc.last_mb_data == 8'h35, "PAM4CFG value at PHY");
+    chk(phyc.last_mb_addr == MB_ADDR_TX_PRESET && phyc.last_mb_data == 8'h35, "PAM4CFG value at PHY (reserved bits masked)");
+    csr_rd(CSR_PAM4CFG, d);
+    chk(d === 32'h35, "PAM4CFG reads back with [7:6] = 0");
     wait_state(PWR_P0, RATE_GEN6, 2'd0, "PAM4CFG write");
     repeat (2000) @(posedge pclk);
 

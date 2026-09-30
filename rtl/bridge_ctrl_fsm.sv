@@ -15,7 +15,7 @@
 // ST_RATE_CHG / ST_WIDTH_CHG / ST_PWR_CHG : drive the new value on the PIPE pin
 //             and wait for a PhyStatus pulse (or PHY_TIMEOUT -> sticky error,
 //             transition treated as complete; docs/OPEN_DECISIONS.md D10).
-// ST_CFG    : committed msgbus write of PAM4CFG to MB_ADDR_PAM4_TXCTL.
+// ST_CFG    : committed msgbus write of the Tx preset index (PAM4CFG) to MB_ADDR_TX_PRESET.
 // ST_LOWPWR : P1/P2, datapath gated.  Steps P1<->P2 and P1->P0 on request
 //             (P2->P0 goes via P1).  Rate/width changes wait until back in P0.
 // P0s is not supported: a P0s request is flagged (bad_pwr_req) and treated as P0.

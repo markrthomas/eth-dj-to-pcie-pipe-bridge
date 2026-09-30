@@ -136,9 +136,9 @@ module bridge_sva
   //   byte0 {WR_C, addr[11:8]} (first busy cycle), byte1 addr[7:0], byte2 data,
   //   and the bus is idle (8'h00) outside those three bytes.
   a_mb3_byte0: assert property (@(posedge pclk) disable iff (!pipe_rst_n)
-    mb_busy && mb_cnt_q == 4'd0 |-> pipe_m2p_msgbus == {MB_WR_C, MB_ADDR_PAM4_TXCTL[MB_ADDR_W-1:8]});
+    mb_busy && mb_cnt_q == 4'd0 |-> pipe_m2p_msgbus == {MB_WR_C, MB_ADDR_TX_PRESET[MB_ADDR_W-1:8]});
   a_mb3_byte1: assert property (@(posedge pclk) disable iff (!pipe_rst_n)
-    mb_busy && mb_cnt_q == 4'd1 |-> pipe_m2p_msgbus == MB_ADDR_PAM4_TXCTL[7:0]);
+    mb_busy && mb_cnt_q == 4'd1 |-> pipe_m2p_msgbus == MB_ADDR_TX_PRESET[7:0]);
   a_mb3_idle: assert property (@(posedge pclk) disable iff (!pipe_rst_n)
     (!mb_busy || mb_cnt_q >= 4'd3) |-> pipe_m2p_msgbus == 8'h00);
   // MB4: no PIPE pin change while a message-bus write is outstanding

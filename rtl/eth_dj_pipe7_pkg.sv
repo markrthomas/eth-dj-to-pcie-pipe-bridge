@@ -68,14 +68,12 @@ package eth_dj_pipe7_pkg;
   localparam logic [3:0] MB_RD     = 4'h3;
   localparam logic [3:0] MB_RD_CPL = 4'h4;
   localparam logic [3:0] MB_WR_ACK = 4'h5;
-  // PHY register that receives the PAM4 Tx control byte.  PIPE 7.1 (ref 643108) Table 7-1:
-  // 12'h400..12'h40A are TX1 "PHY Tx Control0..10" (Control0/1 are N/A for the SerDes
-  // architecture), so 12'h406 = "PHY Tx Control6" is a valid PHY register.  What is NOT
-  // confirmed: that Tx Control6 is the register that carries PAM4 precoding / restricted
-  // levels (its bit fields were not in the excerpt), nor the meaning of our PAM4CFG byte
-  // (precoding enable / preset), which is a bridge-defined placeholder.
-  // (docs/OPEN_DECISIONS.md D8)
-  localparam logic [MB_ADDR_W-1:0] MB_ADDR_PAM4_TXCTL = 12'h406;
+  // PHY register written at Gen6 link-up: 12'h405 = TX1 "PHY Tx Control5" (PIPE 7.1 ref 643108,
+  // Tables 7-1/7-17).  Bits: [7] GetLocalPresetCoefficients (1-cycle request), [6] reserved,
+  // [5:0] LocalPresetIndex.  The bridge writes {2'b00, preset} so the request bit is never set.
+  // (12'h406 - the earlier choice - is Tx Control6 = FS, a link-partner value; and no PAM4
+  // precoding-enable register was found in Tx Control0..10.  docs/OPEN_DECISIONS.md D8.)
+  localparam logic [MB_ADDR_W-1:0] MB_ADDR_TX_PRESET = 12'h405;
 
   // Cycles the control plane waits for PhyStatus / a message-bus write_ack
   // before flagging a timeout (docs/OPEN_DECISIONS.md D10).
@@ -90,7 +88,7 @@ package eth_dj_pipe7_pkg;
   localparam logic [7:0] CSR_RXCNT0  = 8'h10;  // RO  [15:0] dropped flits [31:16] lock errors
   localparam logic [7:0] CSR_RXCNT1  = 8'h14;  // RO  [15:0] bad/orphan flits [31:16] aborted frames
   localparam logic [7:0] CSR_PMCNT   = 8'h18;  // RO  [15:0] completed power/rate/width/cfg operations
-  localparam logic [7:0] PAM4CFG_RST = 8'h01;  // precoding enabled, preset 0
+  localparam logic [7:0] PAM4CFG_RST = 8'h21;  // LocalPresetIndex 6'b100001 = 64 GT/s Preset P0 (Table 7-17)
 
   // ---- Elastic / CDC buffering --------------------------------------------
   localparam int unsigned FIFO_DEPTH = 32;               // [OPEN] size vs burst

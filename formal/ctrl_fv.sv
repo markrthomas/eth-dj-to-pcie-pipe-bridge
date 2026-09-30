@@ -42,7 +42,7 @@ module ctrl_fv
   logic       flit_taken, egress_busy, tx_valid, tx_sb;
   logic [PIPE_BUS_W-1:0] tx_data;
   logic [MSGBUS_W-1:0] m2p;
-  wire  [MB_ADDR_W-1:0] mb_addr = MB_ADDR_PAM4_TXCTL;
+  wire  [MB_ADDR_W-1:0] mb_addr = MB_ADDR_TX_PRESET;
   wire  [7:0] mb_wdata = 8'h35;
   wire        tx_idle = !egress_busy && !flit_valid && other_idle;
 

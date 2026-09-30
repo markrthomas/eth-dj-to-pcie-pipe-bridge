@@ -5,7 +5,9 @@
 // docs/OPEN_DECISIONS.md D7.
 //
 //   CTRL    RW  [1:0] pwr_req (rst P0)  [4:2] rate_req (rst GEN6)  [6:5] width_req (rst 0)
-//   PAM4CFG RW  [7:0] PAM4 Tx control (rst PAM4CFG_RST); a write re-sends it to the PHY
+//   PAM4CFG RW  [5:0] Gen6 Tx preset index = PHY LocalPresetIndex (rst PAM4CFG_RST = 64 GT/s P0);
+//                    [7:6] read 0 / write ignored (PHY bit 7 is a coefficient-request strobe);
+//                    a write re-sends it to the PHY (CSR name kept for compatibility)
 //   STATUS  RO  [1:0] powerdown [4:2] rate [6:5] width [9:7] ctrl state
 //               [10] busy (op in flight) [11] link active (ST_ACTIVE)
 //               [12] pipe_rx_elec_idle [13] pipe_rx_valid
@@ -75,7 +77,7 @@ module bridge_rf
         rate_req  <= csr_wdata[4:2];
         width_req <= csr_wdata[6:5];
       end
-      if (pam4_wr) pam4cfg <= csr_wdata[7:0];
+      if (pam4_wr) pam4cfg <= {2'b00, csr_wdata[5:0]};
       // W1C, with set taking priority over a same-cycle clear
       err_q <= (err_q & ~((wr && csr_addr == CSR_ERR) ? csr_wdata[2:0] : 3'b000))
              | {ev_bad_pwr_req, ev_mb_timeout, ev_phy_timeout};
