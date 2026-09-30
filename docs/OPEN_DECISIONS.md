@@ -184,11 +184,23 @@ Findings vs what this repo had:
   Now a P2M framer tracks the transaction length (write 3, read/read_completion 2, others 1)
   and only the first byte of a transaction is a command. Covered by `dv/iverilog/tb_msgbus.sv`
   (T2/T3 fail if the old decode is restored; T4 checks back-to-back transactions).
-- **Known gap (unchanged, by design):** the bridge implements **no MAC-side register target**.
-  The spec lets the PHY initiate reads/writes to MAC registers (e.g. Rx margin status) and
-  requires read_completion / write_ack responses on M2P; this bridge ignores such requests
-  and never answers them. Adequate while no PHY-initiated traffic is used; a real integration
-  that needs Rx margining or PHY-initiated writes must add a target.
+- **MAC-side message-bus target — IMPLEMENTED (2026-09-30), with limits.** The spec lets the PHY
+  initiate reads/writes to MAC registers and requires responses on M2P. `rtl/msgbus_mac_tgt.sv` (+ an
+  M2P arbiter; the master `pipe_msgbus` is unchanged apart from a `tx_active` output) now: answers a PHY
+  `write_committed` with one `write_ack`; answers a PHY `read` with `read_completion` (`{RD_CPL,0}`, data);
+  discards PHY `write_uncommitted` payloads (no response, as specified); ignores the PHY's own
+  `write_ack`/`read_completion` (responses to us). Arbitration: the master's 3-byte frame is never
+  interrupted and a response is never started while a request is pending or a frame is in flight; **the
+  master has priority** over a pending response (so a flooding PHY cannot starve the bridge's write);
+  at most one write_ack and one read_completion are pending, and a further PHY request while one is pending
+  is dropped and counted (`drop_cnt`). The FSM's request is now latched by the arbiter (+1 cycle), so
+  ST_CFG can last a few cycles longer (SVA bound PHY_TIMEOUT+8).
+  **Limits (design decisions, not spec-derived):** *no MAC register map is implemented* (PIPE 7.1 §7.2 was
+  not available): every MAC register reads `8'h00` and PHY writes are accepted and discarded (the last
+  is exposed for DV: `last_wr_addr/data`, `phy_wr_cnt`, `phy_rd_cnt`). So Rx-margining status etc. is
+  NOT actually provided; the target only stops the PHY from hanging on an unanswered request. Not
+  formally proven (the proofs cover the master + FSM only); covered by `dv/iverilog/tb_msgbus_mac.sv`
+  (scenarios A-H, mutation-checked) and SVA `a_mb6_tgt_no_overlap`.
 - **PAM4RestrictedLevels located; bridge does NOT drive it (owner decision, 2026-09-30, "document
   only").** From PIPE 7.1 Table 7-6 (PHY Rx Control1, **12'h004**, RX1 region): **bit 2
   `PAM4RestrictedLevels`** (PCIe, optional; only at 64 GT/s and higher). Timing rules: the MAC sets it

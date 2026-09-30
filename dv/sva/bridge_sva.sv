@@ -41,6 +41,7 @@ module bridge_sva
   input logic                     mb_busy,
   input logic                     mb_done,
   input logic                     mb_timeout,
+  input logic                     mb_tgt_tx,      // MAC-side target is driving M2P (response)
   input logic                     ev_phy_timeout,
   input logic                     tx_fifo_full,
   input logic                     tx_fifo_empty,
@@ -140,13 +141,17 @@ module bridge_sva
   a_mb3_byte1: assert property (@(posedge pclk) disable iff (!pipe_rst_n)
     mb_busy && mb_cnt_q == 4'd1 |-> pipe_m2p_msgbus == MB_ADDR_TX_PRESET[7:0]);
   a_mb3_idle: assert property (@(posedge pclk) disable iff (!pipe_rst_n)
-    (!mb_busy || mb_cnt_q >= 4'd3) |-> pipe_m2p_msgbus == 8'h00);
+    ((!mb_busy || mb_cnt_q >= 4'd3) && !mb_tgt_tx) |-> pipe_m2p_msgbus == 8'h00);
+  // MB6: a MAC-side response (write_ack / read_completion) is never driven inside the master's
+  //      3-byte frame (spec rule 4: the cycles of one transaction are contiguous)
+  a_mb6_tgt_no_overlap: assert property (@(posedge pclk) disable iff (!pipe_rst_n)
+    mb_tgt_tx |-> !(mb_busy && mb_cnt_q < 4'd3));
   // MB4: no PIPE pin change while a message-bus write is outstanding
   a_mb4_no_pin_chg_during_mb: assert property (@(posedge pclk) disable iff (!pipe_rst_n)
     in_chg |-> !mb_busy);
-  // MB5: the msgbus write completes (ack or timeout) within PHY_TIMEOUT + 3
+  // MB5: the msgbus write completes (ack or timeout) within PHY_TIMEOUT + 8
   a_mb5_cfg_bound: assert property (@(posedge pclk) disable iff (!pipe_rst_n)
-    cfg_cnt_q <= 12'(PHY_TIMEOUT + 3));
+    cfg_cnt_q <= 12'(PHY_TIMEOUT + 8));   // +3 master, +5 arbiter latch / response in flight
   // FF2: the deframer never pushes into a full Rx CDC FIFO
   a_ff2_rx_no_overflow: assert property (@(posedge pclk) disable iff (!pipe_rst_n)
     rx_fifo_winc |-> !rx_fifo_full);
@@ -179,7 +184,7 @@ bind eth_dj_pipe7_bridge bridge_sva u_bridge_sva (
   .pipe_rate (rate_v), .pipe_width (width_v), .pipe_powerdown (pd_v),
   .pipe_m2p_msgbus (pipe_m2p_msgbus),
   .ctrl_state (ctrl_state), .mb_req (mb_req), .mb_busy (mb_busy), .mb_done (mb_done),
-  .mb_timeout (mb_timeout), .ev_phy_timeout (ev_phy_timeout),
+  .mb_timeout (mb_timeout), .mb_tgt_tx (mb_tgt_tx), .ev_phy_timeout (ev_phy_timeout),
   .tx_fifo_full (tx_fifo_full), .tx_fifo_empty (tx_fifo_empty), .tx_fifo_rinc (tx_fifo_rinc),
   .rx_fifo_full (rx_fifo_full), .rx_fifo_winc (rx_fifo_winc), .rx_fifo_empty (rx_fifo_empty),
   .rx_fifo_rinc (rx_fifo_rinc), .rx_dropped_flits (rx_dropped_flits)

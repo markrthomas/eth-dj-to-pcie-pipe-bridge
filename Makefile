@@ -16,7 +16,7 @@ IVERILOG  ?= iverilog
 RTL_DIR := rtl
 TOP     := eth_dj_pipe7_bridge
 RTL_TOP := $(RTL_DIR)/$(TOP).sv
-RTL_SRCS := $(RTL_DIR)/async_fifo.sv $(RTL_DIR)/tx_ingress_gate.sv $(RTL_DIR)/tx_framer.sv $(RTL_DIR)/tx_egress.sv $(RTL_DIR)/rx_ingress.sv $(RTL_DIR)/rx_deframer.sv $(RTL_DIR)/eth_egress.sv $(RTL_DIR)/pipe_msgbus.sv $(RTL_DIR)/bridge_ctrl_fsm.sv $(RTL_DIR)/bridge_rf.sv $(RTL_TOP)
+RTL_SRCS := $(RTL_DIR)/async_fifo.sv $(RTL_DIR)/tx_ingress_gate.sv $(RTL_DIR)/tx_framer.sv $(RTL_DIR)/tx_egress.sv $(RTL_DIR)/rx_ingress.sv $(RTL_DIR)/rx_deframer.sv $(RTL_DIR)/eth_egress.sv $(RTL_DIR)/pipe_msgbus.sv $(RTL_DIR)/msgbus_mac_tgt.sv $(RTL_DIR)/bridge_ctrl_fsm.sv $(RTL_DIR)/bridge_rf.sv $(RTL_TOP)
 
 .PHONY: default help lint sim regress coverage formal ci envs crosscheck \
         iverilog vlt uvm systemc cocotb waves wave-check-all upf upf-tb metrics dashboard stress clean
@@ -26,7 +26,7 @@ default: help
 help:
 	@echo "eth-dj-pcie-pipe7_1-bridge — targets:"
 	@echo "  lint       Verilator --lint-only -Wall on rtl/"
-	@echo "  sim        Icarus directed tests: smoke tx loop pm rxovf scen msgbus"
+	@echo "  sim        Icarus directed tests: smoke tx loop pm rxovf scen msgbus msgbus_mac"
 	@echo "  regress    lint + sim  — the fast CI gate"
 	@echo "  coverage   Verilator C++ env with --coverage -> coverage.info (floor 80%)"
 	@echo "  formal     SymbiYosys prove (PDR) + cover on formal/*.sby (OSS CAD Suite)"
@@ -51,7 +51,7 @@ lint:
 sim: iverilog
 
 iverilog:
-	$(MAKE) -C dv/iverilog smoke tx loop pm rxovf scen msgbus
+	$(MAKE) -C dv/iverilog smoke tx loop pm rxovf scen msgbus msgbus_mac
 
 regress: lint sim
 	@echo "regress: OK"
