@@ -151,7 +151,7 @@ Findings vs what this repo had:
   live at 12'h400..12'h40A. **`12'h406` is Tx Control6 = FS[5:0]** (the link partner's FS value),
   *not* a PAM4 register, so the previous choice (a `PAM4CFG` byte written to 12'h406 at every Gen6
   link-up) wrote a bogus FS value. **No PAM4 precoding-enable register exists in Tx Control0..10**
-  (the sibling repo's "PAM4RestrictedLevels at 12'h406" was wrong). The registers are: 400/401
+  (the sibling repo's "PAM4RestrictedLevels at 12'h406" had the right field name but the wrong address — see below). The registers are: 400/401
   SATA/USB (N/A SerDes), 402 TxDeemph_Cminus1, 403 TxDeemph_Czero, 404 TxDeemph_Cplus1,
   **405 GetLocalPresetCoefficients[7] + LocalPresetIndex[5:0]**, 406 FS, 407 LF, 408 TxSwing/TxMargin,
   409 TxDeemph_Cminus2 (64 GT/s+), 40A TxLaneEnable (USB4/DP). Also: RX1 Rx Margin 0/1 at 0/1,
@@ -165,8 +165,7 @@ Findings vs what this repo had:
   after a rate change landing on Gen6, and on a PAM4CFG rewrite; never below Gen6.
   Caveats: the spec table lists 64 GT/s P1 as `100011b` (skipping `100010b`), likely a typo —
   only P0 (`100001b`) is used; per the spec LocalPresetIndex "is only used with a PHY that
-  requires dynamic preset coefficient updates"; where PAM4 precoding is actually controlled
-  (perhaps the Rx Control registers, not pasted) is **still unknown**.
+  requires dynamic preset coefficient updates".
 - **Alternatives not taken:** writing the four Gen6 coefficients (C-2/C-1/C0/C+1 at 409/402/403/404,
   three write_uncommitted + one write_committed) — larger, and no spec-derived default values; or
   no message-bus write at all.
@@ -190,9 +189,32 @@ Findings vs what this repo had:
   requires read_completion / write_ack responses on M2P; this bridge ignores such requests
   and never answers them. Adequate while no PHY-initiated traffic is used; a real integration
   that needs Rx margining or PHY-initiated writes must add a target.
-- **Still unverified:** where PAM4 precoding is controlled (Rx Control registers 12'h4..12'h9 and
-  the rest of Table 7-1 not seen); whether the LocalPresetIndex-only write is sufficient for a
-  given PHY; how the message bus scales to more than one lane (TX1/RX1 vs TX2/RX2 regions).
+- **PAM4RestrictedLevels located; bridge does NOT drive it (owner decision, 2026-09-30, "document
+  only").** From PIPE 7.1 Table 7-6 (PHY Rx Control1, **12'h004**, RX1 region): **bit 2
+  `PAM4RestrictedLevels`** (PCIe, optional; only at 64 GT/s and higher). Timing rules: the MAC sets it
+  to 1 to say the link partner is / will soon be sending TS0s at >= 64 GT/s; **set after a rate change
+  to 64 GT/s+ only if a Tx Equalization procedure is expected** (never for NoEq), **after the rate
+  change's PhyStatus and before RxStandby is deasserted**; the MAC **clears it when it asks the link
+  partner to go from TS0 to TS1** (Phase 2 upstream / Phase 3 downstream; if Phases 2/3 are bypassed,
+  during Recovery.RcvrLock); **the PHY autonomously clears it on every rate change to >= 64 GT/s before
+  returning PhyStatus**; the PHY advertises whether it needs it (PAM4RestrictedLevelsRequirement).
+  This is link-training (LTSSM) timing and the bridge has no LTSSM and no RxStandby pin, so it cannot be
+  driven correctly here. **Integration requirement:** whatever runs link training must own
+  `12'h004`. Do not let this bridge write it: a full-byte write would also clear the other Rx Control1
+  fields (`RxInPhase01Equalization` [4], `RxPAM3Mode` [3], `IORecal` [1] strobe,
+  `RxEqTraining` [0]).
+- **No PAM4 precoding-enable register exists in the PHY register map.** With Table 7-1 (both sheets) and
+  Tables 7-2..7-22 pasted, the PHY registers are Rx Margin 0/1, Elastic Buffer Control, Rx Control0..5,
+  Elastic Buffer Location Update, Tx Control0..10, CMN Control0 (N/A SerDes) and near-end loopback —
+  none is a precoding enable. So the earlier `PAM4CFG` "precoding enable" bit had no home and stays
+  dropped; PAM4 precoding is not controllable over the message bus (it is presumably PHY-internal or
+  negotiated in-band).
+- **Rx Control registers (for reference):** 12'h2 Elastic Buffer Depth and 12'h3 Rx Control0 (RxPolarity),
+  12'h7 EB update frequency, 12'h8 Rx Control4 and 12'h9 Rx Control5 (`RxLaneEnable`, USB4/DP) — N/A or
+  irrelevant for SerDes/PCIe here; 12'h5 Rx Control2 is entirely reserved; 12'h6 Rx Control3
+  (`InvalidRequest`, `RxEqInProgress`, `RxEqEval`) is also link-training territory.
+- **Still unverified:** how the message bus scales to more than one lane (TX1/RX1 vs TX2/RX2 regions);
+  whether the LocalPresetIndex-only write is sufficient for a given PHY.
 - **Port-list change:** this alters the frozen top-level interface (2 ports replace 4).
   Integrators using the old split ports must update.
 ## D9. Rx flow control: drop + abort the damaged frame (M3)

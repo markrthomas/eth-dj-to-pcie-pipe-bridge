@@ -5,6 +5,13 @@ If a session ended, this is where you pick up. Read this, then
 
 ## Where things stand (update this block every session)
 
+- **2026-09-30 (k)** — Owner pasted the PIPE 7.1 Rx Control tables (7.1.4..7.1.11). **PAM4RestrictedLevels
+  is Rx Control1 `12'h004` bit 2** (not 12'h406); it is LTSSM-timed (set after a Gen6 rate change if Tx EQ
+  is expected, cleared at TS0->TS1, PHY clears it on rate change). Owner chose **document-only**: the
+  bridge does not write it (integrator's LTSSM must own 12'h004). **No precoding-enable register exists
+  in the PHY register map**. Docs only (`OPEN_DECISIONS` D8, `pam4_notes.md`). The message-bus register
+  work is now complete; open: multi-lane bus scaling, MAC-side msgbus target (PHY-initiated requests).
+
 - **2026-09-30 (j)** — Owner pasted the PIPE 7.1 Tx Control tables (7.1.12..7.1.21). **Found a
   real defect and fixed it:** `12'h406` is Tx Control6 = **FS**, not a PAM4 register, so every Gen6
   link-up wrote a bogus FS. No PAM4-precoding register exists in Tx Control0..10. Owner chose to
