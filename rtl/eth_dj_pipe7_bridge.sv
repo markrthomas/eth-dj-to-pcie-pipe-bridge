@@ -167,11 +167,12 @@ module eth_dj_pipe7_bridge
     .eth_tready (eth_tready), .stopped (ingress_stopped_eth)
   );
 
+  logic [$clog2(FIFO_DEPTH):0] tx_wfree_unused;
   async_fifo #(.W(ETH_DATA_W+ETH_KEEP_W+1), .DEPTH(FIFO_DEPTH)) u_tx_cdc (
     .wclk   (eth_clk),   .wrst_n (eth_rst_n),
     .winc   (eth_tvalid && eth_tready),
     .wdata  ({eth_tlast, eth_tkeep, eth_tdata}),
-    .wfull  (tx_fifo_full),
+    .wfull  (tx_fifo_full), .wfree (tx_wfree_unused),
     .rclk   (pclk),      .rrst_n (pipe_rst_n),
     .rinc   (tx_fifo_rinc),
     .rdata  (tx_fifo_rdata),
@@ -185,9 +186,24 @@ module eth_dj_pipe7_bridge
     .idle (framer_idle)
   );
 
+  // ---- link flow control (compile-time opt-in, docs/OPEN_DECISIONS.md D16) ----------------
+  logic                        fc_credit_ok, fc_cr_req, fc_st_any, fc_st_data, rx_data_done;
+  logic [15:0]                 fc_seq, fc_cl, rx_cl_remote, rx_fc_lost;
+  logic [$clog2(FIFO_DEPTH):0] rx_wfree;
+
+  fc_ctl u_fc (
+    .clk (pclk), .rst_n (pipe_rst_n),
+    .dfr_data_done (rx_data_done), .lost_cnt (rx_fc_lost), .rx_wfree (rx_wfree),
+    .cl_remote (rx_cl_remote),
+    .st_any (fc_st_any), .st_data (fc_st_data),
+    .credit_ok (fc_credit_ok), .cr_req (fc_cr_req), .seq_now (fc_seq), .cl_now (fc_cl)
+  );
+
   tx_egress u_tx_egress (
     .clk (pclk), .rst_n (pipe_rst_n),
     .tx_en (tx_en),
+    .credit_ok (fc_credit_ok), .cr_req (fc_cr_req), .seq_now (fc_seq), .cl_now (fc_cl),
+    .st_any (fc_st_any), .st_data (fc_st_data),
     .flit_valid (flit_valid), .flit (flit), .flit_taken (flit_taken),
     .pipe_tx_data (pipe_tx_data),
     .pipe_tx_data_valid (pipe_tx_data_valid),
@@ -202,13 +218,14 @@ module eth_dj_pipe7_bridge
     .pipe_rx_start_block (pipe_rx_start_block),
     .flit_valid (rx_flit_valid), .flit (rx_flit), .flit_gap (rx_flit_gap),
     .flit_taken (rx_flit_taken), .idle (rx_ing_idle),
-    .dropped_flits (rx_dropped_flits), .lock_errors (rx_lock_errors)
+    .dropped_flits (rx_dropped_flits), .lock_errors (rx_lock_errors),
+    .fc_cl_remote (rx_cl_remote), .fc_lost_cnt (rx_fc_lost)
   );
 
   rx_deframer u_rx_deframer (
     .clk (pclk), .rst_n (pipe_rst_n),
     .flit_valid (rx_flit_valid), .flit (rx_flit), .flit_gap (rx_flit_gap),
-    .flit_taken (rx_flit_taken),
+    .flit_taken (rx_flit_taken), .data_done (rx_data_done),
     .fifo_wdata (rx_fifo_wdata), .fifo_winc (rx_fifo_winc), .fifo_full (rx_fifo_full),
     .idle (rx_dfr_idle), .bad_flits (rx_bad_flits), .aborted_frames (rx_aborted_frames)
   );
@@ -217,7 +234,7 @@ module eth_dj_pipe7_bridge
     .wclk   (pclk),      .wrst_n (pipe_rst_n),
     .winc   (rx_fifo_winc),
     .wdata  (rx_fifo_wdata),
-    .wfull  (rx_fifo_full),
+    .wfull  (rx_fifo_full), .wfree (rx_wfree),
     .rclk   (eth_clk),   .rrst_n (eth_rst_n),
     .rinc   (rx_fifo_rinc),
     .rdata  (rx_fifo_rdata),
@@ -233,7 +250,7 @@ module eth_dj_pipe7_bridge
 
   // mb_busy / rx_dfr_idle are observation points for DV/SVA (dv/sva binds).
   /* verilator lint_off UNUSEDSIGNAL */
-  wire unused_obs = mb_busy ^ rx_dfr_idle ^ mb_tgt_tx ^ (^mb_phy_wr_cnt) ^ (^mb_phy_rd_cnt)
+  wire unused_obs = (^tx_wfree_unused) ^ mb_busy ^ rx_dfr_idle ^ mb_tgt_tx ^ (^mb_phy_wr_cnt) ^ (^mb_phy_rd_cnt)
                   ^ (^mb_drop_cnt) ^ (^mb_last_wr_addr) ^ (^mb_last_wr_data);
   /* verilator lint_on UNUSEDSIGNAL */
 

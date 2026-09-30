@@ -9,7 +9,7 @@ RTL_DIR  := ../../rtl
 COMMON   := ../common
 RTL_SRCS := $(RTL_DIR)/async_fifo.sv $(RTL_DIR)/tx_ingress_gate.sv $(RTL_DIR)/tx_framer.sv $(RTL_DIR)/tx_egress.sv \
             $(RTL_DIR)/rx_ingress.sv $(RTL_DIR)/rx_deframer.sv $(RTL_DIR)/eth_egress.sv \
-            $(RTL_DIR)/pipe_msgbus.sv $(RTL_DIR)/msgbus_mac_tgt.sv $(RTL_DIR)/bridge_ctrl_fsm.sv $(RTL_DIR)/bridge_rf.sv \
+            $(RTL_DIR)/pipe_msgbus.sv $(RTL_DIR)/msgbus_mac_tgt.sv $(RTL_DIR)/fc_ctl.sv $(RTL_DIR)/bridge_ctrl_fsm.sv $(RTL_DIR)/bridge_rf.sv \
             $(RTL_DIR)/eth_dj_pipe7_bridge.sv
 BUILD    := sim_build
 # WAVES=1: add dv/waves/wave_dump.sv as a second top and dump sim_build/<test>.vcd
@@ -19,8 +19,8 @@ IVEXTRA  ?=
 WFLAGS    = $(if $(filter 1,$(WAVES)),-DDUMP_TOP=tb_$@ ../waves/wave_dump.sv)
 WRUN      = $(if $(filter 1,$(WAVES)),+dumpfile=$(BUILD)/$@.vcd)
 
-.PHONY: smoke tx loop pm rxovf scen msgbus msgbus_mac all clean
-all: smoke tx loop pm rxovf scen msgbus msgbus_mac
+.PHONY: smoke tx loop pm rxovf scen msgbus msgbus_mac link all clean
+all: smoke tx loop pm rxovf scen msgbus msgbus_mac link
 
 LOOP_TB_DEPS := $(COMMON)/eth_mac_model.sv $(COMMON)/pipe_phy_model.sv $(COMMON)/pipe_phy_ctrl_model.sv $(COMMON)/eth_sink_model.sv
 smoke:
@@ -71,9 +71,16 @@ msgbus:
 # MAC-side message-bus target + M2P arbiter with the master (PIPE 7.1 6.1.4)
 msgbus_mac:
 	@mkdir -p $(BUILD)
-	$(IVERILOG) -g2012 $(IVEXTRA) -I $(RTL_DIR) -o $(BUILD)/msgbus_mac.vvp tb_msgbus_mac.sv $(RTL_DIR)/pipe_msgbus.sv $(RTL_DIR)/msgbus_mac_tgt.sv
+	$(IVERILOG) -g2012 $(IVEXTRA) -I $(RTL_DIR) -o $(BUILD)/msgbus_mac.vvp tb_msgbus_mac.sv $(RTL_DIR)/pipe_msgbus.sv $(RTL_DIR)/msgbus_mac_tgt.sv $(RTL_DIR)/fc_ctl.sv
 	$(VVP) $(BUILD)/msgbus_mac.vvp | tee $(BUILD)/msgbus_mac.log
 	@grep -q "MSGBUS-MAC PASS" $(BUILD)/msgbus_mac.log
+
+# TWO-ENDED link flow-control test (D16): two bridges cross-connected, built with flow control ON
+link:
+	@mkdir -p $(BUILD)_fc
+	$(IVERILOG) -g2012 $(IVEXTRA) -DFLOW_CTRL_OVERRIDE -I $(RTL_DIR) -I $(COMMON) -I . -o $(BUILD)_fc/link.vvp tb_link.sv $(COMMON)/eth_mac_model.sv $(COMMON)/eth_sink_model.sv $(COMMON)/pipe_phy_model.sv $(COMMON)/pipe_phy_ctrl_model.sv $(RTL_SRCS)
+	$(VVP) $(BUILD)_fc/link.vvp | tee $(BUILD)_fc/link.log
+	@grep -q "LINK PASS" $(BUILD)_fc/link.log
 
 clean:
 	rm -rf $(BUILD)

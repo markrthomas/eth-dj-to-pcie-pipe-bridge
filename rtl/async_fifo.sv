@@ -11,6 +11,7 @@ module async_fifo #(
   input  logic         winc,
   input  logic [W-1:0] wdata,
   output logic         wfull,
+  output logic [$clog2(DEPTH):0] wfree,   // free entries, conservative (read pointer is synchronised)
 
   input  logic         rclk,
   input  logic         rrst_n,
@@ -29,6 +30,18 @@ module async_fifo #(
   logic [AW:0] rbin, rgray, rbin_n, rgray_n;
   logic [AW:0] rgray_w1, rgray_w2;          // rptr synchronised into wclk
   logic [AW:0] wgray_r1, wgray_r2;          // wptr synchronised into rclk
+
+  // free space, write-clock domain: DEPTH - (wbin - binary(synchronised read pointer)).  The
+  // synchronised pointer lags the real one, so this never over-reports free space.
+  function automatic logic [$clog2(DEPTH):0] gray2bin(input logic [$clog2(DEPTH):0] g);
+    logic [$clog2(DEPTH):0] b;
+    begin
+      b[$clog2(DEPTH)] = g[$clog2(DEPTH)];
+      for (int i = $clog2(DEPTH) - 1; i >= 0; i--) b[i] = b[i+1] ^ g[i];
+      gray2bin = b;
+    end
+  endfunction
+  assign wfree = ($clog2(DEPTH)+1)'(DEPTH) - (wbin - gray2bin(rgray_w2));
 
   assign wbin_n  = wbin + (AW+1)'(winc && !wfull);
   assign wgray_n = (wbin_n >> 1) ^ wbin_n;

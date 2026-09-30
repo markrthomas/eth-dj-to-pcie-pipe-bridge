@@ -93,6 +93,23 @@ package eth_dj_pipe7_pkg;
   // ---- Elastic / CDC buffering --------------------------------------------
   localparam int unsigned FIFO_DEPTH = 32;               // [OPEN] size vs burst
 
+  // ---- Link flow control (docs/OPEN_DECISIONS.md D16) ----------------------------
+  // Opt-in, compile-time (both ends of the link must agree): -DFLOW_CTRL_OVERRIDE.
+  // When enabled, bytes FLIT_FC_OFF..+3 of EVERY flit (the DLP area) carry
+  //   [FC_OFF+0..1] seq : data flits sent by this end before this flit (16b, LSB first)
+  //   [FC_OFF+2..3] cl  : cumulative credit limit advertised by this end (16b): the remote
+  //                       may have sent at most `cl` data flits in total
+  // and a flit with count == 0 (sof = eof = 0) is a credit-only flit.
+`ifdef FLOW_CTRL_OVERRIDE
+  localparam bit FLOW_CTRL = 1'b1;
+`else
+  localparam bit FLOW_CTRL = 1'b0;
+`endif
+  localparam int unsigned FLIT_FC_OFF = 242;
+  // Worst case Rx CDC FIFO beats one data flit can add: 8 full beats + 1 partial (eof).
+  localparam int unsigned CREDIT_BEATS_PER_FLIT = 9;
+  localparam int unsigned INIT_CREDITS = FIFO_DEPTH / CREDIT_BEATS_PER_FLIT;
+
   // ---- PIPE data rate (rate[2:0] on the PIPE interface) --------------------
   typedef enum logic [2:0] {
     RATE_GEN1 = 3'd0,   //  2.5 GT/s NRZ

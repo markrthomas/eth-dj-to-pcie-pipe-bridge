@@ -25,6 +25,7 @@ module rx_deframer
   input  logic [FLIT_BYTES*8-1:0]             flit,
   input  logic                                flit_gap,
   output logic                                flit_taken,
+  output logic                                data_done,    // a valid-header data flit was consumed (credit accounting)
 
   output logic [ETH_DATA_W+ETH_KEEP_W+1:0]    fifo_wdata,   // {err, last, keep, data}
   output logic                                fifo_winc,
@@ -95,6 +96,7 @@ module rx_deframer
 
   assign fifo_wdata = {abort, last, keep_n, abort ? acc_q : acc_n};
   assign idle       = !in_frame_q;
+  assign data_done  = flit_taken && !bad;
 
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin

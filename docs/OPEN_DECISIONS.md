@@ -402,3 +402,11 @@ No DUT changes.
   another Anthropic-compatible provider can be used via `ANTHROPIC_BASE_URL` +
   `ANTHROPIC_AUTH_TOKEN`. The CLI JSON gives tokens per model, not per agent, so
   the agent column is "all". `swarm.yml` is `workflow_dispatch` only.
+
+## D16. Two-ended link flow control (opt-in)
+- **Problem:** D9 (drop + abort on Rx overload) is a one-ended remedy; the sender never learns of it.
+- **Decision:** credit-based flow control, **compile-time opt-in** (`-DFLOW_CTRL_OVERRIDE`, both ends must agree; default off, default behaviour bit-identical to before). Every flit carries, in the DLP area (bytes 242..245), `seq` (data flits sent, 16b) and `cl` (cumulative credit limit, 16b). A flit with count 0 and sof=eof=0 is a credit-only flit, sent when the advertised limit is stale and there is no data to carry it.
+- **Credits:** one credit = `CREDIT_BEATS_PER_FLIT`=9 Rx CDC FIFO beats (worst case per flit); `INIT_CREDITS`=FIFO_DEPTH/9 = **3** at depth 32 (small; raise FIFO_DEPTH to trade area for throughput).
+- **Loss repair:** Rx tracks the expected `seq`; a gap aborts the affected frame (`eth_rx_tuser[0]`), and the lost flits are added back to the advertised limit so credit is not leaked. At most one frame lost per lost flit.
+- **Caveats:** DLP bytes 242..245 are no longer zero when enabled (DLP is a placeholder anyway); loss of consecutive credit-only flits is repaired by the next flit; 16-bit modular counters assume < 32768 flits in flight (always true).
+- **Verification:** `dv/iverilog/tb_link.sv` (two bridges cross-connected, flit killer): bidirectional, stalled sink (back-pressure, zero drops), slow sinks, 5 killed flits (no silent corruption), post-loss credit restored to INIT_CREDITS. Mutation: removing credit gating fails P2. Removing loss repair: run did not terminate (credit leak -> stall, caught only by the global timeout), not a clean FAIL line. Not run with flow control on: UVM/cocotb/SystemC/vlt envs, formal (tie-offs only), lanes4.
