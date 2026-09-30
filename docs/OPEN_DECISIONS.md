@@ -146,13 +146,22 @@ Findings vs what this repo had:
   the four ports became `pipe_m2p_msgbus[7:0]` / `pipe_p2m_msgbus[7:0]`; `pipe_msgbus`
   now sends the 3-byte frame above and accepts a write_ack when `p2m[7:4] == MB_WR_ACK`;
   addresses are 12-bit (`MB_ADDR_W`); the DV PHY models decode the byte-serial framing.
-- **PAM4 register address:** `MB_ADDR_PAM4_TXCTL` moved from the invented `8'h01` to
-  `12'h406`, inside the PHY Tx Control block (12'h400..12'h40A) — but the sibling itself
-  says the PAM4 sub-offset is a "working" value the spec pin-down did not confirm, and it
-  is the *PAM4RestrictedLevels* register, whereas this repo's `PAM4CFG` byte
-  ("precoding enable / preset 0") is a bridge-defined placeholder with no confirmed
-  spec meaning. **Still unverified: the PAM4 register offset and the meaning of the byte.**
-- **Caveat on the evidence:** the sibling is the owner's own earlier model, not the spec.
+- **PAM4 register address — partly confirmed by the spec (2026-09-30).** With the owner's
+  paste of PIPE 7.1 (ref 643108, rev 7.1) **Table 7-1 "PHY Registers"** we now have the
+  spec's own register map: the message-bus address space is **12-bit** (confirmed); RX1
+  Rx Margin Control0/1 at 12'h0/12'h1; RX1 blocks up to 12'h1FF, RX2 12'h200..3FF; **TX1
+  "PHY Tx Control0..10" at 12'h400..12'h40A** (Control0 and Control1 N/A for the SerDes
+  architecture); TX2 12'h600..7FF; CMN1 12'h800 (Common Control0, N/A SerDes) and 12'h801
+  (near-end loopback); CMN2 12'hA00..BFF; vendor 12'hC00..FFF. So `MB_ADDR_PAM4_TXCTL =
+  12'h406` **is a real register: "PHY Tx Control6"** (and our earlier invented `8'h01`
+  would have been Rx Margin Control1 — a different register entirely). **Still not
+  confirmed:** whether Tx Control6 is where PAM4 precoding/restricted-levels live (the
+  excerpt has no Tx Control bit-field descriptions), and what our `PAM4CFG` byte
+  ("precoding enable / preset 0") should contain — it is a bridge-defined placeholder.
+  Also note the map is **per message bus / per lane group (TX1/RX1 vs TX2/RX2)**; this
+  repo drives one bus for x1 — how the bus scales at x4 is an open design point.
+- **Caveat on the evidence:** the framing and opcodes above come from the sibling, the
+  owner's own earlier model, not from the spec text (only Table 7-1 was available).
   Agreement between the two is a cross-check, not proof. **Action: check
   `MB_*`, `MB_ADDR_PAM4_TXCTL` and the PAM4CFG byte against PIPE 7.1 §6.1.4 / §7.1 before
   integration.** Rate/width/power remain on PIPE pins with PhyStatus (unchanged).

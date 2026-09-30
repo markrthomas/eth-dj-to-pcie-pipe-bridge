@@ -5,6 +5,13 @@ If a session ended, this is where you pick up. Read this, then
 
 ## Where things stand (update this block every session)
 
+- **2026-09-30 (h)** — Owner pasted PIPE 7.1 (ref 643108) **Table 7-1 (PHY register map)**.
+  Confirmed: 12-bit message-bus address space; `12'h406` = TX1 "PHY Tx Control6" is a real
+  register (old `8'h01` would have hit Rx Margin Control1). **Still unconfirmed:** that Tx
+  Control6 carries PAM4 controls, the meaning of our PAM4CFG byte, and the framing/opcodes
+  (§6.1.4, Table 6-10 not seen). Next: ask for §6.1.4.x + the Tx Control0..10 bit-field
+  tables (7.1.x), then verify/fix `pipe_msgbus` and `MB_ADDR_PAM4_TXCTL`/PAM4CFG.
+
 - **2026-09-30 (g)** — **D8 message-bus interface fixed** (branch `claude/d8-msgbus-spec`).
   Cross-checking against the sibling `ucie-rdi-to-pcie6-pipe7` (which cites PIPE 7.1
   §6.1.4.2) showed the real bus is **one 8-bit M2P + one 8-bit P2M byte bus, idle 8'h00,
