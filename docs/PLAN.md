@@ -106,7 +106,7 @@ Model per **PCIe PIPE 7.1** (MAC-facing, SerDes architecture). Port names track
 | `pipe_width[1:0]`, `pipe_rate[2:0]` | out | Requested PIPE width / data rate. Baseline `pipe_rate = Gen6 (PAM4)`. |
 | `pipe_powerdown[1:0]` | out | P0/P0s/P1/P2 request. |
 | `pipe_phy_status`, `pipe_rx_valid`, `pipe_rx_elec_idle` | in | PHY status. |
-| **Message bus** `pipe_m2p_*` / `pipe_p2m_*` (4-bit cmd + data) | out/in | PIPE 7.x replaces most sidebands with the 4-bit message bus. Rate/width/power **and the PAM4 controls** (PhyTxControl, Tx precoding/Gray enable, PAM4 presets, RxMargin) are negotiated here. |
+| **Message bus** `pipe_m2p_msgbus[7:0]` / `pipe_p2m_msgbus[7:0]` (8-bit byte buses, idle 8'h00, 12-bit register addresses; OPEN_DECISIONS D8) | out/in | PIPE 7.x replaces most sidebands with the message bus. Rate/width/power **and the PAM4 controls** (PhyTxControl, Tx precoding/Gray enable, PAM4 presets, RxMargin) are negotiated here. |
 
 ### 2.3 Parameters (frozen skeleton in `rtl/eth_dj_pipe7_pkg.sv`)
 - `PAM4_BITS_PER_SYM = 2` (both sides are PAM4; digital adapter never sees levels).
@@ -155,7 +155,7 @@ Model per **PCIe PIPE 7.1** (MAC-facing, SerDes architecture). Port names track
 | `rx_cdc.sv` | Async FIFO, `pclk` → `eth_clk`. |
 | `rx_deframer.sv` | Strip PIPE framing; reassemble Ethernet frames. |
 | `rx_burst.sv` / `eth_egress.sv` | Emit `eth_rx_*` AXI4-Stream. |
-| `pipe_msgbus.sv` | 4-bit message-bus master/target: rate/width/powerdown/margining commands + status. |
+| `pipe_msgbus.sv` | 8-bit message-bus master: rate/width/powerdown/margining commands + status. |
 | `bridge_ctrl_fsm.sv` | Sequences P0↔P1↔P2, rate/width changes, drains datapath before power transitions. |
 | `bridge_rf.sv` | Config/status register file (retained across low-power episodes — see UPF §9). |
 

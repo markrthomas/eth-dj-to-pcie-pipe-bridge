@@ -23,8 +23,8 @@ See [`docs/pam4_notes.md`](docs/pam4_notes.md).
 Ingress 802.3dj (PAM4) Ethernet frames (delivered as an AXI4-Stream-style packet
 interface off the MAC/PCS) are adapted, clock-domain-crossed, width-geared, and
 framed onto a PCIe **PIPE 7.1** MAC-facing datapath in **Gen6 FLIT mode** (256B
-flits, parallel TxData/RxData plus the 4-bit PIPE message bus for rate/width/
-power-state and PAM4 handshakes). The reverse direction deframes PIPE RxData back
+flits, parallel TxData/RxData plus the 8-bit PIPE message bus for PAM4 controls; rate/width/
+power-state changes use the PIPE pins and the PhyStatus handshake). The reverse direction deframes PIPE RxData back
 to Ethernet packets. See [`docs/PLAN.md` §2–§3](docs/PLAN.md) for interface and
 microarchitecture detail.
 

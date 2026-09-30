@@ -117,7 +117,7 @@ control plane from an always-on clock. The model assumes pclk keeps running.
 ## D8. Message-bus usage and framing (M3)
 
 PowerDown / Rate / Width stay on their **PIPE pins** with the **PhyStatus**
-completion handshake (as in PIPE). The 4-bit message bus carries the **PAM4 Tx
+completion handshake (as in PIPE). The message bus (**8-bit** M2P/P2M byte buses — see the 2026-09-30 resolution below; the earlier "4-bit" wording and split cmd/data framing in this paragraph are superseded) carries the **PAM4 Tx
 control** (precoding enable / preset) as one **committed write** of `PAM4CFG` to
 PHY register `MB_ADDR_PAM4_TXCTL` (8'h01, **placeholder — verify against the PIPE
 7.1 PHY register map**). Framing on this repo's split `cmd[3:0]`/`data[7:0]` port:
@@ -129,17 +129,35 @@ Datapath framing is unchanged across rates (PCIe 6 flit mode applies at every ra
 once negotiated); **width change is a PHY handshake only** — the datapath width is a
 compile-time parameter (`PIPE_DATA_W`).
 
-**Resolution: NOT verified — kept as a clearly marked placeholder.** The PIPE 7.1 spec
-is not available in this environment (only a web search, which confirmed the general
-mechanism — a controller issues a *write committed* and waits for *WriteAck* — but not
-the 4-bit command encodings, address map or the split `cmd`/`data` framing). So
-`MB_*` codes, `MB_ADDR_PAM4_TXCTL = 8'h01` and the two-cycle framing remain
-**unverified assumptions**. They are isolated in `eth_dj_pipe7_pkg.sv` (constants) and
-`pipe_msgbus.sv` (framing), so correcting them is a local change; the DV PHY model
-mirrors them, so tests passing says nothing about spec conformance. **Action for the
-owner / integrator: check these against the PIPE 7.1 PHY register map before any
-integration.**
-
+**Resolution (2026-09-30, supersedes the "not verified" note above): interface changed
+to a spec-shaped 8-bit byte bus; verified against a sibling model, still NOT against the
+spec text.** The PIPE 7.1 spec is unreachable from this environment (intel.com and
+community.cadence.com are blocked by the network proxy). With the owner's approval the
+sibling repo `markrthomas/ucie-rdi-to-pcie6-pipe7` was read; its
+`src/pipe7_msgbus_master.sv` / `pipe7_pkg.sv` cite PIPE 7.1 §6.1.4.2 Tables 6-10..6-14 and
+implement: **one 8-bit M2P and one 8-bit P2M byte bus, idle 8'h00, any non-idle byte
+starts a transaction, 12-bit register addresses, 8-bit data**; write_committed =
+`{cmd, addr[11:8]}`, `addr[7:0]`, `data[7:0]`; write_ack = one P2M byte `{WRITE_ACK, x}`.
+Findings vs what this repo had:
+- **Command opcodes matched** (NOP 0, WR_UNCOMMIT 1, WR_COMMIT 2, READ 3, READ_COMPLETION 4,
+  WRITE_ACK 5) — unchanged.
+- **Interface was wrong:** the top-level had separate `pipe_m2p_cmd[3:0]`/`data[7:0]`
+  ports and an 8-bit address, and PLAN called it "the 4-bit message bus". **Changed:**
+  the four ports became `pipe_m2p_msgbus[7:0]` / `pipe_p2m_msgbus[7:0]`; `pipe_msgbus`
+  now sends the 3-byte frame above and accepts a write_ack when `p2m[7:4] == MB_WR_ACK`;
+  addresses are 12-bit (`MB_ADDR_W`); the DV PHY models decode the byte-serial framing.
+- **PAM4 register address:** `MB_ADDR_PAM4_TXCTL` moved from the invented `8'h01` to
+  `12'h406`, inside the PHY Tx Control block (12'h400..12'h40A) — but the sibling itself
+  says the PAM4 sub-offset is a "working" value the spec pin-down did not confirm, and it
+  is the *PAM4RestrictedLevels* register, whereas this repo's `PAM4CFG` byte
+  ("precoding enable / preset 0") is a bridge-defined placeholder with no confirmed
+  spec meaning. **Still unverified: the PAM4 register offset and the meaning of the byte.**
+- **Caveat on the evidence:** the sibling is the owner's own earlier model, not the spec.
+  Agreement between the two is a cross-check, not proof. **Action: check
+  `MB_*`, `MB_ADDR_PAM4_TXCTL` and the PAM4CFG byte against PIPE 7.1 §6.1.4 / §7.1 before
+  integration.** Rate/width/power remain on PIPE pins with PhyStatus (unchanged).
+- **Port-list change:** this alters the frozen top-level interface (2 ports replace 4).
+  Integrators using the old split ports must update.
 ## D9. Rx flow control: drop + abort the damaged frame (M3)
 
 PIPE Rx has no backpressure; if the Ethernet sink is slower than the PIPE rate
