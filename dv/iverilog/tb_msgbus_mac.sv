@@ -11,6 +11,12 @@
 //   G1 response already queued when our request arrives -> response first, both intact
 //   G2 our request and a PHY read in the same cycle -> master has priority
 //   H  PHY write_ack / read_completion (responses to us) never trigger a response
+//   I  MAC register file (PIPE 7.1 §7.2, D17): write_committed to a defined register reads back;
+//      reserved / unmapped addresses ignore the write and read 0; the RX2/TX2/CMN windows are
+//      separate storage; defined registers reset to 0
+//   J  write_uncommitted x N + write_committed applied together (same cycle): nothing visible
+//      before the commit, all visible after; later entries to the same address win
+//   K  write buffer overflow (> WB_DEPTH uncommitted) is dropped and counted; earlier entries intact
 // The M2P monitor decodes the bus with the spec's framing rules (start byte, length by cmd);
 // an interleaved or split transaction makes the decoded list differ from the expected one.
 // ============================================================================
@@ -123,7 +129,7 @@ module tb_msgbus_mac;
     n0 = ntx; r0 = phy_rd_cnt;
     phy_rd(12'h004); idle(8);
     chk(ntx == n0 + 1, "B exactly one M2P transaction");
-    expect_tx(n0, 4, 0, 8'h00, "B read_completion (no MAC registers: data 0)");
+    expect_tx(n0, 4, 0, 8'h00, "B read_completion (register never written: 0)");
     chk(phy_rd_cnt == r0 + 1, "B read counted");
 
     // C: two write_uncommitted then one write_committed
@@ -193,7 +199,45 @@ module tb_msgbus_mac;
     chk(ntx == n0, "H no response to write_ack / read_completion");
     chk(drop_cnt == 0, "no dropped PHY request in the directed cases");
 
-    if (errors == 0) $display("MSGBUS-MAC PASS: target + arbiter checks (A-H)");
+    // I: MAC register file
+    n0 = ntx;
+    phy_rd(12'h005); idle(6); expect_tx(n0, 4, 0, 8'h00, "I Rx Status0 resets to 0"); n0 = ntx;
+    phy_wr(MB_WR_C, 12'h005, 8'h03); idle(6); expect_tx(n0, 5, 0, 0, "I write_ack"); n0 = ntx;
+    phy_rd(12'h005); idle(6); expect_tx(n0, 4, 0, 8'h03, "I Rx Status0 reads back the PHY write"); n0 = ntx;
+    phy_wr(MB_WR_C, 12'h40C, 8'hA5); idle(6); n0 = ntx;
+    phy_rd(12'h40C); idle(6); expect_tx(n0, 4, 0, 8'hA5, "I Tx Status12 reads back"); n0 = ntx;
+    phy_wr(MB_WR_C, 12'h800, 8'h01); idle(6); n0 = ntx;
+    phy_rd(12'h800); idle(6); expect_tx(n0, 4, 0, 8'h01, "I Near End Loopback Status reads back"); n0 = ntx;
+    phy_wr(MB_WR_C, 12'h008, 8'hFF); idle(6); n0 = ntx;                       // reserved (8h-9h)
+    phy_rd(12'h008); idle(6); expect_tx(n0, 4, 0, 8'h00, "I reserved 8h ignores the write"); n0 = ntx;
+    phy_wr(MB_WR_C, 12'h40D, 8'hFF); idle(6); n0 = ntx;                       // reserved (Tx)
+    phy_rd(12'h40D); idle(6); expect_tx(n0, 4, 0, 8'h00, "I reserved 40Dh ignores the write"); n0 = ntx;
+    phy_wr(MB_WR_C, 12'hC00, 8'hFF); idle(6); n0 = ntx;                       // VDR window
+    phy_rd(12'hC00); idle(6); expect_tx(n0, 4, 0, 8'h00, "I vendor window reads 0"); n0 = ntx;
+    phy_rd(12'h205); idle(6); expect_tx(n0, 4, 0, 8'h00, "I RX2 Rx Status0 is separate storage"); n0 = ntx;
+    phy_wr(MB_WR_C, 12'h205, 8'h02); idle(6); n0 = ntx;
+    phy_rd(12'h205); idle(6); expect_tx(n0, 4, 0, 8'h02, "I RX2 Rx Status0 reads back"); n0 = ntx;
+    phy_rd(12'h005); idle(6); expect_tx(n0, 4, 0, 8'h03, "I RX1 Rx Status0 unaffected by RX2"); n0 = ntx;
+    phy_rd(12'h010); idle(6); expect_tx(n0, 4, 0, 8'h11, "I Rx Status6 holds the value written by case C"); n0 = ntx;
+
+    // J: uncommitted + committed are atomic, later entries win
+    phy_wr(MB_WR_UC, 12'h400, 8'h11); phy_wr(MB_WR_UC, 12'h401, 8'h22); phy_wr(MB_WR_UC, 12'h400, 8'h33);
+    idle(2); n0 = ntx;
+    phy_rd(12'h400); idle(6); expect_tx(n0, 4, 0, 8'h00, "J uncommitted write not visible before the commit"); n0 = ntx;
+    phy_wr(MB_WR_C, 12'h402, 8'h44); idle(6); n0 = ntx;
+    phy_rd(12'h400); idle(6); expect_tx(n0, 4, 0, 8'h33, "J Tx Status0: the later uncommitted entry wins"); n0 = ntx;
+    phy_rd(12'h401); idle(6); expect_tx(n0, 4, 0, 8'h22, "J Tx Status1 committed together"); n0 = ntx;
+    phy_rd(12'h402); idle(6); expect_tx(n0, 4, 0, 8'h44, "J Tx Status2 (the committed write itself)"); n0 = ntx;
+
+    // K: write buffer overflow (WB_DEPTH = 8): the 9th uncommitted write is dropped and counted
+    for (int k = 0; k < 9; k++) phy_wr(MB_WR_UC, 12'h403 + k, 8'h80 + k);
+    idle(2);
+    chk(drop_cnt == 1, "K ninth uncommitted write dropped and counted");
+    phy_wr(MB_WR_C, 12'h40C, 8'h5A); idle(6); n0 = ntx;
+    phy_rd(12'h40A); idle(6); expect_tx(n0, 4, 0, 8'h87, "K buffered entries applied (40Ah = 0x87)"); n0 = ntx;
+    phy_rd(12'h40B); idle(6); expect_tx(n0, 4, 0, 8'h00, "K dropped entry (40Bh) not applied");
+
+    if (errors == 0) $display("MSGBUS-MAC PASS: target + arbiter + MAC registers (A-K)");
     else             $display("MSGBUS-MAC FAIL: %0d error(s)", errors);
     $finish;
   end

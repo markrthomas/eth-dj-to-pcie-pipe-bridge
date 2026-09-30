@@ -33,7 +33,7 @@ constexpr bool FLOW_CTRL = false;
 constexpr int PWR_P0 = 0, PWR_P0S = 1, PWR_P1 = 2, PWR_P2 = 3;
 constexpr int RATE_GEN5 = 4, RATE_GEN6 = 5;
 constexpr int ST_ACTIVE = 2;
-constexpr int MB_NOP = 0, MB_WR_C = 2, MB_WR_ACK = 5;
+constexpr int MB_NOP = 0, MB_WR_UC = 1, MB_WR_C = 2, MB_RD = 3, MB_RD_CPL = 4, MB_WR_ACK = 5;
 constexpr int MB_ADDR_W = 12;
 constexpr int MB_ADDR_TX_PRESET = 0x405;
 constexpr int CSR_CTRL = 0x00, CSR_PAM4CFG = 0x04, CSR_STATUS = 0x08, CSR_ERR = 0x0C,
@@ -284,7 +284,7 @@ class Harness {
   void phy_ctrl_(const PipeOut& o, PipeIn& in) {
     if (!rst_n_) {
       in.phy_status = true; in.p2m = 0;
-      rst_cnt_ = 0; st_cnt_ = 0; ack_cnt_ = 0; mb_ph_ = 0;
+      rst_cnt_ = 0; st_cnt_ = 0; ack_cnt_ = 0; mb_ph_ = 0; p2m_q_.clear();
       pd_q_ = o.powerdown; rate_q_ = o.rate; width_q_ = o.width;
       return;
     }
@@ -304,22 +304,32 @@ class Harness {
       mb_addr_ = (mb_addr_ & 0xF00) | (o.m2p & 0xFF); mb_ph_ = 2;
     } else if (mb_ph_ == 2) {
       mb_last_addr_ = mb_addr_; mb_last_data_ = o.m2p & 0xFF; mb_writes_++; mb_ph_ = 0; ack_cnt_ = 8;
+    } else if (mb_ph_ == 3) {                      // MAC read_completion data byte
+      mb_rd_data_ = o.m2p & 0xFF; mb_rds_++; mb_ph_ = 0;
     } else if (o.m2p != 0) {
-      if (((o.m2p >> 4) & 0xF) == MB_WR_C) {
+      int cmd = (o.m2p >> 4) & 0xF;
+      if (cmd == MB_WR_C) {
         mb_addr_ = (o.m2p & 0xF) << 8; mb_ph_ = 1;
+      } else if (cmd == MB_WR_ACK) {               // MAC acknowledges a PHY-initiated write
+        mb_acks_++;
+      } else if (cmd == MB_RD_CPL) {               // MAC answers a PHY-initiated read
+        mb_ph_ = 3;
       } else {
         err_("phy: unsupported message-bus command");
       }
     }
     if (ack_cnt_ == 1) { ack_cnt_ = 0; in.p2m = MB_WR_ACK << 4; }
     else if (ack_cnt_ > 1) ack_cnt_--;
+    // PHY-initiated transactions (MAC register file, PIPE 7.1 6.1.4 / 7.2): one byte per pclk, only
+    // started at quiet points of the scenario (no own write / ack outstanding), so never split
+    if (in.p2m == 0 && !p2m_q_.empty()) { in.p2m = p2m_q_.front(); p2m_q_.pop_front(); }
   }
 
   // ---- sequencer -------------------------------------------------------------------
   enum Phase { P_RESET, P_WAIT_UP, P_RUN, P_FINISH, P_DONE };
   // op list executed one per step; each op is a small program
   enum OpKind { OP_SEND, OP_WAIT_RX, OP_CSR_WR, OP_WAIT_ST, OP_IDLE, OP_SINK, OP_MUTE,
-                OP_EXPECT_ERR, OP_WAIT_MB };
+                OP_EXPECT_ERR, OP_WAIT_MB, OP_PHY_WR, OP_PHY_RD };
   struct Op { OpKind k; int a, b, c; };
 
   void build_ops_() {
@@ -346,6 +356,38 @@ class Harness {
       ops_.push_back({OP_CSR_WR, CSR_PAM4CFG, 0x35, 0});
       ops_.push_back({OP_WAIT_MB, 0x35, 0, 0});
       ops_.push_back({OP_SEND, 4, 8, 0});
+      // PHY-initiated MAC register accesses (msgbus_mac_tgt: PIPE 7.1 7.2 register file)
+      ops_.push_back({OP_IDLE, 60, 0, 0});
+      ops_.push_back({OP_PHY_RD, 0x005, 0, 0x00});                   // reset value
+      ops_.push_back({OP_PHY_WR, MB_WR_C, 0x005, 0x03});
+      ops_.push_back({OP_PHY_RD, 0x005, 0, 0x03});
+      ops_.push_back({OP_PHY_WR, MB_WR_UC, 0x400, 0x11});            // atomic group: 2 uncommitted + commit
+      ops_.push_back({OP_PHY_WR, MB_WR_UC, 0x401, 0x22});
+      ops_.push_back({OP_PHY_RD, 0x400, 0, 0x00});                   // not visible before the commit
+      ops_.push_back({OP_PHY_WR, MB_WR_C, 0x402, 0x44});
+      ops_.push_back({OP_PHY_RD, 0x400, 0, 0x11});
+      ops_.push_back({OP_PHY_RD, 0x401, 0, 0x22});
+      ops_.push_back({OP_PHY_RD, 0x402, 0, 0x44});
+      ops_.push_back({OP_PHY_WR, MB_WR_C, 0x008, 0xFF});             // reserved: ignored
+      ops_.push_back({OP_PHY_RD, 0x008, 0, 0x00});
+      ops_.push_back({OP_PHY_WR, MB_WR_C, 0x40D, 0xFF});
+      ops_.push_back({OP_PHY_RD, 0x40D, 0, 0x00});
+      ops_.push_back({OP_PHY_WR, MB_WR_C, 0xC00, 0xFF});             // vendor window
+      ops_.push_back({OP_PHY_RD, 0xC00, 0, 0x00});
+      ops_.push_back({OP_PHY_WR, MB_WR_C, 0x205, 0x02});             // RX2 window is separate storage
+      ops_.push_back({OP_PHY_RD, 0x205, 0, 0x02});
+      ops_.push_back({OP_PHY_RD, 0x005, 0, 0x03});
+      ops_.push_back({OP_PHY_WR, MB_WR_C, 0x800, 0x01});
+      ops_.push_back({OP_PHY_RD, 0x800, 0, 0x01});
+      ops_.push_back({OP_PHY_WR, MB_WR_C, 0x40C, 0xA5});
+      ops_.push_back({OP_PHY_RD, 0x40C, 0, 0xA5});
+      ops_.push_back({OP_PHY_WR, MB_WR_C, 0x010, 0x5A});
+      ops_.push_back({OP_PHY_RD, 0x010, 0, 0x5A});
+      for (int k = 0; k < 9; k++)                                    // 9th uncommitted write overflows the buffer
+        ops_.push_back({OP_PHY_WR, MB_WR_UC, 0x403 + k, 0x80 + k});
+      ops_.push_back({OP_PHY_WR, MB_WR_C, 0x40C, 0x5B});
+      ops_.push_back({OP_PHY_RD, 0x40A, 0, 0x87});
+      ops_.push_back({OP_PHY_RD, 0x40B, 0, 0x00});                   // the dropped entry
       ops_.push_back({OP_CSR_WR, CSR_CTRL, ctrl(PWR_P0S, RATE_GEN6, 0), 0});
       ops_.push_back({OP_IDLE, 50, 0, 0});
       ops_.push_back({OP_EXPECT_ERR, 0x4, 0, 0});
@@ -437,6 +479,22 @@ class Harness {
       case OP_SINK: sink_ready_pct = op.a; return true;
       case OP_MUTE: mute_status_ = op.a != 0; return true;
       case OP_WAIT_MB: return mb_writes_ >= 2 && mb_last_data_ == op.a && mb_last_addr_ == MB_ADDR_TX_PRESET;
+      case OP_PHY_WR:                              // a = cmd, b = addr, c = data
+        if (op_t_ == 0) {
+          ack_base_ = mb_acks_;
+          p2m_q_.push_back((op.a << 4) | ((op.b >> 8) & 0xF)); p2m_q_.push_back(op.b & 0xFF); p2m_q_.push_back(op.c & 0xFF);
+        }
+        return p2m_q_.empty() && (op.a == MB_WR_UC || mb_acks_ > ack_base_);
+      case OP_PHY_RD:                              // a = addr, c = expected data (-1: no check)
+        if (op_t_ == 0) {
+          rd_base_ = mb_rds_;
+          p2m_q_.push_back((MB_RD << 4) | ((op.a >> 8) & 0xF)); p2m_q_.push_back(op.a & 0xFF);
+        }
+        if (p2m_q_.empty() && mb_rds_ > rd_base_) {
+          if (op.c >= 0 && mb_rd_data_ != op.c) err_("MAC register read-back mismatch");
+          return true;
+        }
+        return false;
       case OP_EXPECT_ERR:
         in.csr_addr = CSR_ERR;
         if (pipe_in_.csr_addr == CSR_ERR && op_t_ > 2) {
@@ -472,6 +530,8 @@ class Harness {
   bool mute_status_ = false;
   int mb_ph_ = 0;                // 0 idle, 1 expect addr[7:0], 2 expect data
   int mb_addr_ = 0, mb_last_addr_ = 0, mb_last_data_ = 0, mb_writes_ = 0;
+  std::deque<int> p2m_q_;        // PHY-initiated message-bus bytes still to drive
+  int mb_acks_ = 0, mb_rds_ = 0, mb_rd_data_ = 0, ack_base_ = 0, rd_base_ = 0;
   // sequencer
   int scen_ = 0;
   Phase phase_ = P_RESET;
