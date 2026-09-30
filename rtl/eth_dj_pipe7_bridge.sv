@@ -69,7 +69,7 @@ module eth_dj_pipe7_bridge
   logic [7:0]  pam4cfg;
   logic        pam4_wr, tx_en, ingress_stop, ingress_stopped_eth;
   logic        stp_s1, stp_s2, stp_s3;
-  logic        tx_idle, rx_idle, framer_idle, egress_busy;
+  logic        tx_idle, rx_idle, framer_idle, egress_busy, fc_cr_req;
   logic        rx_ing_idle, rx_dfr_idle;
   logic        mb_req, mb_busy, mb_done, mb_timeout;
   logic        ev_op_done, ev_phy_timeout, ev_bad_pwr_req;
@@ -110,7 +110,9 @@ module eth_dj_pipe7_bridge
     else             {stp_s3, stp_s2, stp_s1} <= {stp_s2, stp_s1, ingress_stopped_eth};
   end
 
-  assign tx_idle = tx_fifo_empty && framer_idle && !egress_busy;
+  // a wanted credit-only flit (FLOW_CTRL) counts as Tx activity: the FSM must not leave DRAIN in the
+  // same cycle egress would start one (fc_cr_req is constant 0 without FLOW_CTRL)
+  assign tx_idle = tx_fifo_empty && framer_idle && !egress_busy && !fc_cr_req;
   assign rx_idle = rx_ing_idle;   // Rx frame-level state is not drained (D11)
 
   bridge_ctrl_fsm u_ctrl (
@@ -187,7 +189,7 @@ module eth_dj_pipe7_bridge
   );
 
   // ---- link flow control (compile-time opt-in, docs/OPEN_DECISIONS.md D16) ----------------
-  logic                        fc_credit_ok, fc_cr_req, fc_st_any, fc_st_data, rx_data_done;
+  logic                        fc_credit_ok, fc_st_any, fc_st_data, rx_data_done;
   logic [15:0]                 fc_seq, fc_cl, rx_cl_remote, rx_fc_lost;
   logic [$clog2(FIFO_DEPTH):0] rx_wfree;
 
