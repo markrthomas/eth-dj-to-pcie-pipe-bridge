@@ -5,6 +5,13 @@ If a session ended, this is where you pick up. Read this, then
 
 ## Where things stand (update this block every session)
 
+- **2026-09-30 (n)** — **Infra follow-up to D16** (branch `claude/infra-fc`). D16 flow control
+  (PR #19, merged) is opt-in; infra now covers it: `make lint` also lints with
+  `-DFLOW_CTRL_OVERRIDE`; `tb_link` (two bridges, flit killer) is in `make regress` (CI);
+  `formal/fc.sby` proves the `fc_ctl` credit invariants (k-induction, mutation-checked: gating removed -> F-FC2 fails). Still NOT run
+  with flow control on: vlt/systemc/uvm/cocotb envs, lanes4. Known gap: removing the loss
+  repair stalls `tb_link` until the global timeout rather than failing cleanly.
+
 - **2026-09-30 (l)** — **MAC-side message-bus target added** (`rtl/msgbus_mac_tgt.sv`, branch
   `claude/msgbus-mac-target`): answers PHY write_committed with write_ack and PHY read with
   read_completion (data 0 — no MAC register map, §7.2 unavailable), discards write_uncommitted, arbitrates

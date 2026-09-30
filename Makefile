@@ -46,7 +46,8 @@ help:
 # ---- real M0 targets --------------------------------------------------------
 lint:
 	$(VERILATOR) --lint-only -Wall -I$(RTL_DIR) --top-module $(TOP) $(RTL_SRCS)
-	@echo "lint: OK"
+	$(VERILATOR) --lint-only -Wall -DFLOW_CTRL_OVERRIDE -I$(RTL_DIR) --top-module $(TOP) $(RTL_SRCS)
+	@echo "lint: OK (default + FLOW_CTRL_OVERRIDE)"
 
 sim: iverilog
 
