@@ -26,8 +26,8 @@ SC_MODULE(Tb) {
   sc_signal<bool> pipe_rst_n, pipe_tx_data_valid, pipe_tx_start_block, pipe_phy_status,
       pipe_rx_valid, pipe_rx_elec_idle, csr_valid, csr_write;
   sc_signal<uint64_t> pipe_tx_data;
-  sc_signal<uint32_t> pipe_rate, pipe_width, pipe_powerdown, pipe_m2p_cmd, pipe_m2p_data, pipe_p2m_cmd,
-      pipe_p2m_data, csr_addr, csr_wdata, csr_rdata;
+  sc_signal<uint32_t> pipe_rate, pipe_width, pipe_powerdown, pipe_m2p_msgbus, pipe_p2m_msgbus,
+      csr_addr, csr_wdata, csr_rdata;
 
   bfm::Harness h;
 
@@ -58,15 +58,13 @@ SC_MODULE(Tb) {
     o.powerdown = int(pipe_powerdown.read());
     o.rate = int(pipe_rate.read());
     o.width = int(pipe_width.read());
-    o.m2p_cmd = int(pipe_m2p_cmd.read());
-    o.m2p_data = int(pipe_m2p_data.read());
+    o.m2p = int(pipe_m2p_msgbus.read());
     o.csr_rdata = csr_rdata.read();
     o.ctrl_state = -1;
     bfm::PipeIn in = h.pclk_edge(o);
     pipe_rst_n.write(in.rst_n);
     pipe_phy_status.write(in.phy_status);
-    pipe_p2m_cmd.write(uint32_t(in.p2m_cmd));
-    pipe_p2m_data.write(uint32_t(in.p2m_data));
+    pipe_p2m_msgbus.write(uint32_t(in.p2m));
     csr_valid.write(in.csr_valid);
     csr_write.write(in.csr_write);
     csr_addr.write(uint32_t(in.csr_addr));
@@ -127,10 +125,8 @@ int sc_main(int argc, char** argv) {
   dut->pipe_phy_status(tb.pipe_phy_status);
   dut->pipe_rx_valid(tb.pipe_rx_valid);
   dut->pipe_rx_elec_idle(tb.pipe_rx_elec_idle);
-  dut->pipe_m2p_cmd(tb.pipe_m2p_cmd);
-  dut->pipe_m2p_data(tb.pipe_m2p_data);
-  dut->pipe_p2m_cmd(tb.pipe_p2m_cmd);
-  dut->pipe_p2m_data(tb.pipe_p2m_data);
+  dut->pipe_m2p_msgbus(tb.pipe_m2p_msgbus);
+  dut->pipe_p2m_msgbus(tb.pipe_p2m_msgbus);
   dut->csr_valid(tb.csr_valid);
   dut->csr_write(tb.csr_write);
   dut->csr_addr(tb.csr_addr);
