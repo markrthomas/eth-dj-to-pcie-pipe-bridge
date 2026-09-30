@@ -155,6 +155,10 @@ package bridge_uvm_pkg;
   class pipe_phy_driver extends uvm_component;
     virtual pipe_if vif;
     int unsigned flits = 0;
+    int unsigned cr_flits = 0;   // credit-only flits (FLOW_CTRL, D16)
+    int unsigned fc_sent = 0;    // data flits since the last DUT reset (expected seq field)
+    logic        in_frame = 1'b0;
+    logic [FLIT_BYTES*8-1:0] fl;
     int errors = 0;
     int mb_writes = 0;
     `uvm_component_utils(pipe_phy_driver)
@@ -165,6 +169,31 @@ package bridge_uvm_pkg;
       if (!uvm_config_db#(virtual pipe_if)::get(this, "", "pipe_vif", vif))
         `uvm_fatal("NOVIF", "pipe_vif not set")
     endfunction
+    // Flit legality + classification (mirror of dv/common/pipe_phy_model.sv): header valid,
+    // reserved bits, length, sof/eof sequencing, zero padding.  With FLOW_CTRL the DLP bytes
+    // FLIT_FC_OFF..+3 (seq/cl) are exempt from the zero check, count 0 & sof = eof = 0 is a
+    // legal credit-only flit (not counted in flits) and seq must equal the data flits sent.
+    function void check_flit();
+      int plen;
+      bit hv, hsof, heof, crflit, padbad;
+      hv = fl[0]; hsof = fl[1]; heof = fl[2]; plen = int'(fl[15:8]);
+      if (!hv) begin errors++; `uvm_error("PHY", "header valid bit clear") end
+      if (fl[7:3] != 5'b0) begin errors++; `uvm_error("PHY", "header reserved bits nonzero") end
+      if (plen > FLIT_PAYLOAD_B) begin errors++; `uvm_error("PHY", "payload length > 240") end
+      crflit = FLOW_CTRL && plen == 0 && !hsof && !heof;
+      if (plen == 0 && !crflit) begin errors++; `uvm_error("PHY", "empty flit emitted") end
+      if (!crflit && hsof !== !in_frame) begin errors++; `uvm_error("PHY", "sof/frame state mismatch") end
+      padbad = 1'b0;
+      for (int b = FLIT_HDR_B + plen; b < FLIT_BYTES; b++)
+        if (!(FLOW_CTRL && b >= FLIT_FC_OFF && b < FLIT_FC_OFF + 4) && fl[8*b +: 8] !== 8'h00) padbad = 1'b1;
+      if (padbad) begin errors++; `uvm_error("PHY", "nonzero padding/DLP/FEC byte") end
+      if (FLOW_CTRL && fl[8*FLIT_FC_OFF +: 16] !== 16'(fc_sent)) begin
+        errors++; `uvm_error("PHY", "flow-control seq field != data flits sent before")
+      end
+      if (crflit) cr_flits++;
+      else begin flits++; fc_sent++; in_frame = !heof; end
+    endfunction
+
     task run_phase(uvm_phase phase);
       logic [1:0] pd_q, wd_q;
       logic [2:0] rt_q;
@@ -182,13 +211,15 @@ package bridge_uvm_pkg;
           vif.phy_status <= 1'b1;
           vif.p2m_msgbus <= 8'h00;
           rst_cnt = 0; st_cnt = 0; ack_cnt = 0; beat = 0; mb_ph = 0;
+          fc_sent = 0; in_frame = 1'b0;
           pd_q = vif.powerdown; rt_q = vif.rate; wd_q = vif.width;
           continue;
         end
         // flit monitor
         if (vif.tx_valid) begin
           if (vif.tx_sb != (beat == 0)) begin errors++; `uvm_error("PHY", "start_block misplaced") end
-          if (beat == 0) flits++;
+          fl[beat*PIPE_BUS_W +: PIPE_BUS_W] = vif.tx_data;
+          if (beat == FLIT_BEATS - 1) check_flit();
           beat = (beat + 1) % FLIT_BEATS;
         end else if (beat != 0) begin
           errors++; `uvm_error("PHY", "data_valid dropped mid-flit") beat = 0;
@@ -358,11 +389,14 @@ package bridge_uvm_pkg;
 
     task run_phase(uvm_phase phase);
       int fd, nfr, f0, e0, errs;
+      string rpath;
       bit ok, o;
       logic [31:0] pm;
       frame_seq seq;
       phase.raise_objection(this);
-      fd = $fopen("logs/results.json", "w");
+      rpath = "logs/results.json";
+      void'($value$plusargs("results=%s", rpath));
+      fd = $fopen(rpath, "w");
       $fwrite(fd, "{\"env\": \"uvm\", \"scenarios\": {");
       for (int sc = 0; sc < SCEN_N; sc++) begin
         nfr = scen_nframes(sc);
@@ -402,6 +436,12 @@ package bridge_uvm_pkg;
       end
       $fwrite(fd, "}}\n");
       $fclose(fd);
+      if (FLOW_CTRL) begin
+        `uvm_info("FC", $sformatf("credit-only flits=%0d", env.phy.cr_flits), UVM_LOW)
+        if (env.phy.cr_flits == 0) begin
+          total_errors++; `uvm_error("FC", "flow control on but no credit-only flit seen (FC not exercised)")
+        end
+      end
       phase.drop_objection(this);
     endtask
 

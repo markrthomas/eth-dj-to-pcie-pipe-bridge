@@ -55,6 +55,7 @@ static PipeOut sample_pipe(const Veth_dj_pipe7_bridge* d) {
   PipeOut o;
   o.tx_valid = d->pipe_tx_data_valid;
   o.tx_sb = d->pipe_tx_start_block;
+  o.tx_data = d->pipe_tx_data;
   o.powerdown = d->pipe_powerdown;
   o.rate = d->pipe_rate;
   o.width = d->pipe_width;
@@ -150,6 +151,7 @@ int main(int argc, char** argv) {
   ctx->coveragep()->write("logs/coverage.dat");
 #endif
 
+  h.fc_summary();
   bool ok = h.done && h.total_errors == 0;
   h.write_json("logs/results.json", "vlt");
   if (!h.done) printf("VLT FAIL: simulation guard reached before all scenarios finished\n");

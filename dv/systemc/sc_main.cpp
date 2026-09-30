@@ -55,6 +55,7 @@ SC_MODULE(Tb) {
     bfm::PipeOut o;
     o.tx_valid = pipe_tx_data_valid.read();
     o.tx_sb = pipe_tx_start_block.read();
+    o.tx_data = pipe_tx_data.read();
     o.powerdown = int(pipe_powerdown.read());
     o.rate = int(pipe_rate.read());
     o.width = int(pipe_width.read());
@@ -136,6 +137,7 @@ int sc_main(int argc, char** argv) {
   sc_start(200, SC_MS);   // guard; the Tb calls sc_stop() when all scenarios are done
   dut->final();
 
+  tb.h.fc_summary();
   bool ok = tb.h.done && tb.h.total_errors == 0;
   tb.h.write_json("logs/results.json", "systemc");
   printf("%s: %zu scenarios, %d error(s), sim time %s\n", ok ? "SYSTEMC PASS" : "SYSTEMC FAIL",

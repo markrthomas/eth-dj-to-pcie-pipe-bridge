@@ -13,6 +13,10 @@ sim_build/
 dv/*/sim_build/
 dv/*/sim_build_fc*/
 dv/*/obj_dir/
+dv/*/obj_dir_fc/
+dv/*/fc_run/
+dv/*/logs_fc/
+dv/uvm/build_fc.log
 dv/*/obj_dir_dbg/
 obj_dir/
 obj_dir_dbg/
@@ -66,3 +70,5 @@ dv/cocotb/results.json
 dv/*/logs/
 formal/*.log
 sim_build_x*/
+dv/cocotb/results_fc.*
+dv/cocotb/fcov_fc.json

@@ -22,6 +22,13 @@ namespace bfm {
 
 constexpr int ETH_BYTES = 32;          // ETH_DATA_W / 8
 constexpr int FLIT_PAYLOAD_B = 240;
+constexpr int FLIT_BYTES = 256, FLIT_BEATS = 32, FLIT_HDR_B = 2, FLIT_FC_OFF = 242;
+// Link flow control (docs/OPEN_DECISIONS.md D16): build with -DFLOW_CTRL_OVERRIDE.
+#ifdef FLOW_CTRL_OVERRIDE
+constexpr bool FLOW_CTRL = true;
+#else
+constexpr bool FLOW_CTRL = false;
+#endif
 // pkg constants (eth_dj_pipe7_pkg.sv)
 constexpr int PWR_P0 = 0, PWR_P0S = 1, PWR_P1 = 2, PWR_P2 = 3;
 constexpr int RATE_GEN5 = 4, RATE_GEN6 = 5;
@@ -67,6 +74,7 @@ struct EthIn {                   // DUT inputs, eth_clk domain
 };
 struct PipeOut {                 // DUT outputs, pclk domain
   bool tx_valid = false, tx_sb = false;
+  uint64_t tx_data = 0;          // pipe_tx_data (64-bit x1 bus)
   int powerdown = 0, rate = 0, width = 0;
   int m2p = 0;                   // pipe_m2p_msgbus byte
   uint32_t csr_rdata = 0;
@@ -143,7 +151,8 @@ class Harness {
   PipeIn pclk_edge(const PipeOut& o) {
     PipeIn in = pipe_in_;
     // flit monitor (Tx side)
-    if (rst_n_ && o.tx_valid && o.tx_sb) flits_++;
+    if (!rst_n_) flit_reset_();
+    else flit_beat_(o);
     phy_ctrl_(o, in);
     csr_rdata_ = o.csr_rdata;
     sequencer_(o, in);
@@ -152,6 +161,57 @@ class Harness {
     return in;
   }
 
+ public:
+  // FLOW_CTRL run summary: credit-only flits must have been seen, else FC was not exercised.
+  void fc_summary() {
+    if (!FLOW_CTRL) return;
+    printf("FC credit-only flits=%d last_cl=%u\n", cr_flits_, last_cl_);
+    if (cr_flits_ == 0) err_("flow control on but no credit-only flit seen (FC not exercised)");
+  }
+ private:
+  // ---- Tx flit monitor + checker (mirror of dv/common/pipe_phy_model.sv) ----
+  // Checks every flit: contiguous 32 beats, start_block only on beat 0, header valid bit,
+  // reserved bits, payload length, sof/eof sequencing, zero padding.  With FLOW_CTRL the
+  // DLP bytes FLIT_FC_OFF..+3 carry seq/cl and are exempt from the zero check; a flit with
+  // count 0, sof = eof = 0 is a legal credit-only flit (cr_flits_, not counted in flits_);
+  // seq must equal the data flits sent since reset.
+  void flit_reset_() { fbeat_ = 0; fc_sent_ = 0; fin_frame_ = false; }
+  void flit_beat_(const PipeOut& o) {
+    if (o.tx_sb && !o.tx_valid) err_("start_block without data_valid");
+    if (o.tx_valid) {
+      if (o.tx_sb && fbeat_ != 0) err_("start_block mid-flit");
+      if (!o.tx_sb && fbeat_ == 0) err_("flit beat 0 without start_block");
+      for (int b = 0; b < 8; b++) fl_[fbeat_ * 8 + b] = uint8_t(o.tx_data >> (8 * b));
+      if (fbeat_ == FLIT_BEATS - 1) { fbeat_ = 0; flit_done_(); } else fbeat_++;
+    } else if (fbeat_ != 0) { err_("data_valid dropped mid-flit"); fbeat_ = 0; }
+  }
+  void flit_done_() {
+    bool hv = fl_[0] & 1, hsof = (fl_[0] >> 1) & 1, heof = (fl_[0] >> 2) & 1;
+    int plen = fl_[1];
+    if (!hv) err_("header valid bit clear");
+    if (fl_[0] >> 3) err_("header reserved bits nonzero");
+    if (plen > FLIT_PAYLOAD_B) err_("payload length > 240");
+    bool cr = FLOW_CTRL && plen == 0 && !hsof && !heof;
+    if (plen == 0 && !cr) err_("empty flit emitted");
+    if (!cr && hsof == fin_frame_) err_("sof/frame state mismatch");
+    bool padbad = false;
+    for (int b = FLIT_HDR_B + plen; b < FLIT_BYTES; b++)
+      if (!(FLOW_CTRL && b >= FLIT_FC_OFF && b < FLIT_FC_OFF + 4) && fl_[b] != 0) padbad = true;
+    if (padbad) err_("nonzero padding/DLP/FEC byte");
+    if (FLOW_CTRL) {
+      unsigned seq = fl_[FLIT_FC_OFF] | (fl_[FLIT_FC_OFF + 1] << 8);
+      last_cl_ = fl_[FLIT_FC_OFF + 2] | (fl_[FLIT_FC_OFF + 3] << 8);
+      if (seq != (fc_sent_ & 0xFFFFu)) err_("flow-control seq field != data flits sent before");
+    }
+    if (cr) cr_flits_++; else { flits_++; fc_sent_++; fin_frame_ = !heof; }
+  }
+  uint8_t fl_[FLIT_BYTES] = {};
+  int fbeat_ = 0;
+  unsigned fc_sent_ = 0;
+  bool fin_frame_ = false;
+ public:
+  int cr_flits_ = 0;                 // credit-only flits seen (FLOW_CTRL)
+  unsigned last_cl_ = 0;
  private:
   // ---- scenario definition (mirror of dv/common/scenarios.py) ---------------
   static constexpr int N_SCEN = 7;   // 5 cross-check + pm_full + rxovf
@@ -194,7 +254,7 @@ class Harness {
     if (!o.rx_tlast) return;
     bool aborted = o.rx_tuser & 1;
     if (scen_ == 6) {                         // rxovf: flagged or exact match, in order
-      if (aborted) { res_.err_frames++; }
+      if (aborted) { res_.err_frames++; if (FLOW_CTRL) err_("rxovf: frame aborted although credit flow control is on"); }
       else {
         int match = -1;
         for (int k = rx_next_; k < scen_nframes_(scen_) && match < 0; k++) {
@@ -340,7 +400,9 @@ class Harness {
           res_.pmcnt = csr_rdata_;
           res_.flits = flits_ - flits_base_;
           res_.crc = ~crc_;
-          if (scen_ == 6 && res_.err_frames == 0) err_("rxovf: no frame was aborted (overload not exercised)");
+          // FLOW_CTRL: credits must make the same stimulus lossless (no abort, all frames good)
+          if (scen_ == 6 && FLOW_CTRL && res_.frames != scen_nframes_(6)) err_("rxovf: credit flow control lost frames");
+          if (scen_ == 6 && !FLOW_CTRL && res_.err_frames == 0) err_("rxovf: no frame was aborted (overload not exercised)");
           res_.errors = total_errors - err_base_;
           results.push_back(res_);
           if (verbose)

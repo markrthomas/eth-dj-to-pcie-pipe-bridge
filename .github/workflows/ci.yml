@@ -58,6 +58,8 @@ jobs:
           echo "$PWD/oss-cad-suite/bin" >> "$GITHUB_PATH"
       - name: coverage (Verilator C++ env, floor 80%)
         run: make coverage
+      - name: vlt env, link flow control ON (D16)
+        run: make vlt-fc
       - name: upload coverage + vlt results
         if: always()
         uses: actions/upload-artifact@v4
@@ -84,6 +86,8 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y libsystemc-dev
       - name: systemc env
         run: make systemc
+      - name: systemc env, link flow control ON (D16)
+        run: make systemc-fc
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -104,6 +108,8 @@ jobs:
           echo "$PWD/oss-cad-suite/bin" >> "$GITHUB_PATH"
       - name: uvm env (Accellera uvm-core on Verilator --timing)
         run: make uvm
+      - name: uvm env, link flow control ON (D16)
+        run: make uvm-fc
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -124,6 +130,8 @@ jobs:
           python -m pip install -r dv/cocotb/requirements.txt
       - name: cocotb env (ICARUS_BIN_DIR=/usr/bin)
         run: make cocotb
+      - name: cocotb env, link flow control ON (D16)
+        run: make cocotb-fc
       - uses: actions/upload-artifact@v4
         if: always()
         with:

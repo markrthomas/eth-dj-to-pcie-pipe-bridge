@@ -23,7 +23,7 @@ SVA_FLAGS := $(if $(filter 1,$(SVA)),--assert --coverage-user)
 JOBS     ?= $(shell nproc 2>/dev/null || echo 4)
 BIN      := obj_dir/V$(TOP)
 
-.PHONY: smoke build coverage trace stress clean
+.PHONY: smoke build coverage trace stress fc clean
 build: $(BIN)
 
 $(BIN): sim_main.cpp $(COMMON)/cpp/bridge_bfm.h $(RTL_SRCS) $(SVA_SRCS)
@@ -58,5 +58,19 @@ stress: $(BIN)
 	  python3 $(COMMON)/crosscheck.py logs/results.json > logs/stress_$$s.xchk || { cat logs/stress_$$s.xchk; echo "STRESS FAIL: seed $$s crosscheck"; exit 1; }; \
 	done; echo "STRESS PASS: $(STRESS_SEEDS) seeds x 7 scenarios"
 
+# fc: same harness and checkers with link flow control ON (-DFLOW_CTRL_OVERRIDE, D16).  The
+# PIPE Rx side is the Tx loopback, so the DUT sees its own credit advertisements.  Separate
+# build dir and run dir (default smoke artefacts are untouched).
+FCDIR := obj_dir_fc
+fc: sim_main.cpp $(COMMON)/cpp/bridge_bfm.h $(RTL_SRCS) $(SVA_SRCS)
+	$(VERILATOR) --cc --exe --build -j $(JOBS) -O2 --x-assign unique --x-initial unique \
+	  $(SVA_FLAGS) -DFLOW_CTRL_OVERRIDE --Mdir $(FCDIR) \
+	  -I$(RTL_DIR) --top-module $(TOP) -CFLAGS "-I$(abspath $(COMMON)/cpp) -O1 -DFLOW_CTRL_OVERRIDE" \
+	  $(RTL_SRCS) $(SVA_SRCS) sim_main.cpp
+	@mkdir -p fc_run/logs
+	cd fc_run && ../$(FCDIR)/V$(TOP) | tee logs/vlt.log
+	@grep -q "VLT PASS" fc_run/logs/vlt.log
+	python3 $(COMMON)/crosscheck.py fc_run/logs/results.json
+
 clean:
-	rm -rf obj_dir logs coverage.info coverage.dat
+	rm -rf obj_dir obj_dir_fc fc_run logs coverage.info coverage.dat
