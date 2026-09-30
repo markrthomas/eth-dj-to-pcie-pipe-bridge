@@ -27,6 +27,8 @@ constexpr int PWR_P0 = 0, PWR_P0S = 1, PWR_P1 = 2, PWR_P2 = 3;
 constexpr int RATE_GEN5 = 4, RATE_GEN6 = 5;
 constexpr int ST_ACTIVE = 2;
 constexpr int MB_NOP = 0, MB_WR_C = 2, MB_WR_ACK = 5;
+constexpr int MB_ADDR_W = 12;
+constexpr int MB_ADDR_PAM4_TXCTL = 0x406;
 constexpr int CSR_CTRL = 0x00, CSR_PAM4CFG = 0x04, CSR_STATUS = 0x08, CSR_ERR = 0x0C,
               CSR_RXCNT0 = 0x10, CSR_RXCNT1 = 0x14, CSR_PMCNT = 0x18;
 
@@ -66,14 +68,14 @@ struct EthIn {                   // DUT inputs, eth_clk domain
 struct PipeOut {                 // DUT outputs, pclk domain
   bool tx_valid = false, tx_sb = false;
   int powerdown = 0, rate = 0, width = 0;
-  int m2p_cmd = 0, m2p_data = 0;
+  int m2p = 0;                   // pipe_m2p_msgbus byte
   uint32_t csr_rdata = 0;
   int ctrl_state = 0;            // optional (hierarchical peek); -1 if unavailable
 };
 struct PipeIn {                  // DUT inputs, pclk domain
   bool rst_n = false;
   bool phy_status = true;
-  int p2m_cmd = 0, p2m_data = 0;
+  int p2m = 0;                   // pipe_p2m_msgbus byte
   bool csr_valid = false, csr_write = false;
   int csr_addr = 0;
   uint32_t csr_wdata = 0;
@@ -221,8 +223,8 @@ class Harness {
   // ---- PHY control model (PhyStatus, msgbus target, Tx legality) -----------------
   void phy_ctrl_(const PipeOut& o, PipeIn& in) {
     if (!rst_n_) {
-      in.phy_status = true; in.p2m_cmd = MB_NOP; in.p2m_data = 0;
-      rst_cnt_ = 0; st_cnt_ = 0; ack_cnt_ = 0; mb_addr_ph_ = false;
+      in.phy_status = true; in.p2m = 0;
+      rst_cnt_ = 0; st_cnt_ = 0; ack_cnt_ = 0; mb_ph_ = 0;
       pd_q_ = o.powerdown; rate_q_ = o.rate; width_q_ = o.width;
       return;
     }
@@ -236,15 +238,20 @@ class Harness {
     else if (st_cnt_ > 1) { st_cnt_--; }
     pd_q_ = o.powerdown; rate_q_ = o.rate; width_q_ = o.width;
 
-    in.p2m_cmd = MB_NOP; in.p2m_data = 0;
-    if (mb_addr_ph_) {
-      mb_last_data_ = o.m2p_data; mb_writes_++; mb_addr_ph_ = false; ack_cnt_ = 8;
-    } else if (o.m2p_cmd == MB_WR_C) {
-      mb_addr_ph_ = true; mb_addr_ = o.m2p_data;
-    } else if (o.m2p_cmd != MB_NOP) {
-      err_("phy: unsupported message-bus command");
+    // byte-serial msgbus target: {MB_WR_C, addr[11:8]}, addr[7:0], data[7:0]; idle = 0x00
+    in.p2m = 0;
+    if (mb_ph_ == 1) {
+      mb_addr_ = (mb_addr_ & 0xF00) | (o.m2p & 0xFF); mb_ph_ = 2;
+    } else if (mb_ph_ == 2) {
+      mb_last_addr_ = mb_addr_; mb_last_data_ = o.m2p & 0xFF; mb_writes_++; mb_ph_ = 0; ack_cnt_ = 8;
+    } else if (o.m2p != 0) {
+      if (((o.m2p >> 4) & 0xF) == MB_WR_C) {
+        mb_addr_ = (o.m2p & 0xF) << 8; mb_ph_ = 1;
+      } else {
+        err_("phy: unsupported message-bus command");
+      }
     }
-    if (ack_cnt_ == 1) { ack_cnt_ = 0; in.p2m_cmd = MB_WR_ACK; in.p2m_data = mb_addr_; }
+    if (ack_cnt_ == 1) { ack_cnt_ = 0; in.p2m = MB_WR_ACK << 4; }
     else if (ack_cnt_ > 1) ack_cnt_--;
   }
 
@@ -367,7 +374,7 @@ class Harness {
       case OP_IDLE: return op_t_ >= op.a;
       case OP_SINK: sink_ready_pct = op.a; return true;
       case OP_MUTE: mute_status_ = op.a != 0; return true;
-      case OP_WAIT_MB: return mb_writes_ >= 2 && mb_last_data_ == op.a;
+      case OP_WAIT_MB: return mb_writes_ >= 2 && mb_last_data_ == op.a && mb_last_addr_ == MB_ADDR_PAM4_TXCTL;
       case OP_EXPECT_ERR:
         in.csr_addr = CSR_ERR;
         if (pipe_in_.csr_addr == CSR_ERR && op_t_ > 2) {
@@ -400,8 +407,9 @@ class Harness {
   // phy
   int flits_ = 0, flits_base_ = 0;
   int rst_cnt_ = 0, st_cnt_ = 0, ack_cnt_ = 0, pd_q_ = 0, rate_q_ = 0, width_q_ = 0;
-  bool mb_addr_ph_ = false, mute_status_ = false;
-  int mb_addr_ = 0, mb_last_data_ = 0, mb_writes_ = 0;
+  bool mute_status_ = false;
+  int mb_ph_ = 0;                // 0 idle, 1 expect addr[7:0], 2 expect data
+  int mb_addr_ = 0, mb_last_addr_ = 0, mb_last_data_ = 0, mb_writes_ = 0;
   // sequencer
   int scen_ = 0;
   Phase phase_ = P_RESET;
