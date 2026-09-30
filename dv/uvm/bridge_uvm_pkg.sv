@@ -169,19 +169,19 @@ package bridge_uvm_pkg;
       logic [1:0] pd_q, wd_q;
       logic [2:0] rt_q;
       int rst_cnt, st_cnt, ack_cnt, beat;
-      bit mb_addr_ph, change;
-      logic [7:0] mb_addr;
+      int mb_ph;   // 0 idle, 1 next byte = addr[7:0], 2 next byte = data
+      bit change;
+      logic [MB_ADDR_W-1:0] mb_addr;
       vif.phy_status <= 1'b1;
-      vif.p2m_cmd    <= MB_NOP;
-      vif.p2m_data   <= '0;
-      rst_cnt = 0; st_cnt = 0; ack_cnt = 0; beat = 0; mb_addr_ph = 0; mb_addr = '0;
+      vif.p2m_msgbus <= 8'h00;
+      rst_cnt = 0; st_cnt = 0; ack_cnt = 0; beat = 0; mb_ph = 0; mb_addr = '0;
       pd_q = '0; rt_q = '0; wd_q = '0;
       forever begin
         @(posedge vif.clk);
         if (!vif.rst_n) begin
           vif.phy_status <= 1'b1;
-          vif.p2m_cmd    <= MB_NOP;
-          rst_cnt = 0; st_cnt = 0; ack_cnt = 0; beat = 0; mb_addr_ph = 0;
+          vif.p2m_msgbus <= 8'h00;
+          rst_cnt = 0; st_cnt = 0; ack_cnt = 0; beat = 0; mb_ph = 0;
           pd_q = vif.powerdown; rt_q = vif.rate; wd_q = vif.width;
           continue;
         end
@@ -205,17 +205,20 @@ package bridge_uvm_pkg;
         else if (st_cnt > 1) st_cnt--;
         pd_q = vif.powerdown; rt_q = vif.rate; wd_q = vif.width;
         // message bus target
-        vif.p2m_cmd  <= MB_NOP;
-        vif.p2m_data <= '0;
-        if (mb_addr_ph) begin
-          mb_writes++; mb_addr_ph = 0; ack_cnt = 8;
-        end else if (vif.m2p_cmd == MB_WR_C) begin
-          mb_addr_ph = 1; mb_addr = vif.m2p_data;
-        end else if (vif.m2p_cmd != MB_NOP) begin
-          errors++; `uvm_error("PHY", "unsupported msgbus command")
+        vif.p2m_msgbus <= 8'h00;
+        if (mb_ph == 1) begin
+          mb_addr[7:0] = vif.m2p_msgbus; mb_ph = 2;
+        end else if (mb_ph == 2) begin
+          mb_writes++; mb_ph = 0; ack_cnt = 8;
+        end else if (vif.m2p_msgbus != 8'h00) begin   // any non-idle byte starts a transaction
+          if (vif.m2p_msgbus[7:4] == MB_WR_C) begin
+            mb_addr[MB_ADDR_W-1:8] = vif.m2p_msgbus[3:0]; mb_ph = 1;
+          end else begin
+            errors++; `uvm_error("PHY", "unsupported msgbus command")
+          end
         end
         if (ack_cnt == 1) begin
-          ack_cnt = 0; vif.p2m_cmd <= MB_WR_ACK; vif.p2m_data <= mb_addr;
+          ack_cnt = 0; vif.p2m_msgbus <= {MB_WR_ACK, 4'h0};
         end else if (ack_cnt > 1) ack_cnt--;
       end
     endtask

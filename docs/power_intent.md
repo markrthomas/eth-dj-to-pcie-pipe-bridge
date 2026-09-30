@@ -23,7 +23,7 @@ runs the functional TB and fails on any error.
 
 | Domain | Supply | Contents | Why |
 |---|---|---|---|
-| **PD_AON** | SS_AON (VDD) | TB, DUT top glue, `u_ctrl` (bridge_ctrl_fsm), `u_msgbus` (pipe_msgbus), `u_rf` (bridge_rf), `u_pmu` | Sequences P1/P2 entry and exit and must stay alive to wake the link. |
+| **PD_AON** | SS_AON (VDD) | TB, DUT top glue, `u_ctrl` (bridge_ctrl_fsm), `u_msgbus` (pipe_msgbus; 8-bit M2P/P2M byte bus, 12-bit address), `u_rf` (bridge_rf), `u_pmu` | Sequences P1/P2 entry and exit and must stay alive to wake the link. |
 | **PD_DP** | SS_DP (VDD_DP, switched by SW_DP) | `u_tx_gate`, `u_tx_cdc`, `u_tx_framer`, `u_tx_egress`, `u_rx_ingress`, `u_rx_deframer`, `u_rx_cdc`, `u_eth_egress` (both clock domains) | The datapath is idle in P1/P2 after a drain. |
 
 - **`bridge_rf` is in PD_AON**, which changes PLAN §9. That draft placed it in PD_DP with retention, but the AON FSM reads `pwr_req` from it, and a CSR write is the only way to request wake-up. So it cannot be switched off (OPEN_DECISIONS D14).

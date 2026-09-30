@@ -34,7 +34,7 @@ module bridge_sva
   input logic [2:0]               pipe_rate,
   input logic [1:0]               pipe_width,
   input logic [1:0]               pipe_powerdown,
-  input logic [MSGBUS_CMD_W-1:0]  pipe_m2p_cmd,
+  input logic [MSGBUS_W-1:0]      pipe_m2p_msgbus,
   // internal observation points
   input logic [2:0]               ctrl_state,
   input logic                     mb_req,
@@ -61,6 +61,7 @@ module bridge_sva
   logic [11:0]   chg_cnt_q;     // cycles spent in a pin-change state
   logic [11:0]   cfg_cnt_q;     // cycles spent in ST_CFG
   logic          prev_valid_q;
+  logic [3:0]    mb_cnt_q;      // consecutive cycles mb_busy has been high (0 = first busy cycle)
 
   always_ff @(posedge pclk or negedge pipe_rst_n) begin
     if (!pipe_rst_n) begin
@@ -68,7 +69,9 @@ module bridge_sva
       chg_cnt_q    <= '0;
       cfg_cnt_q    <= '0;
       prev_valid_q <= 1'b0;
+      mb_cnt_q     <= '0;
     end else begin
+      mb_cnt_q <= !mb_busy ? 4'd0 : (mb_cnt_q == 4'd15 ? mb_cnt_q : mb_cnt_q + 4'd1);
       prev_valid_q <= pipe_tx_data_valid;
       if (pipe_tx_start_block)     beat_q <= BW'(1);
       else if (pipe_tx_data_valid) beat_q <= (int'(beat_q) == FLIT_BEATS - 1) ? '0 : beat_q + BW'(1);
@@ -129,11 +132,15 @@ module bridge_sva
   // MB2: write_ack / timeout are only consumed in ST_CFG, and never both
   a_mb2_done_in_cfg: assert property (@(posedge pclk) disable iff (!pipe_rst_n)
     (mb_done || mb_timeout) |-> (ctrl_state == ST_CFG) && !(mb_done && mb_timeout));
-  // MB3: committed write = {WR_C, addr} then {NOP, data}; only NOP/WR_C are driven
-  a_mb3_framing: assert property (@(posedge pclk) disable iff (!pipe_rst_n)
-    pipe_m2p_cmd == MB_WR_C |=> pipe_m2p_cmd == MB_NOP);
-  a_mb3_cmds: assert property (@(posedge pclk) disable iff (!pipe_rst_n)
-    (pipe_m2p_cmd == MB_NOP) || (pipe_m2p_cmd == MB_WR_C));
+  // MB3: 8-bit byte-bus framing (OPEN_DECISIONS D8).  A committed write is
+  //   byte0 {WR_C, addr[11:8]} (first busy cycle), byte1 addr[7:0], byte2 data,
+  //   and the bus is idle (8'h00) outside those three bytes.
+  a_mb3_byte0: assert property (@(posedge pclk) disable iff (!pipe_rst_n)
+    mb_busy && mb_cnt_q == 4'd0 |-> pipe_m2p_msgbus == {MB_WR_C, MB_ADDR_PAM4_TXCTL[MB_ADDR_W-1:8]});
+  a_mb3_byte1: assert property (@(posedge pclk) disable iff (!pipe_rst_n)
+    mb_busy && mb_cnt_q == 4'd1 |-> pipe_m2p_msgbus == MB_ADDR_PAM4_TXCTL[7:0]);
+  a_mb3_idle: assert property (@(posedge pclk) disable iff (!pipe_rst_n)
+    (!mb_busy || mb_cnt_q >= 4'd3) |-> pipe_m2p_msgbus == 8'h00);
   // MB4: no PIPE pin change while a message-bus write is outstanding
   a_mb4_no_pin_chg_during_mb: assert property (@(posedge pclk) disable iff (!pipe_rst_n)
     in_chg |-> !mb_busy);
@@ -170,7 +177,7 @@ bind eth_dj_pipe7_bridge bridge_sva u_bridge_sva (
   .eth_rx_tkeep (eth_rx_tkeep), .eth_rx_tlast (eth_rx_tlast), .eth_rx_tuser (eth_rx_tuser),
   .pipe_tx_data_valid (pipe_tx_data_valid), .pipe_tx_start_block (pipe_tx_start_block),
   .pipe_rate (rate_v), .pipe_width (width_v), .pipe_powerdown (pd_v),
-  .pipe_m2p_cmd (pipe_m2p_cmd),
+  .pipe_m2p_msgbus (pipe_m2p_msgbus),
   .ctrl_state (ctrl_state), .mb_req (mb_req), .mb_busy (mb_busy), .mb_done (mb_done),
   .mb_timeout (mb_timeout), .ev_phy_timeout (ev_phy_timeout),
   .tx_fifo_full (tx_fifo_full), .tx_fifo_empty (tx_fifo_empty), .tx_fifo_rinc (tx_fifo_rinc),

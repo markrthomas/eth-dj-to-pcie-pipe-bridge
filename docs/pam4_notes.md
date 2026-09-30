@@ -17,7 +17,7 @@ here as:
 1. **Higher parallel throughput** at a given `pclk` → wider datapath / gearbox
    ratios. Size `PIPE_DATA_W`, `ETH_DATA_W`, and the CDC/elastic FIFO depth
    against the PAM4 bit-rate ratio (still `[OPEN]` in PLAN §2.3).
-2. **New PHY control handshakes** carried on the PIPE 4-bit message bus:
+2. **New PHY control handshakes** carried on the PIPE message bus (8-bit byte bus, 12-bit register addresses — OPEN_DECISIONS D8):
    `PhyTxControl`, **Tx precoding / Gray-code enable**, **PAM4 Tx presets**
    (equalization), and **RxMargin** (eye-margining). The bridge control FSM must
    drive/observe these during bring-up and rate/width changes. (The sibling

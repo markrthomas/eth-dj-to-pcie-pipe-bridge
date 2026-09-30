@@ -11,7 +11,7 @@
 //   F-PP4  rate / width / powerdown pins change only in their change state
 //   F-PP5  a pin-change state is left within PHY_TIMEOUT cycles
 //   F-MB1  no msgbus request while one is outstanding
-//   F-MB3  m2p carries only NOP / WR_C, and WR_C is followed by the data phase
+//   F-MB3  m2p byte-bus framing: {WR_C,addr[11:8]}, addr[7:0], data, then idle 8'h00
 //   F-MB4  no PIPE pin change while a msgbus write is outstanding
 //   F-MB5  the msgbus master is busy for at most PHY_TIMEOUT + 3 cycles
 // ============================================================================
@@ -31,8 +31,7 @@ module ctrl_fv
   input logic       rx_idle,
   input logic       other_idle,
   input logic       flit_valid,
-  input logic [3:0] p2m_cmd,
-  input logic [7:0] p2m_data
+  input logic [MSGBUS_W-1:0] p2m       // PHY -> MAC byte bus (free)
 );
   localparam int BW = $clog2(FLIT_BEATS) + 1;
 
@@ -42,9 +41,8 @@ module ctrl_fv
   logic       ev_op_done, ev_phy_timeout, ev_bad_pwr_req;
   logic       flit_taken, egress_busy, tx_valid, tx_sb;
   logic [PIPE_BUS_W-1:0] tx_data;
-  logic [3:0] m2p_cmd;
-  logic [7:0] m2p_data;
-  wire  [7:0] mb_addr = 8'h01;
+  logic [MSGBUS_W-1:0] m2p;
+  wire  [MB_ADDR_W-1:0] mb_addr = MB_ADDR_PAM4_TXCTL;
   wire  [7:0] mb_wdata = 8'h35;
   wire        tx_idle = !egress_busy && !flit_valid && other_idle;
 
@@ -59,7 +57,7 @@ module ctrl_fv
   pipe_msgbus u_mb (
     .clk(clk), .rst_n(rst_n), .req(mb_req), .addr(mb_addr), .wdata(mb_wdata),
     .busy(mb_busy), .done(mb_done), .timeout(mb_timeout),
-    .m2p_cmd(m2p_cmd), .m2p_data(m2p_data), .p2m_cmd(p2m_cmd), .p2m_data(p2m_data));
+    .m2p(m2p), .p2m(p2m));
 
   tx_egress u_eg (
     .clk(clk), .rst_n(rst_n), .tx_en(tx_en), .flit_valid(flit_valid),
@@ -78,16 +76,14 @@ module ctrl_fv
   logic [11:0]   chg_cnt_q, busy_cnt_q;
   logic [1:0]    pd_q, width_q;
   logic [2:0]    rate_q;
-  logic [3:0]    cmd_q;
   always @(posedge clk) begin
     if (!rst_n) begin
-      beat_q <= '0; chg_cnt_q <= '0; busy_cnt_q <= '0; cmd_q <= MB_NOP;
+      beat_q <= '0; chg_cnt_q <= '0; busy_cnt_q <= '0;
     end else begin
       if (tx_sb)         beat_q <= BW'(1);
       else if (tx_valid) beat_q <= (int'(beat_q) == FLIT_BEATS - 1) ? '0 : beat_q + BW'(1);
       chg_cnt_q  <= in_chg  ? chg_cnt_q + 12'd1  : 12'd0;
       busy_cnt_q <= mb_busy ? busy_cnt_q + 12'd1 : 12'd0;
-      cmd_q      <= m2p_cmd;
     end
     pd_q <= pd; rate_q <= rate; width_q <= width;
   end
@@ -109,8 +105,12 @@ module ctrl_fv
     h_mb_wait:    assert (u_mb.st_q != 2'd3 || (busy_cnt_q == 12'(u_mb.tmr_q) + 12'd2 &&
                                                  int'(u_mb.tmr_q) < PHY_TIMEOUT));
     a_fmb1_one_outst:    assert (!(mb_req && mb_busy));
-    a_fmb3_cmds:         assert (m2p_cmd == MB_NOP || m2p_cmd == MB_WR_C);
-    a_fmb3_data_phase:   assert (!(cmd_q == MB_WR_C) || m2p_cmd == MB_NOP);
+    // byte-bus framing, aligned to the msgbus master state (ADDR=1 -> byte0, DATA=2 -> byte1,
+    // first WAIT cycle (busy_cnt 2) -> data byte, everything else idle)
+    a_fmb3_byte0:        assert (u_mb.st_q != 2'd1 || m2p == {MB_WR_C, mb_addr[MB_ADDR_W-1:8]});
+    a_fmb3_byte1:        assert (u_mb.st_q != 2'd2 || m2p == mb_addr[7:0]);
+    a_fmb3_data:         assert (!(u_mb.st_q == 2'd3 && busy_cnt_q == 12'd2) || m2p == mb_wdata);
+    a_fmb3_idle:         assert ((u_mb.st_q != 2'd0 && !(u_mb.st_q == 2'd3 && busy_cnt_q > 12'd2)) || m2p == 8'h00);
     a_fmb4_no_chg_in_mb: assert (!(in_chg && mb_busy));
   end
   always @(posedge clk) if (f_past && rst_n && $past(rst_n)) begin

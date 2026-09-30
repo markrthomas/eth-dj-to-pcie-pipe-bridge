@@ -53,24 +53,28 @@ package eth_dj_pipe7_pkg;
   localparam int unsigned FLIT_PAYLOAD_B = 240;
   localparam int unsigned FLIT_BEATS     = FLIT_BYTES * 8 / PIPE_BUS_W;
 
-  // ---- PIPE 7.x message bus (4-bit command interface) ----------------------
-  localparam int unsigned MSGBUS_CMD_W  = 4;
-  localparam int unsigned MSGBUS_DATA_W = 8;
-
-  // Command codes (PIPE 5+ message-bus command encodings).  Bridge-specific
-  // framing on this repo's split cmd/data port (docs/OPEN_DECISIONS.md D8):
-  //   committed write = cycle 0 {MB_WR_C, addr}, cycle 1 {MB_NOP, wdata};
-  //   the PHY completes it with one cycle of {MB_WR_ACK, addr}.
+  // ---- PIPE 7.x message bus (docs/OPEN_DECISIONS.md D8) --------------------
+  // One 8-bit M2P and one 8-bit P2M byte bus (PIPE 7.1 M2P/P2M_MessageBus[7:0]),
+  // PCLK-synchronous, idle = 8'h00, any non-idle byte starts a transaction.
+  // Framing (cross-checked against the sibling ucie-rdi-to-pcie6-pipe7 model,
+  // which cites PIPE 7.1 §6.1.4.2 Tables 6-10..6-14; NOT checked against the
+  // spec text itself):
+  //   write_committed : byte0 {MB_WR_C, addr[11:8]}, byte1 addr[7:0], byte2 data[7:0]
+  //   PHY completes it with one P2M byte {MB_WR_ACK, x}.
+  localparam int unsigned MSGBUS_W      = 8;
+  localparam int unsigned MB_ADDR_W     = 12;
   localparam logic [3:0] MB_NOP    = 4'h0;
   localparam logic [3:0] MB_WR_UC  = 4'h1;
   localparam logic [3:0] MB_WR_C   = 4'h2;
   localparam logic [3:0] MB_RD     = 4'h3;
   localparam logic [3:0] MB_RD_CPL = 4'h4;
   localparam logic [3:0] MB_WR_ACK = 4'h5;
-  // PHY register that receives the PAM4 Tx control (precoding enable / preset).
-  // Bridge-defined placeholder address: *verify* against the PIPE 7.1 PHY
-  // register map before tape-in (docs/OPEN_DECISIONS.md D8).
-  localparam logic [7:0] MB_ADDR_PAM4_TXCTL = 8'h01;
+  // PHY register that receives the PAM4 Tx control byte.  12'h400..12'h40A is the
+  // PHY Tx Control block in the sibling model; the exact sub-offset for PAM4 is
+  // NOT pinned there either (12'h406 is its working offset for PAM4RestrictedLevels),
+  // and the meaning of our PAM4CFG byte (precoding enable / preset) is a
+  // bridge-defined placeholder.  *Verify both against the PIPE 7.1 PHY register map.*
+  localparam logic [MB_ADDR_W-1:0] MB_ADDR_PAM4_TXCTL = 12'h406;
 
   // Cycles the control plane waits for PhyStatus / a message-bus write_ack
   // before flagging a timeout (docs/OPEN_DECISIONS.md D10).

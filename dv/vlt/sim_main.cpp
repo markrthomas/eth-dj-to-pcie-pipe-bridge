@@ -58,8 +58,7 @@ static PipeOut sample_pipe(const Veth_dj_pipe7_bridge* d) {
   o.powerdown = d->pipe_powerdown;
   o.rate = d->pipe_rate;
   o.width = d->pipe_width;
-  o.m2p_cmd = d->pipe_m2p_cmd;
-  o.m2p_data = d->pipe_m2p_data;
+  o.m2p = d->pipe_m2p_msgbus;
   o.csr_rdata = d->csr_rdata;
   o.ctrl_state = -1;
   return o;
@@ -68,8 +67,7 @@ static PipeOut sample_pipe(const Veth_dj_pipe7_bridge* d) {
 static void apply_pipe(Veth_dj_pipe7_bridge* d, const PipeIn& in) {
   d->pipe_rst_n = in.rst_n;
   d->pipe_phy_status = in.phy_status;
-  d->pipe_p2m_cmd = in.p2m_cmd;
-  d->pipe_p2m_data = in.p2m_data;
+  d->pipe_p2m_msgbus = in.p2m;
   d->csr_valid = in.csr_valid;
   d->csr_write = in.csr_write;
   d->csr_addr = in.csr_addr;

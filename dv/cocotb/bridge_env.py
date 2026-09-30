@@ -177,25 +177,24 @@ class PhyCtrlModel(uvm_component):
     async def run_phase(self):
         d = self.dut
         d.pipe_phy_status.value = 1
-        d.pipe_p2m_cmd.value = MB_NOP
-        d.pipe_p2m_data.value = 0
+        d.pipe_p2m_msgbus.value = 0
         rst_cnt = st_cnt = ack_cnt = 0
         prev = None
-        mb_addr_ph = False
-        mb_addr = 0
+        mb_ph = 0                # byte-serial write framing: 0 idle, 1 addr[7:0], 2 data
+        mb_addr = 0              # 12-bit register address
         while True:
             await FallingEdge(d.pclk)
             rst = not ival(d.pipe_rst_n)
             pins = (ival(d.pipe_powerdown), ival(d.pipe_rate), ival(d.pipe_width))
             txv = ival(d.pipe_tx_data_valid)
-            m2p_cmd, m2p_data = ival(d.pipe_m2p_cmd), ival(d.pipe_m2p_data)
+            m2p = ival(d.pipe_m2p_msgbus)
             await RisingEdge(d.pclk)
             if rst:
                 d.pipe_phy_status.value = 1
-                d.pipe_p2m_cmd.value = MB_NOP
+                d.pipe_p2m_msgbus.value = 0
                 rst_cnt = st_cnt = ack_cnt = 0
                 prev = pins
-                mb_addr_ph = False
+                mb_ph = 0
                 continue
             change = pins != prev
             if txv and (pins[0] != PWR_P0 or st_cnt or change):
@@ -218,25 +217,29 @@ class PhyCtrlModel(uvm_component):
             prev = pins
             d.pipe_phy_status.value = status
 
-            p2m_cmd, p2m_data = MB_NOP, 0
-            if mb_addr_ph:
+            p2m = 0
+            if mb_ph == 1:
+                mb_addr = (mb_addr & 0xF00) | m2p
+                mb_ph = 2
+            elif mb_ph == 2:
                 self.mb_writes += 1
-                self.mb_last = (mb_addr, m2p_data)
-                self.ap.write(("mb", MB_WR_C, m2p_data))
-                mb_addr_ph = False
+                self.mb_last = (mb_addr, m2p)
+                self.ap.write(("mb", MB_WR_C, m2p))
+                mb_ph = 0
                 ack_cnt = self.lat
-            elif m2p_cmd == MB_WR_C:
-                mb_addr_ph, mb_addr = True, m2p_data
-            elif m2p_cmd != MB_NOP:
-                self.errors += 1
+            elif m2p != 0:                       # any non-idle byte starts a transaction
+                if (m2p >> 4) == MB_WR_C:
+                    mb_addr = (m2p & 0xF) << 8
+                    mb_ph = 1
+                else:
+                    self.errors += 1
             if ack_cnt == 1:
                 ack_cnt = 0
-                p2m_cmd, p2m_data = MB_WR_ACK, mb_addr
+                p2m = MB_WR_ACK << 4
                 self.ap.write(("mb", MB_WR_ACK, mb_addr))
             elif ack_cnt > 1:
                 ack_cnt -= 1
-            d.pipe_p2m_cmd.value = p2m_cmd
-            d.pipe_p2m_data.value = p2m_data
+            d.pipe_p2m_msgbus.value = p2m
 
 
 # ---------------------------------------------------------------------------- CSR

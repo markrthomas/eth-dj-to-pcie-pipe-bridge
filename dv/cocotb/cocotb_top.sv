@@ -30,10 +30,8 @@ module cocotb_top
   output logic [1:0]               pipe_width,
   output logic [1:0]               pipe_powerdown,
   input  logic                     pipe_phy_status,
-  output logic [MSGBUS_CMD_W-1:0]  pipe_m2p_cmd,
-  output logic [MSGBUS_DATA_W-1:0] pipe_m2p_data,
-  input  logic [MSGBUS_CMD_W-1:0]  pipe_p2m_cmd,
-  input  logic [MSGBUS_DATA_W-1:0] pipe_p2m_data,
+  output logic [MSGBUS_W-1:0]      pipe_m2p_msgbus,
+  input  logic [MSGBUS_W-1:0]      pipe_p2m_msgbus,
   input  logic                     csr_valid,
   input  logic                     csr_write,
   input  logic [CSR_ADDR_W-1:0]    csr_addr,
@@ -56,8 +54,7 @@ module cocotb_top
     .pipe_rx_start_block(pipe_tx_start_block),
     .pipe_rate(rate_e), .pipe_width(pipe_width), .pipe_powerdown(pd_e),
     .pipe_phy_status(pipe_phy_status), .pipe_rx_valid(1'b0), .pipe_rx_elec_idle(1'b1),
-    .pipe_m2p_cmd(pipe_m2p_cmd), .pipe_m2p_data(pipe_m2p_data),
-    .pipe_p2m_cmd(pipe_p2m_cmd), .pipe_p2m_data(pipe_p2m_data),
+    .pipe_m2p_msgbus(pipe_m2p_msgbus), .pipe_p2m_msgbus(pipe_p2m_msgbus),
     .csr_valid(csr_valid), .csr_write(csr_write), .csr_addr(csr_addr),
     .csr_wdata(csr_wdata), .csr_rdata(csr_rdata)
   );
