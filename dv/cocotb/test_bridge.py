@@ -122,7 +122,7 @@ class ScenarioTest(uvm_test):
             ok &= await csr.set_state(be.PWR_P0, be.RATE_GEN6, 0)
             await csr.write(be.CSR_PAM4CFG, 0x35)
             await ClockCycles(self.dut.pclk, 200)
-            ok &= env.phy.mb_last[1] == 0x35
+            ok &= env.phy.mb_last == (0x406, 0x35)   # MB_ADDR_PAM4_TXCTL, 12-bit
             await csr.write(be.CSR_CTRL, (be.RATE_GEN6 << 2) | be.PWR_P0S)
             await ClockCycles(self.dut.pclk, 50)
             ok &= bool((await csr.read(be.CSR_ERR)) & 4)
