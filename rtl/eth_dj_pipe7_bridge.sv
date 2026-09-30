@@ -52,10 +52,8 @@ module eth_dj_pipe7_bridge
   input  logic                     pipe_rx_valid,
   input  logic                     pipe_rx_elec_idle,
   // 4-bit message bus (rate/width/power/margining handshakes)
-  output logic [MSGBUS_CMD_W-1:0]  pipe_m2p_cmd,
-  output logic [MSGBUS_DATA_W-1:0] pipe_m2p_data,
-  input  logic [MSGBUS_CMD_W-1:0]  pipe_p2m_cmd,
-  input  logic [MSGBUS_DATA_W-1:0] pipe_p2m_data,
+  output logic [MSGBUS_W-1:0]      pipe_m2p_msgbus,
+  input  logic [MSGBUS_W-1:0]      pipe_p2m_msgbus,
 
   // ---- CSR port (pclk domain, always ready; D7) ------------------------------
   input  logic                     csr_valid,
@@ -128,14 +126,13 @@ module eth_dj_pipe7_bridge
 
   // Local copy of the pkg constant: Icarus turns a bare imported name used
   // directly in a port connection into an implicit 1-bit net.
-  wire [7:0] mb_addr = MB_ADDR_PAM4_TXCTL;
+  wire [MB_ADDR_W-1:0] mb_addr = MB_ADDR_PAM4_TXCTL;
 
   pipe_msgbus u_msgbus (
     .clk (pclk), .rst_n (pipe_rst_n),
     .req (mb_req), .addr (mb_addr), .wdata (pam4cfg),
     .busy (mb_busy), .done (mb_done), .timeout (mb_timeout),
-    .m2p_cmd (pipe_m2p_cmd), .m2p_data (pipe_m2p_data),
-    .p2m_cmd (pipe_p2m_cmd), .p2m_data (pipe_p2m_data)
+    .m2p (pipe_m2p_msgbus), .p2m (pipe_p2m_msgbus)
   );
 
   assign pipe_rate      = pipe_rate_e'(rate_v);

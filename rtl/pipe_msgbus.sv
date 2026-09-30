@@ -1,10 +1,12 @@
 // ============================================================================
 // pipe_msgbus.sv — pclk domain.  PIPE 7.x message-bus master (MAC side).
 //
-// Issues one committed write at a time (docs/OPEN_DECISIONS.md D8):
-//   cycle 0: m2p = {MB_WR_C, addr}
-//   cycle 1: m2p = {MB_NOP,  wdata}
-//   then waits for p2m_cmd == MB_WR_ACK (any p2m_data) or PHY_TIMEOUT cycles.
+// Issues one committed write at a time on the 8-bit M2P byte bus
+// (docs/OPEN_DECISIONS.md D8):
+//   cycle 0: m2p = {MB_WR_C, addr[11:8]}
+//   cycle 1: m2p = addr[7:0]
+//   cycle 2: m2p = wdata[7:0]      (then idle 8'h00)
+//   then waits for a P2M byte with p2m[7:4] == MB_WR_ACK, or PHY_TIMEOUT cycles.
 // `done` pulses on the ack, `timeout` pulses instead if no ack arrives.  Other
 // P2M messages (read completions, unsolicited writes) are ignored.
 // ============================================================================
@@ -17,17 +19,15 @@ module pipe_msgbus
   input  logic                     rst_n,
 
   input  logic                     req,        // start a write (ignored while busy)
-  input  logic [7:0]               addr,
+  input  logic [MB_ADDR_W-1:0]     addr,
   input  logic [7:0]               wdata,
   output logic                     busy,
   output logic                     done,       // 1-cycle pulse: write_ack received
   output logic                     timeout,    // 1-cycle pulse: no write_ack
 
-  output logic [MSGBUS_CMD_W-1:0]  m2p_cmd,
-  output logic [MSGBUS_DATA_W-1:0] m2p_data,
-  input  logic [MSGBUS_CMD_W-1:0]  p2m_cmd,
+  output logic [MSGBUS_W-1:0]      m2p,
   /* verilator lint_off UNUSEDSIGNAL */
-  input  logic [MSGBUS_DATA_W-1:0] p2m_data    // write_ack payload not checked
+  input  logic [MSGBUS_W-1:0]      p2m         // only p2m[7:4] (command) is examined
   /* verilator lint_on UNUSEDSIGNAL */
 );
   localparam int unsigned TW = $clog2(PHY_TIMEOUT + 1);
@@ -36,6 +36,7 @@ module pipe_msgbus
 
   logic [1:0]    st_q;
   logic [7:0]    wdata_q;
+  logic [7:0]    addr_lo_q;
   logic [TW-1:0] tmr_q;
 
   assign busy = (st_q != S_IDLE);
@@ -45,8 +46,8 @@ module pipe_msgbus
       st_q     <= S_IDLE;
       wdata_q  <= '0;
       tmr_q    <= '0;
-      m2p_cmd  <= MB_NOP;
-      m2p_data <= '0;
+      addr_lo_q <= '0;
+      m2p      <= 8'h00;
       done     <= 1'b0;
       timeout  <= 1'b0;
     end else begin
@@ -54,28 +55,26 @@ module pipe_msgbus
       timeout <= 1'b0;
       case (st_q)
         S_IDLE: begin
-          m2p_cmd  <= MB_NOP;
-          m2p_data <= '0;
+          m2p <= 8'h00;
           if (req) begin
-            m2p_cmd  <= MB_WR_C;
-            m2p_data <= addr;
-            wdata_q  <= wdata;
-            st_q     <= S_ADDR;
+            m2p       <= {MB_WR_C, addr[MB_ADDR_W-1:8]};   // byte 0
+            addr_lo_q <= addr[7:0];
+            wdata_q   <= wdata;
+            st_q      <= S_ADDR;
           end
         end
         S_ADDR: begin
-          m2p_cmd  <= MB_NOP;
-          m2p_data <= wdata_q;
-          st_q     <= S_DATA;
+          m2p  <= addr_lo_q;                                // byte 1
+          st_q <= S_DATA;
         end
         S_DATA: begin
-          m2p_cmd  <= MB_NOP;
-          m2p_data <= '0;
-          tmr_q    <= '0;
-          st_q     <= S_WAIT;
+          m2p   <= wdata_q;                                 // byte 2
+          tmr_q <= '0;
+          st_q  <= S_WAIT;
         end
         default: begin // S_WAIT
-          if (p2m_cmd == MB_WR_ACK) begin
+          m2p <= 8'h00;
+          if (p2m[7:4] == MB_WR_ACK) begin
             done <= 1'b1;
             st_q <= S_IDLE;
           end else if (int'(tmr_q) == PHY_TIMEOUT - 1) begin

@@ -22,8 +22,7 @@
   pipe_rate_e              pipe_rate;
   wire [1:0]               pipe_width;
   wire                     pipe_phy_status;
-  wire [MSGBUS_CMD_W-1:0]  m2p_cmd, p2m_cmd;
-  wire [MSGBUS_DATA_W-1:0] m2p_data, p2m_data;
+  wire [MSGBUS_W-1:0]      m2p, p2m;
   logic                    csr_valid = 1'b0, csr_write = 1'b0;
   logic [7:0]              csr_addr  = 8'h00;
   logic [31:0]             csr_wdata = 32'h0;
@@ -42,7 +41,7 @@
     .pipe_rx_start_block(pipe_tx_start_block),
     .pipe_rate(pipe_rate), .pipe_width(pipe_width), .pipe_powerdown(pipe_powerdown),
     .pipe_phy_status(pipe_phy_status), .pipe_rx_valid(1'b0), .pipe_rx_elec_idle(1'b1),
-    .pipe_m2p_cmd(m2p_cmd), .pipe_m2p_data(m2p_data), .pipe_p2m_cmd(p2m_cmd), .pipe_p2m_data(p2m_data),
+    .pipe_m2p_msgbus(m2p), .pipe_p2m_msgbus(p2m),
     .csr_valid(csr_valid), .csr_write(csr_write), .csr_addr(csr_addr),
     .csr_wdata(csr_wdata), .csr_rdata(csr_rdata)
   );
@@ -60,8 +59,8 @@
 
   pipe_phy_ctrl_model phyc (
     .pclk(pclk), .pipe_rst_n(pipe_rst_n), .powerdown(pipe_powerdown), .rate(pipe_rate),
-    .width(pipe_width), .tx_data_valid(pipe_tx_data_valid), .m2p_cmd(m2p_cmd),
-    .m2p_data(m2p_data), .phy_status(pipe_phy_status), .p2m_cmd(p2m_cmd), .p2m_data(p2m_data)
+    .width(pipe_width), .tx_data_valid(pipe_tx_data_valid), .m2p(m2p),
+    .phy_status(pipe_phy_status), .p2m(p2m)
   );
 
   eth_sink_model sink (
