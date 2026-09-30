@@ -56,9 +56,8 @@ package eth_dj_pipe7_pkg;
   // ---- PIPE 7.x message bus (docs/OPEN_DECISIONS.md D8) --------------------
   // One 8-bit M2P and one 8-bit P2M byte bus (PIPE 7.1 M2P/P2M_MessageBus[7:0]),
   // PCLK-synchronous, idle = 8'h00, any non-idle byte starts a transaction.
-  // Framing (cross-checked against the sibling ucie-rdi-to-pcie6-pipe7 model,
-  // which cites PIPE 7.1 §6.1.4.2 Tables 6-10..6-14; NOT checked against the
-  // spec text itself):
+  // Framing (verified against PIPE 7.1 ref 643108 §6.1.4: Table 6-9 signals, Table 6-10
+  // command encodings, Tables 6-11..6-14 cycle layouts, §6.1.4.2 framing rules):
   //   write_committed : byte0 {MB_WR_C, addr[11:8]}, byte1 addr[7:0], byte2 data[7:0]
   //   PHY completes it with one P2M byte {MB_WR_ACK, x}.
   localparam int unsigned MSGBUS_W      = 8;

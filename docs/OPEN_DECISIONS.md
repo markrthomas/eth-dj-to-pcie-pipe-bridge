@@ -160,11 +160,30 @@ Findings vs what this repo had:
   ("precoding enable / preset 0") should contain — it is a bridge-defined placeholder.
   Also note the map is **per message bus / per lane group (TX1/RX1 vs TX2/RX2)**; this
   repo drives one bus for x1 — how the bus scales at x4 is an open design point.
-- **Caveat on the evidence:** the framing and opcodes above come from the sibling, the
-  owner's own earlier model, not from the spec text (only Table 7-1 was available).
-  Agreement between the two is a cross-check, not proof. **Action: check
-  `MB_*`, `MB_ADDR_PAM4_TXCTL` and the PAM4CFG byte against PIPE 7.1 §6.1.4 / §7.1 before
-  integration.** Rate/width/power remain on PIPE pins with PhyStatus (unchanged).
+- **Framing and opcodes — VERIFIED against the spec text (2026-09-30).** The owner pasted
+  PIPE 7.1 (ref 643108) §6.1.4 (Tables 6-9..6-14, Figure 6-1, §6.1.4.2). Confirmed exactly:
+  `M2P_MessageBus[7:0]`/`P2M_MessageBus[7:0]` (Table 6-9); command encodings NOP 0000,
+  write_uncommitted 0001, write_committed 0010, read 0011, read_completion 0100, write_ack 0101
+  (Table 6-10); write = `{Cmd[3:0],Addr[11:8]}`, `Addr[7:0]`, `Data[7:0]` (Table 6-14);
+  write_ack is one cycle `{Cmd[3:0],0000b}` (Table 6-11); idle = all zeros; an idle->non-idle
+  byte starts a transaction whose length comes from its command; a new transaction may follow
+  with no idle; cycles of one transaction are contiguous; after a write_committed no new write
+  may be sent until its write_ack. Our master already did all of this.
+- **Bug found by that reading, fixed:** `pipe_msgbus` decoded *every* P2M byte as a possible
+  command while waiting, so a P2M `read_completion` (`{RD_CPL,0}`, data) or a PHY-initiated
+  write whose payload byte had a `5_` high nibble would have been taken as a write_ack.
+  Now a P2M framer tracks the transaction length (write 3, read/read_completion 2, others 1)
+  and only the first byte of a transaction is a command. Covered by `dv/iverilog/tb_msgbus.sv`
+  (T2/T3 fail if the old decode is restored; T4 checks back-to-back transactions).
+- **Known gap (unchanged, by design):** the bridge implements **no MAC-side register target**.
+  The spec lets the PHY initiate reads/writes to MAC registers (e.g. Rx margin status) and
+  requires read_completion / write_ack responses on M2P; this bridge ignores such requests
+  and never answers them. Adequate while no PHY-initiated traffic is used; a real integration
+  that needs Rx margining or PHY-initiated writes must add a target.
+- **Still unverified:** which PHY register carries PAM4 precoding / restricted levels (Tx
+  Control0..10 bit fields not seen; 12'h406 is a valid register but its function is unconfirmed)
+  and what our `PAM4CFG` byte should contain (bridge-defined placeholder). Also unverified:
+  how the message bus scales to more than one lane (TX1/RX1 vs TX2/RX2 regions).
 - **Port-list change:** this alters the frozen top-level interface (2 ports replace 4).
   Integrators using the old split ports must update.
 ## D9. Rx flow control: drop + abort the damaged frame (M3)

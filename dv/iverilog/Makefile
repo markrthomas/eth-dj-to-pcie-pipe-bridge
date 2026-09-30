@@ -19,8 +19,8 @@ IVEXTRA  ?=
 WFLAGS    = $(if $(filter 1,$(WAVES)),-DDUMP_TOP=tb_$@ ../waves/wave_dump.sv)
 WRUN      = $(if $(filter 1,$(WAVES)),+dumpfile=$(BUILD)/$@.vcd)
 
-.PHONY: smoke tx loop pm rxovf scen all clean
-all: smoke tx loop pm rxovf scen
+.PHONY: smoke tx loop pm rxovf scen msgbus all clean
+all: smoke tx loop pm rxovf scen msgbus
 
 LOOP_TB_DEPS := $(COMMON)/eth_mac_model.sv $(COMMON)/pipe_phy_model.sv $(COMMON)/pipe_phy_ctrl_model.sv $(COMMON)/eth_sink_model.sv
 smoke:
@@ -60,6 +60,13 @@ scen:
 	$(VVP) $(BUILD)/scen.vvp $(WRUN) | tee $(BUILD)/scen.log
 	@grep -q "SCEN PASS" $(BUILD)/scen.log
 	python3 $(COMMON)/crosscheck.py $(BUILD)/results.json
+
+# unit test of pipe_msgbus against PIPE 7.1 6.1.4 (framing + P2M framer)
+msgbus:
+	@mkdir -p $(BUILD)
+	$(IVERILOG) -g2012 $(IVEXTRA) -I $(RTL_DIR) -o $(BUILD)/msgbus.vvp tb_msgbus.sv $(RTL_DIR)/pipe_msgbus.sv
+	$(VVP) $(BUILD)/msgbus.vvp | tee $(BUILD)/msgbus.log
+	@grep -q "MSGBUS PASS" $(BUILD)/msgbus.log
 
 clean:
 	rm -rf $(BUILD)
