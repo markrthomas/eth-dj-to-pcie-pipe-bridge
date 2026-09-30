@@ -5,6 +5,12 @@ If a session ended, this is where you pick up. Read this, then
 
 ## Where things stand (update this block every session)
 
+- **2026-09-30 (o)** — **Flow-control verification** (branch `claude/fc-verify`): `make -C dv/iverilog fc`
+  (loop + pm + 5 scenarios with `-DFLOW_CTRL_OVERRIDE`, in regress) found and fixed a real bug
+  (credit-only flit racing the DRAIN->change transition; `tx_idle` now includes `!fc_cr_req`).
+  `pipe_phy_model` counts expected seq since DUT reset. `tb_link` failure on credit leak is now clean.
+  Still open: vlt/systemc/uvm/cocotb with FC on (need a credit-sourcing peer BFM).
+
 - **2026-09-30 (n)** — **Infra follow-up to D16** (branch `claude/infra-fc`). D16 flow control
   (PR #19, merged) is opt-in; infra now covers it: `make lint` also lints with
   `-DFLOW_CTRL_OVERRIDE`; `tb_link` (two bridges, flit killer) is in `make regress` (CI);

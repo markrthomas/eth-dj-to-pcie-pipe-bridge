@@ -13,6 +13,7 @@ module tb_scen;
   `include "loop_harness.svh"
 
   int          rx_frames, rx_bytes, errors, tot_err, nfr, base_flits, base_err, fd, sc;
+  string       rpath;
   logic [31:0] crc, d;
   logic        running = 1'b0;
 
@@ -56,7 +57,8 @@ module tb_scen;
   endtask
 
   initial begin
-    fd = $fopen("sim_build/results.json", "w");
+    if (!$value$plusargs("results=%s", rpath)) rpath = "sim_build/results.json";
+    fd = $fopen(rpath, "w");
     $fwrite(fd, "{\"env\": \"iverilog\", \"scenarios\": {");
     tot_err = 0;
     mac.gap_pct    = 10;

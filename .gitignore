@@ -11,7 +11,7 @@ START_NOTES
 # simulation build / artifacts
 sim_build/
 dv/*/sim_build/
-dv/*/sim_build_fc/
+dv/*/sim_build_fc*/
 dv/*/obj_dir/
 dv/*/obj_dir_dbg/
 obj_dir/

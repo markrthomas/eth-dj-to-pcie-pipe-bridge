@@ -323,5 +323,5 @@ module tb_link;
     $finish;
   end
 
-  initial begin #400000000; $display("LINK FAIL: global timeout"); $finish; end
+  initial begin #2000000; $display("LINK FAIL: global timeout (stall: send or wait never completed)"); $finish; end
 endmodule

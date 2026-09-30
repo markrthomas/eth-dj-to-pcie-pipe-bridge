@@ -19,8 +19,8 @@ IVEXTRA  ?=
 WFLAGS    = $(if $(filter 1,$(WAVES)),-DDUMP_TOP=tb_$@ ../waves/wave_dump.sv)
 WRUN      = $(if $(filter 1,$(WAVES)),+dumpfile=$(BUILD)/$@.vcd)
 
-.PHONY: smoke tx loop pm rxovf scen msgbus msgbus_mac link all clean
-all: smoke tx loop pm rxovf scen msgbus msgbus_mac link
+.PHONY: smoke tx loop pm rxovf scen msgbus msgbus_mac link fc all clean
+all: smoke tx loop pm rxovf scen msgbus msgbus_mac link fc
 
 LOOP_TB_DEPS := $(COMMON)/eth_mac_model.sv $(COMMON)/pipe_phy_model.sv $(COMMON)/pipe_phy_ctrl_model.sv $(COMMON)/eth_sink_model.sv
 smoke:
@@ -60,6 +60,18 @@ scen:
 	$(VVP) $(BUILD)/scen.vvp $(WRUN) | tee $(BUILD)/scen.log
 	@grep -q "SCEN PASS" $(BUILD)/scen.log
 	python3 $(COMMON)/crosscheck.py $(BUILD)/results.json
+
+# single-ended suite with flow control ON (D16): the DUT loops its own Tx back into Rx, so it
+# sees its own credit advertisements.  loop + pm + the shared scenarios (checked against the
+# golden model, flit/frame/crc/pmcnt identical to the flow-control-off run).  rxovf is NOT
+# run: it forces Rx overload (drops), which flow control exists to prevent.
+FCB := sim_build_fcl
+fc:
+	$(MAKE) BUILD=$(FCB) IVEXTRA=-DFLOW_CTRL_OVERRIDE loop pm
+	$(IVERILOG) -g2012 -DFLOW_CTRL_OVERRIDE -I $(RTL_DIR) -I $(COMMON) -I . -o $(FCB)/scen.vvp tb_scen.sv $(LOOP_TB_DEPS) $(RTL_SRCS)
+	$(VVP) $(FCB)/scen.vvp +results=$(FCB)/results.json | tee $(FCB)/scen.log
+	@grep -q "SCEN PASS" $(FCB)/scen.log
+	python3 $(COMMON)/crosscheck.py $(FCB)/results.json
 
 # unit test of pipe_msgbus against PIPE 7.1 6.1.4 (framing + P2M framer)
 msgbus:

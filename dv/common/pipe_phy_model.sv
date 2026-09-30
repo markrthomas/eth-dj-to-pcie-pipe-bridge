@@ -35,6 +35,7 @@ module pipe_phy_model
   int unsigned frames    = 0;
   int unsigned errors    = 0;
   int unsigned cr_flits  = 0;      // credit-only flits (FLOW_CTRL)
+  int unsigned fc_sent   = 0;      // data flits since the last DUT reset (expected seq field)
   int unsigned fc_seq_err = 0;     // seq field != data flits sent before it
   logic [15:0] last_seq = '0, last_cl = '0;
   logic        frame_done = 1'b0;
@@ -52,7 +53,7 @@ module pipe_phy_model
 
   always @(posedge pclk or negedge pipe_rst_n) begin
     if (!pipe_rst_n) begin
-      beat <= 0; fpos <= 0; in_frame <= 1'b0; frame_done <= 1'b0;
+      beat <= 0; fpos <= 0; in_frame <= 1'b0; frame_done <= 1'b0; fc_sent = 0;
     end else begin
       frame_done <= 1'b0;
       if (pipe_tx_start_block && !pipe_tx_data_valid) err("start_block without data_valid");
@@ -80,9 +81,9 @@ module pipe_phy_model
           if (FLOW_CTRL) begin
             last_seq = fl[8*FLIT_FC_OFF +: 16];
             last_cl  = fl[8*(FLIT_FC_OFF+2) +: 16];
-            if (last_seq !== 16'(flits)) begin fc_seq_err++; err("flow-control seq field != data flits sent before"); end
+            if (last_seq !== 16'(fc_sent)) begin fc_seq_err++; err("flow-control seq field != data flits sent before"); end
           end
-          if (crflit) cr_flits++; else flits++;
+          if (crflit) cr_flits++; else begin flits++; fc_sent++; end
           for (int b = 0; b < plen; b++)
             if (fpos + b < MAX_FRAME) fbuf[fpos + b] = fl[8*(FLIT_HDR_B + b) +: 8];
           fpos = fpos + plen;

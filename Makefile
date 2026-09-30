@@ -52,7 +52,7 @@ lint:
 sim: iverilog
 
 iverilog:
-	$(MAKE) -C dv/iverilog smoke tx loop pm rxovf scen msgbus msgbus_mac link
+	$(MAKE) -C dv/iverilog smoke tx loop pm rxovf scen msgbus msgbus_mac link fc
 
 regress: lint sim
 	@echo "regress: OK"
