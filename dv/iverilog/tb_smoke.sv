@@ -98,7 +98,7 @@ module tb_smoke;
     chk(pipe_powerdown === PWR_P0,   "powerdown should be P0 after link-up");
     chk(phyc.pd_changes == 1 && phyc.pd_hist[0] == PWR_P0, "exactly one P1->P0 change");
     chk(phyc.mb_writes == 1,         "one message-bus write at link-up");
-    chk(phyc.last_mb_addr == MB_ADDR_PAM4_TXCTL && phyc.last_mb_data == PAM4CFG_RST,
+    chk(phyc.last_mb_addr == MB_ADDR_TX_PRESET && phyc.last_mb_data == PAM4CFG_RST,
         "PAM4 Tx control written to the PHY");
     chk(eth_tready === 1'b1,         "Ethernet ingress open after link-up");
     csr_rd(CSR_STATUS, d);

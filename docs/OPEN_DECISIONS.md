@@ -118,8 +118,8 @@ control plane from an always-on clock. The model assumes pclk keeps running.
 
 PowerDown / Rate / Width stay on their **PIPE pins** with the **PhyStatus**
 completion handshake (as in PIPE). The message bus (**8-bit** M2P/P2M byte buses — see the 2026-09-30 resolution below; the earlier "4-bit" wording and split cmd/data framing in this paragraph are superseded) carries the **PAM4 Tx
-control** (precoding enable / preset) as one **committed write** of `PAM4CFG` to
-PHY register `MB_ADDR_PAM4_TXCTL` (8'h01, **placeholder — verify against the PIPE
+control** (now: the Gen6 **Tx preset index**, see the 2026-09-30 register resolution below) as one **committed write** of `PAM4CFG` to
+PHY register `MB_ADDR_TX_PRESET` (8'h01, **placeholder — verify against the PIPE
 7.1 PHY register map**). Framing on this repo's split `cmd[3:0]`/`data[7:0]` port:
 cycle 0 `{MB_WR_C, addr}`, cycle 1 `{MB_NOP, wdata}`; the PHY answers with one cycle
 of `{MB_WR_ACK, addr}`. Command codes are the PIPE 5+ encodings (NOP=0, WR_UC=1,
@@ -146,20 +146,30 @@ Findings vs what this repo had:
   the four ports became `pipe_m2p_msgbus[7:0]` / `pipe_p2m_msgbus[7:0]`; `pipe_msgbus`
   now sends the 3-byte frame above and accepts a write_ack when `p2m[7:4] == MB_WR_ACK`;
   addresses are 12-bit (`MB_ADDR_W`); the DV PHY models decode the byte-serial framing.
-- **PAM4 register address — partly confirmed by the spec (2026-09-30).** With the owner's
-  paste of PIPE 7.1 (ref 643108, rev 7.1) **Table 7-1 "PHY Registers"** we now have the
-  spec's own register map: the message-bus address space is **12-bit** (confirmed); RX1
-  Rx Margin Control0/1 at 12'h0/12'h1; RX1 blocks up to 12'h1FF, RX2 12'h200..3FF; **TX1
-  "PHY Tx Control0..10" at 12'h400..12'h40A** (Control0 and Control1 N/A for the SerDes
-  architecture); TX2 12'h600..7FF; CMN1 12'h800 (Common Control0, N/A SerDes) and 12'h801
-  (near-end loopback); CMN2 12'hA00..BFF; vendor 12'hC00..FFF. So `MB_ADDR_PAM4_TXCTL =
-  12'h406` **is a real register: "PHY Tx Control6"** (and our earlier invented `8'h01`
-  would have been Rx Margin Control1 — a different register entirely). **Still not
-  confirmed:** whether Tx Control6 is where PAM4 precoding/restricted-levels live (the
-  excerpt has no Tx Control bit-field descriptions), and what our `PAM4CFG` byte
-  ("precoding enable / preset 0") should contain — it is a bridge-defined placeholder.
-  Also note the map is **per message bus / per lane group (TX1/RX1 vs TX2/RX2)**; this
-  repo drives one bus for x1 — how the bus scales at x4 is an open design point.
+- **PAM4 register — CORRECTED against the spec (2026-09-30).** From PIPE 7.1 (ref 643108)
+  Table 7-1 and Tx Control tables 7-12..7-22: the address space is 12-bit; TX1 "PHY Tx Control0..10"
+  live at 12'h400..12'h40A. **`12'h406` is Tx Control6 = FS[5:0]** (the link partner's FS value),
+  *not* a PAM4 register, so the previous choice (a `PAM4CFG` byte written to 12'h406 at every Gen6
+  link-up) wrote a bogus FS value. **No PAM4 precoding-enable register exists in Tx Control0..10**
+  (the sibling repo's "PAM4RestrictedLevels at 12'h406" was wrong). The registers are: 400/401
+  SATA/USB (N/A SerDes), 402 TxDeemph_Cminus1, 403 TxDeemph_Czero, 404 TxDeemph_Cplus1,
+  **405 GetLocalPresetCoefficients[7] + LocalPresetIndex[5:0]**, 406 FS, 407 LF, 408 TxSwing/TxMargin,
+  409 TxDeemph_Cminus2 (64 GT/s+), 40A TxLaneEnable (USB4/DP). Also: RX1 Rx Margin 0/1 at 0/1,
+  TX2 at 600..7FF, CMN1 at 800/801, CMN2 at A00..BFF, vendor C00..FFF.
+- **Decision (owner, 2026-09-30): write the Gen6 Tx preset index.** `MB_ADDR_TX_PRESET = 12'h405`
+  (renamed from `MB_ADDR_PAM4_TXCTL`); the byte is `{2'b00, LocalPresetIndex[5:0]}`; the `PAM4CFG`
+  CSR keeps its name but is now the 6-bit preset index (reset **6'b100001 = 64 GT/s Preset P0**,
+  Table 7-17; bits [7:6] read 0 / are ignored on write because bit 7 of 12'h405 is the
+  one-cycle `GetLocalPresetCoefficients` strobe and must never be set by accident). **Precoding
+  enable is dropped** — no register for it has been found. The write is still sent at link-up,
+  after a rate change landing on Gen6, and on a PAM4CFG rewrite; never below Gen6.
+  Caveats: the spec table lists 64 GT/s P1 as `100011b` (skipping `100010b`), likely a typo —
+  only P0 (`100001b`) is used; per the spec LocalPresetIndex "is only used with a PHY that
+  requires dynamic preset coefficient updates"; where PAM4 precoding is actually controlled
+  (perhaps the Rx Control registers, not pasted) is **still unknown**.
+- **Alternatives not taken:** writing the four Gen6 coefficients (C-2/C-1/C0/C+1 at 409/402/403/404,
+  three write_uncommitted + one write_committed) — larger, and no spec-derived default values; or
+  no message-bus write at all.
 - **Framing and opcodes — VERIFIED against the spec text (2026-09-30).** The owner pasted
   PIPE 7.1 (ref 643108) §6.1.4 (Tables 6-9..6-14, Figure 6-1, §6.1.4.2). Confirmed exactly:
   `M2P_MessageBus[7:0]`/`P2M_MessageBus[7:0]` (Table 6-9); command encodings NOP 0000,
@@ -180,10 +190,9 @@ Findings vs what this repo had:
   requires read_completion / write_ack responses on M2P; this bridge ignores such requests
   and never answers them. Adequate while no PHY-initiated traffic is used; a real integration
   that needs Rx margining or PHY-initiated writes must add a target.
-- **Still unverified:** which PHY register carries PAM4 precoding / restricted levels (Tx
-  Control0..10 bit fields not seen; 12'h406 is a valid register but its function is unconfirmed)
-  and what our `PAM4CFG` byte should contain (bridge-defined placeholder). Also unverified:
-  how the message bus scales to more than one lane (TX1/RX1 vs TX2/RX2 regions).
+- **Still unverified:** where PAM4 precoding is controlled (Rx Control registers 12'h4..12'h9 and
+  the rest of Table 7-1 not seen); whether the LocalPresetIndex-only write is sufficient for a
+  given PHY; how the message bus scales to more than one lane (TX1/RX1 vs TX2/RX2 regions).
 - **Port-list change:** this alters the frozen top-level interface (2 ports replace 4).
   Integrators using the old split ports must update.
 ## D9. Rx flow control: drop + abort the damaged frame (M3)

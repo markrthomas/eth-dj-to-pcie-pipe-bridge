@@ -126,7 +126,7 @@ module eth_dj_pipe7_bridge
 
   // Local copy of the pkg constant: Icarus turns a bare imported name used
   // directly in a port connection into an implicit 1-bit net.
-  wire [MB_ADDR_W-1:0] mb_addr = MB_ADDR_PAM4_TXCTL;
+  wire [MB_ADDR_W-1:0] mb_addr = MB_ADDR_TX_PRESET;
 
   pipe_msgbus u_msgbus (
     .clk (pclk), .rst_n (pipe_rst_n),
