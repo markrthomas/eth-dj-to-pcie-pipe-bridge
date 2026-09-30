@@ -26,7 +26,7 @@ default: help
 help:
 	@echo "eth-dj-pcie-pipe7_1-bridge — targets:"
 	@echo "  lint       Verilator --lint-only -Wall on rtl/"
-	@echo "  sim        Icarus directed tests: smoke tx loop pm rxovf scen"
+	@echo "  sim        Icarus directed tests: smoke tx loop pm rxovf scen msgbus"
 	@echo "  regress    lint + sim  — the fast CI gate"
 	@echo "  coverage   Verilator C++ env with --coverage -> coverage.info (floor 80%)"
 	@echo "  formal     SymbiYosys prove (PDR) + cover on formal/*.sby (OSS CAD Suite)"
@@ -51,7 +51,7 @@ lint:
 sim: iverilog
 
 iverilog:
-	$(MAKE) -C dv/iverilog smoke tx loop pm rxovf scen
+	$(MAKE) -C dv/iverilog smoke tx loop pm rxovf scen msgbus
 
 regress: lint sim
 	@echo "regress: OK"

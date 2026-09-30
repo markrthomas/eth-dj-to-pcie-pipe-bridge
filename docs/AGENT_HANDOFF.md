@@ -5,6 +5,15 @@ If a session ended, this is where you pick up. Read this, then
 
 ## Where things stand (update this block every session)
 
+- **2026-09-30 (i)** — Owner pasted PIPE 7.1 §6.1.4. **Message-bus framing + opcodes are now
+  verified against the spec text** (Tables 6-9..6-14, Fig 6-1). Found + fixed a real bug: the
+  master decoded every P2M byte as a command (a read_completion data byte `5_` looked like a
+  write_ack); `pipe_msgbus` now frames P2M by transaction length. New unit test
+  `make -C dv/iverilog msgbus` (in `make regress`), mutation-checked. Formal (pinned suite),
+  vlt(SVA), cocotb, systemc, lanes4, upf-tb, wave-check all pass; UVM left to CI (PHY driver
+  unchanged). **Still open:** PAM4 register function + PAM4CFG byte (need Tx Control0..10 bit
+  fields), no MAC-side msgbus target (PHY-initiated requests are never answered), multi-lane bus.
+
 - **2026-09-30 (h)** — Owner pasted PIPE 7.1 (ref 643108) **Table 7-1 (PHY register map)**.
   Confirmed: 12-bit message-bus address space; `12'h406` = TX1 "PHY Tx Control6" is a real
   register (old `8'h01` would have hit Rx Margin Control1). **Still unconfirmed:** that Tx
