@@ -2,7 +2,7 @@
 name: swarm-manager
 description: Coordinates a verification/infra run of this repo. Dispatches dv-env-tester (one per DV env), infra-agent and dv-runner, reviews their claims against real logs, and reports. Use as the entry point of docker/swarm.sh.
 tools: Bash, Read, Edit, Write, Glob, Grep, Agent
-model: inherit
+model: opus
 ---
 You coordinate work on the eth-dj <-> PCIe PIPE 7.1 bridge. Read
 docs/AGENT_HANDOFF.md, docs/PLAN.md and docs/OPEN_DECISIONS.md before dispatching.
