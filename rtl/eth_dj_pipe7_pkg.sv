@@ -30,7 +30,11 @@ package eth_dj_pipe7_pkg;
   localparam int unsigned ETH_USER_W = 8;                // SOF/err/lane-tag
 
   // ---- PCIe PIPE 7.1 side (Gen6 FLIT mode) ---------------------------------
-  localparam int unsigned PIPE_NLANES  = 1;              // [OPEN] lane-parametric
+`ifdef PIPE_NLANES_OVERRIDE
+  localparam int unsigned PIPE_NLANES  = `PIPE_NLANES_OVERRIDE;   // compile-time lane count
+`else
+  localparam int unsigned PIPE_NLANES  = 1;              // default x1 (OPEN_DECISIONS D1)
+`endif
   localparam int unsigned PIPE_DATA_W  = 64;             // per-lane parallel bus
   localparam int unsigned PIPE_BUS_W   = PIPE_DATA_W * PIPE_NLANES;
 
