@@ -5,6 +5,11 @@ If a session ended, this is where you pick up. Read this, then
 
 ## Where things stand (update this block every session)
 
+- **2026-09-30 (q)** — **FC formal + x4** (branch `claude/fc-formal-lanes`): `ctrl.sby` gains
+  `prove_fc`/`cover_fc` (credit-only flits free); `make lanes4` covers FC (lint, fc suite, `tb_link`).
+  Details in D16 follow-up 3. Still open: UVM overload scenario (UVM cannot catch a broken credit
+  gate), iverilog rxovf with FC on, spec-dependent items (MAC reg map §7.2, multi-lane msgbus).
+
 - **2026-09-30 (p)** — **Flow control ON in vlt/systemc/uvm/cocotb** (branch `claude/fc-dv-envs`):
   `make vlt-fc systemc-fc uvm-fc cocotb-fc` (= `make -C dv/<env> fc`, `make envs-fc`; hooked into the
   CI jobs of each env and into `make ci`). Hypothesis confirmed: all four envs already loop pipe_tx

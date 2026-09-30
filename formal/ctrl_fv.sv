@@ -1,6 +1,8 @@
 // ============================================================================
 // formal/ctrl_fv.sv — control-plane / Tx flow-control safety (ASSERTIONS.md F-*).
-// Composes the real bridge_ctrl_fsm + pipe_msgbus + tx_egress (pclk domain).
+// Composes the real bridge_ctrl_fsm + pipe_msgbus + tx_egress (pclk domain).  Run twice: default
+// and -DFLOW_CTRL_OVERRIDE (ctrl.sby tasks *_fc), where credit_ok / cr_req are free inputs so a
+// credit-only flit may start at any time tx_en allows (D16).
 // Everything else is a free input: CSR requests, PhyStatus, message-bus
 // responses, the ingress-stopped handshake, Rx idle and the framer's flit_valid.
 // The only environment constraint mirrors the top-level wiring:
@@ -31,6 +33,8 @@ module ctrl_fv
   input logic       rx_idle,
   input logic       other_idle,
   input logic       flit_valid,
+  input logic       fc_credit_ok,    // FLOW_CTRL builds only: free (credit / credit-only-flit requests)
+  input logic       fc_cr_req,
   input logic [MSGBUS_W-1:0] p2m       // PHY -> MAC byte bus (free)
 );
   localparam int BW = $clog2(FLIT_BEATS) + 1;
@@ -44,7 +48,8 @@ module ctrl_fv
   logic [MSGBUS_W-1:0] m2p;
   wire  [MB_ADDR_W-1:0] mb_addr = MB_ADDR_TX_PRESET;
   wire  [7:0] mb_wdata = 8'h35;
-  wire        tx_idle = !egress_busy && !flit_valid && other_idle;
+  // with FLOW_CTRL a wanted credit-only flit counts as Tx activity (eth_dj_pipe7_bridge tx_idle)
+  wire        tx_idle = !egress_busy && !flit_valid && other_idle && !(FLOW_CTRL && fc_cr_req);
 
   bridge_ctrl_fsm u_ctrl (
     .clk(clk), .rst_n(rst_n), .pwr_req(pwr_req), .rate_req(rate_req), .width_req(width_req),
@@ -61,7 +66,7 @@ module ctrl_fv
 
   tx_egress u_eg (
     .clk(clk), .rst_n(rst_n), .tx_en(tx_en), .flit_valid(flit_valid),
-    .credit_ok(1'b1), .cr_req(1'b0), .seq_now(16'd0), .cl_now(16'd0), .st_any(), .st_data(),
+    .credit_ok(fc_credit_ok), .cr_req(fc_cr_req), .seq_now(16'd0), .cl_now(16'd0), .st_any(), .st_data(),
     .flit({FLIT_BYTES*8{1'b0}}), .flit_taken(flit_taken),
     .pipe_tx_data(tx_data), .pipe_tx_data_valid(tx_valid), .pipe_tx_start_block(tx_sb),
     .busy(egress_busy));

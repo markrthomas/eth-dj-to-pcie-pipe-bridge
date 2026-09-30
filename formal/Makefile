@@ -14,4 +14,4 @@ $(PROOFS):
 	$(SBY) -f $@.sby
 
 clean:
-	rm -rf $(addsuffix _prove,$(PROOFS)) $(addsuffix _cover,$(PROOFS))
+	rm -rf $(addsuffix _prove,$(PROOFS)) $(addsuffix _cover,$(PROOFS)) ctrl_prove_fc ctrl_cover_fc
