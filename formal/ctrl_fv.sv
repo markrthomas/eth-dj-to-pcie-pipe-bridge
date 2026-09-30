@@ -61,6 +61,7 @@ module ctrl_fv
 
   tx_egress u_eg (
     .clk(clk), .rst_n(rst_n), .tx_en(tx_en), .flit_valid(flit_valid),
+    .credit_ok(1'b1), .cr_req(1'b0), .seq_now(16'd0), .cl_now(16'd0), .st_any(), .st_data(),
     .flit({FLIT_BYTES*8{1'b0}}), .flit_taken(flit_taken),
     .pipe_tx_data(tx_data), .pipe_tx_data_valid(tx_valid), .pipe_tx_start_block(tx_sb),
     .busy(egress_busy));

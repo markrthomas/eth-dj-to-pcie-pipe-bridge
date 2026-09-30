@@ -4,6 +4,12 @@
 // header valid bit, sof/eof sequencing, payload length <= 240, and zeroed
 // padding/DLP/FEC bytes (bridge flit format, eth_dj_pipe7_pkg).  Reassembles
 // frames into fbuf[]; frame_done pulses for one pclk with done_len valid.
+//
+// With FLOW_CTRL (docs/OPEN_DECISIONS.md D16) bytes FLIT_FC_OFF..+3 of every flit carry
+// seq/cl and are exempt from the zero check; a flit with count 0, sof = eof = 0 is a
+// legal credit-only flit (counted in cr_flits, not in flits/frames); the seq field must
+// equal the number of data flits seen before it (fc_seq_err otherwise).  last_cl / last_seq
+// expose the most recent fields.
 // ============================================================================
 `timescale 1ns/1ps
 `include "eth_dj_pipe7_pkg.sv"
@@ -28,6 +34,9 @@ module pipe_phy_model
   int unsigned flits     = 0;
   int unsigned frames    = 0;
   int unsigned errors    = 0;
+  int unsigned cr_flits  = 0;      // credit-only flits (FLOW_CTRL)
+  int unsigned fc_seq_err = 0;     // seq field != data flits sent before it
+  logic [15:0] last_seq = '0, last_cl = '0;
   logic        frame_done = 1'b0;
   int          done_len   = 0;
 
@@ -39,7 +48,7 @@ module pipe_phy_model
   endtask
 
   int plen;
-  logic hv, hsof, heof, padbad;
+  logic hv, hsof, heof, padbad, crflit;
 
   always @(posedge pclk or negedge pipe_rst_n) begin
     if (!pipe_rst_n) begin
@@ -54,7 +63,6 @@ module pipe_phy_model
         if (beat == FLIT_BEATS - 1) begin
           // ---- complete flit: check + reassemble -----------------------------
           beat  <= 0;
-          flits++;
           hv   = fl[0];
           hsof = fl[1];
           heof = fl[2];
@@ -62,16 +70,25 @@ module pipe_phy_model
           if (!hv) err("header valid bit clear");
           if (fl[7:3] != 5'b0) err("header reserved bits nonzero");
           if (plen > FLIT_PAYLOAD_B) err("payload length > 240");
-          if (plen == 0) err("empty flit emitted");
-          if (hsof !== !in_frame) err("sof/frame state mismatch");
+          crflit = FLOW_CTRL && (plen == 0) && !hsof && !heof;
+          if (plen == 0 && !crflit) err("empty flit emitted");
+          if (!crflit && hsof !== !in_frame) err("sof/frame state mismatch");
           padbad = 1'b0;
           for (int b = FLIT_HDR_B + plen; b < FLIT_BYTES; b++)
-            if (fl[8*b +: 8] !== 8'h00) padbad = 1'b1;
+            if (!(FLOW_CTRL && b >= FLIT_FC_OFF && b < FLIT_FC_OFF + 4) && fl[8*b +: 8] !== 8'h00) padbad = 1'b1;
           if (padbad) err("nonzero padding/DLP/FEC byte");
+          if (FLOW_CTRL) begin
+            last_seq = fl[8*FLIT_FC_OFF +: 16];
+            last_cl  = fl[8*(FLIT_FC_OFF+2) +: 16];
+            if (last_seq !== 16'(flits)) begin fc_seq_err++; err("flow-control seq field != data flits sent before"); end
+          end
+          if (crflit) cr_flits++; else flits++;
           for (int b = 0; b < plen; b++)
             if (fpos + b < MAX_FRAME) fbuf[fpos + b] = fl[8*(FLIT_HDR_B + b) +: 8];
           fpos = fpos + plen;
-          if (heof) begin
+          if (crflit) begin
+            // credit-only: no frame state change
+          end else if (heof) begin
             frames++;
             done_len   <= fpos;
             frame_done <= 1'b1;
