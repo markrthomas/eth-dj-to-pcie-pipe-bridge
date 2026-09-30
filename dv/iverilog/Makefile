@@ -66,9 +66,10 @@ scen:
 # golden model, flit/frame/crc/pmcnt identical to the flow-control-off run).  rxovf is NOT
 # run: it forces Rx overload (drops), which flow control exists to prevent.
 FCB := sim_build_fcl
+FCX :=          # extra flags for the FC runs (e.g. -DPIPE_NLANES_OVERRIDE=4 from make lanes4)
 fc:
-	$(MAKE) BUILD=$(FCB) IVEXTRA=-DFLOW_CTRL_OVERRIDE loop pm
-	$(IVERILOG) -g2012 -DFLOW_CTRL_OVERRIDE -I $(RTL_DIR) -I $(COMMON) -I . -o $(FCB)/scen.vvp tb_scen.sv $(LOOP_TB_DEPS) $(RTL_SRCS)
+	$(MAKE) BUILD=$(FCB) IVEXTRA="-DFLOW_CTRL_OVERRIDE $(FCX)" loop pm
+	$(IVERILOG) -g2012 -DFLOW_CTRL_OVERRIDE $(FCX) -I $(RTL_DIR) -I $(COMMON) -I . -o $(FCB)/scen.vvp tb_scen.sv $(LOOP_TB_DEPS) $(RTL_SRCS)
 	$(VVP) $(FCB)/scen.vvp +results=$(FCB)/results.json | tee $(FCB)/scen.log
 	@grep -q "SCEN PASS" $(FCB)/scen.log
 	python3 $(COMMON)/crosscheck.py $(FCB)/results.json

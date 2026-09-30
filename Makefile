@@ -149,9 +149,12 @@ LANES ?= 4
 .PHONY: lanes4
 lanes4:
 	$(VERILATOR) --lint-only -Wall -DPIPE_NLANES_OVERRIDE=$(LANES) -I$(RTL_DIR) --top-module $(TOP) $(RTL_SRCS)
+	$(VERILATOR) --lint-only -Wall -DPIPE_NLANES_OVERRIDE=$(LANES) -DFLOW_CTRL_OVERRIDE -I$(RTL_DIR) --top-module $(TOP) $(RTL_SRCS)
 	$(MAKE) -C dv/iverilog BUILD=sim_build_x$(LANES) IVEXTRA=-DPIPE_NLANES_OVERRIDE=$(LANES) smoke tx loop pm rxovf
 	$(MAKE) -C dv/iverilog IVEXTRA=-DPIPE_NLANES_OVERRIDE=$(LANES) scen
-	@echo "lanes4: OK (x$(LANES))"
+	$(MAKE) -C dv/iverilog fc FCB=sim_build_x$(LANES)fc FCX=-DPIPE_NLANES_OVERRIDE=$(LANES)
+	$(MAKE) -C dv/iverilog link BUILD=sim_build_x$(LANES) IVEXTRA=-DPIPE_NLANES_OVERRIDE=$(LANES)
+	@echo "lanes4: OK (x$(LANES), incl. flow control)"
 
 ci: regress coverage formal envs crosscheck envs-fc upf-tb lanes4
 	@echo "ci: OK"

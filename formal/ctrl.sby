@@ -1,23 +1,26 @@
 # Control plane + Tx flow control (bridge_ctrl_fsm + pipe_msgbus + tx_egress):
 # prove (PDR, unbounded) + cover.
 [tasks]
-prove
-cover
+prove pv nofc
+cover cv nofc
+prove_fc pv fc
+cover_fc cv fc
 
 [options]
-prove: mode prove
-cover: mode cover
-cover: depth 80
+pv: mode prove
+cv: mode cover
+cv: depth 80
 
 [engines]
-prove: abc pdr
-cover: smtbmc yices
+pv: abc pdr
+cv: smtbmc yices
 
 [script]
 # The RTL imports the package in module headers, which the native Yosys parser
 # rejects; the yosys-slang frontend (shipped in the pinned OSS CAD Suite) reads it.
 plugin -i slang
-read_slang --single-unit -D FORMAL -I . --top ctrl_fv eth_dj_pipe7_pkg.sv bridge_ctrl_fsm.sv pipe_msgbus.sv tx_egress.sv ctrl_fv.sv
+nofc: read_slang --single-unit -D FORMAL -I . --top ctrl_fv eth_dj_pipe7_pkg.sv bridge_ctrl_fsm.sv pipe_msgbus.sv tx_egress.sv ctrl_fv.sv
+fc: read_slang --single-unit -D FORMAL -D FLOW_CTRL_OVERRIDE -I . --top ctrl_fv eth_dj_pipe7_pkg.sv bridge_ctrl_fsm.sv pipe_msgbus.sv tx_egress.sv ctrl_fv.sv
 prep -top ctrl_fv
 
 [files]

@@ -145,7 +145,12 @@ module tb_link;
       found = -1;
       for (int k = 0; k < KWIN; k++) begin
         if (found < 0 && nid[dir] + k < NMAX) begin
-          if (ferr ? (flen <= elen(dir, nid[dir] + k) && bytes_match(dir, nid[dir] + k, flen))
+          // aborted frame: the bytes accumulated so far, or - when nothing was accumulated (the abort
+          // fell on a 32-byte beat boundary) - one 0x00 filler byte after them (rx_deframer, D9)
+          if (ferr ? (flen <= elen(dir, nid[dir] + k) &&
+                      (bytes_match(dir, nid[dir] + k, flen) ||
+                       (flen > 1 && ((flen - 1) % ETH_KEEP_W) == 0 && bytes_match(dir, nid[dir] + k, flen - 1) &&
+                        ((dir == 0) ? endB.sink.fbuf[flen-1] : endA.sink.fbuf[flen-1]) === 8'h00)))
                    : (flen == elen(dir, nid[dir] + k) && bytes_match(dir, nid[dir] + k, flen)))
             found = nid[dir] + k;
         end
