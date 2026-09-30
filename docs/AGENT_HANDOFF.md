@@ -5,6 +5,21 @@ If a session ended, this is where you pick up. Read this, then
 
 ## Where things stand (update this block every session)
 
+- **2026-09-30 (g)** — **D8 message-bus interface fixed** (branch `claude/d8-msgbus-spec`).
+  Cross-checking against the sibling `ucie-rdi-to-pcie6-pipe7` (which cites PIPE 7.1
+  §6.1.4.2) showed the real bus is **one 8-bit M2P + one 8-bit P2M byte bus, idle 8'h00,
+  12-bit addresses**; the old 4-bit cmd + 8-bit data split ports were wrong. Top ports
+  `pipe_m2p_msgbus[7:0]` / `pipe_p2m_msgbus[7:0]` replace the four old ones;
+  `pipe_msgbus` sends `{WR_C,addr[11:8]}`, `addr[7:0]`, `data` and accepts `p2m[7:4]==WR_ACK`;
+  `MB_ADDR_PAM4_TXCTL` = 12'h406 (sibling's working offset — the PAM4 offset and the PAM4CFG
+  byte meaning remain **unverified vs the spec**, which is unreachable from this container).
+  All envs ported and run: iverilog (`make regress`, `lanes4`), vlt (SVA on), systemc, cocotb,
+  upf-tb, wave-check-all, formal (pinned OSS CAD Suite: all prove PASS, covers reached);
+  mutations caught by iverilog smoke, vlt SVA `a_mb3_byte1`, formal `a_fmb3_byte1`.
+  **Gotchas:** `make formal` needs the pinned OSS CAD Suite (yosys-slang) — apt yosys lacks
+  it; `Agent` worktree isolation is unreliable about its base commit (check
+  `grep pipe_m2p_msgbus rtl/eth_dj_pipe7_bridge.sv` in a worktree before working).
+
 - **2026-09-29 (f)** — Owner delegated D1/D8/D10/D14 ("most logical action"); recorded
   in `OPEN_DECISIONS.md`. **D1:** x1 default kept; `PIPE_NLANES_OVERRIDE` + `make lanes4`
   (lint + iverilog suite at x4, in CI) added and passing. **D8:** could NOT verify the
