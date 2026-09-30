@@ -387,6 +387,46 @@ package bridge_uvm_pkg;
       ok = env.sb.frames >= n;
     endtask
 
+    // FC only (D16): the Ethernet sink is fully stalled while the MAC floods the bridge with the
+    // random-scenario frames (~40 KB, far beyond the buffering).  With credit flow control the
+    // sender is held back, so nothing may be dropped or aborted; once the sink is released every
+    // frame arrives intact.  Breaking the credit gate (credit_ok stuck 1) makes flits overflow the
+    // Rx FIFO -> dropped flits / aborted frames -> this fails.
+    task fc_overload();
+      bit ok, o;
+      logic [31:0] c0, c1;
+      int e0;
+      frame_seq seq;
+      const int FSC = 2;
+      do_reset(ok);
+      env.sb.start(FSC);
+      e0 = env.phy.errors + env.rxm.errors;
+      env.rxm.ready_pct = 0;
+      seq = frame_seq::type_id::create("seq_ovf");
+      seq.scen = FSC; seq.lo = 0; seq.hi = scen_nframes(FSC);
+      fork
+        seq.start(env.seqr);
+      join_none
+      repeat (30000) @(posedge pvif.clk);
+      env.csr.read(CSR_RXCNT0, c0);
+      env.csr.read(CSR_RXCNT1, c1);
+      if (c0[15:0] != 0 || c1[31:16] != 0) begin
+        total_errors++;
+        `uvm_error("FCOVF", $sformatf("Rx overload under flow control: dropped=%0d aborted=%0d", c0[15:0], c1[31:16]))
+      end
+      env.rxm.ready_pct = 100;
+      wait_frames(scen_nframes(FSC), o);
+      repeat (200) @(posedge pvif.clk);
+      if (!o || env.sb.errors != 0 || env.sb.frames != scen_nframes(FSC) ||
+          (env.phy.errors + env.rxm.errors) != e0) begin
+        total_errors++;
+        `uvm_error("FCOVF", $sformatf("frames lost/corrupt after release: got %0d/%0d, sb errors %0d, ok %0d",
+                   env.sb.frames, scen_nframes(FSC), env.sb.errors, o))
+      end
+      env.rxm.ready_pct = 90;
+      `uvm_info("FCOVF", $sformatf("overload stall: %0d frames intact, dropped=%0d aborted=%0d", env.sb.frames, c0[15:0], c1[31:16]), UVM_LOW)
+    endtask
+
     task run_phase(uvm_phase phase);
       int fd, nfr, f0, e0, errs;
       string rpath;
@@ -437,6 +477,7 @@ package bridge_uvm_pkg;
       $fwrite(fd, "}}\n");
       $fclose(fd);
       if (FLOW_CTRL) begin
+        fc_overload();
         `uvm_info("FC", $sformatf("credit-only flits=%0d", env.phy.cr_flits), UVM_LOW)
         if (env.phy.cr_flits == 0) begin
           total_errors++; `uvm_error("FC", "flow control on but no credit-only flit seen (FC not exercised)")

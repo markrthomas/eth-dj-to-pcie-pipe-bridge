@@ -5,6 +5,11 @@ If a session ended, this is where you pick up. Read this, then
 
 ## Where things stand (update this block every session)
 
+- **2026-09-30 (r)** — **UVM FC overload** (branch `claude/uvm-fc-overload`): `fc_overload` in
+  `scen_test` (FC only) stalls the sink and floods; must see 0 drops/aborts and 40 intact frames.
+  Mutation `credit_ok=1` fails it. Closes the UVM credit-gate gap. Remaining: iverilog rxovf with FC,
+  vlt/systemc/uvm/cocotb at x4, spec-dependent items.
+
 - **2026-09-30 (q)** — **FC formal + x4** (branch `claude/fc-formal-lanes`): `ctrl.sby` gains
   `prove_fc`/`cover_fc` (credit-only flits free); `make lanes4` covers FC (lint, fc suite, `tb_link`).
   Details in D16 follow-up 3. Still open: UVM overload scenario (UVM cannot catch a broken credit
