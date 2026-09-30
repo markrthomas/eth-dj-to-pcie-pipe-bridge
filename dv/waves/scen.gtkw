@@ -58,13 +58,9 @@ tb_scen.dut.pipe_phy_status
 @200
 -Message bus
 @22
-tb_scen.dut.pipe_m2p_cmd[3:0]
+tb_scen.dut.pipe_m2p_msgbus[7:0]
 @22
-tb_scen.dut.pipe_m2p_data[7:0]
-@22
-tb_scen.dut.pipe_p2m_cmd[3:0]
-@22
-tb_scen.dut.pipe_p2m_data[7:0]
+tb_scen.dut.pipe_p2m_msgbus[7:0]
 @200
 -Control plane
 @22
