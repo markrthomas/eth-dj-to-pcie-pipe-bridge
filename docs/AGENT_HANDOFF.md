@@ -5,6 +5,13 @@ If a session ended, this is where you pick up. Read this, then
 
 ## Where things stand (update this block every session)
 
+- **2026-09-30 (s)** — **Real spec found** (`markrthomas/summary`, `docs/PHY Interface ... .pdf`, PIPE 7.1 Rev 7.1; clone
+  read-only via `add_repo`). **MAC register file §7.2 implemented** in `msgbus_mac_tgt` (defined addresses, RX2/TX2/CMN2
+  windows, write buffer with atomic commit, reserved -> 0) + `tb_msgbus_mac` cases I-K; **multi-lane message bus:** no RTL
+  change - the single shared bus pair is the spec-permitted form for a Fixed PHY (D17; per-lane replication only needed for a
+  Variable PHY). Branch `claude/mac-regs`. Not modelled: field attributes / reserved-bit masking. The spec PDF is a 7.8 MB
+  public-repo file; `pdftotext -layout` works on it.
+
 - **2026-09-30 (r)** — **UVM FC overload** (branch `claude/uvm-fc-overload`): `fc_overload` in
   `scen_test` (FC only) stalls the sink and floods; must see 0 drops/aborts and 40 intact frames.
   Mutation `credit_ok=1` fails it. Closes the UVM credit-gate gap. Remaining: iverilog rxovf with FC,
@@ -13,7 +20,7 @@ If a session ended, this is where you pick up. Read this, then
 - **2026-09-30 (q)** — **FC formal + x4** (branch `claude/fc-formal-lanes`): `ctrl.sby` gains
   `prove_fc`/`cover_fc` (credit-only flits free); `make lanes4` covers FC (lint, fc suite, `tb_link`).
   Details in D16 follow-up 3. Still open: UVM overload scenario (UVM cannot catch a broken credit
-  gate), iverilog rxovf with FC on, spec-dependent items (MAC reg map §7.2, multi-lane msgbus).
+  gate), iverilog rxovf with FC on (MAC reg map and multi-lane msgbus: see D17, done).
 
 - **2026-09-30 (p)** — **Flow control ON in vlt/systemc/uvm/cocotb** (branch `claude/fc-dv-envs`):
   `make vlt-fc systemc-fc uvm-fc cocotb-fc` (= `make -C dv/<env> fc`, `make envs-fc`; hooked into the
