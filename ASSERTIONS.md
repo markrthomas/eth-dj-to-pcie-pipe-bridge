@@ -67,6 +67,7 @@ are printed by `make coverage` (from `coverage.dat`, not gated). **Not bound:**
 | F-MB3 | m2p byte-bus framing incl. data byte value and idle (`a_fmb3_byte0`, `a_fmb3_byte1`, `a_fmb3_data`, `a_fmb3_idle`) | ctrl.sby | PASS |
 | F-MB4 | No pin change during a msgbus write (`a_fmb4_no_chg_in_mb`) | ctrl.sby | PASS |
 | F-MB5 | msgbus busy ≤ PHY_TIMEOUT+3 cycles (`a_fmb5_busy_bound`) | ctrl.sby | PASS |
+| F-FC1..4 | flow control (FLOW_CTRL on, D16): sender never passes the remote limit; credit_ok ⇒ credit left; credit-only flit only when limit stale; seq = data flits started (`fc_fv.sv`) | fc.sby | PASS (k-induction) |
 | helpers | `h_chg_tmr`, `h_mb_addr`, `h_mb_data`, `h_mb_wait`: bound counters equal the RTL timers (proven, so PDR converges) | ctrl.sby | PASS |
 
 All covers were reached in the `cover` tasks:

@@ -4,7 +4,7 @@
 # ctrl.sby reads the RTL through yosys-slang because the native Yosys parser
 # rejects package imports in module headers.
 SBY    ?= sby
-PROOFS := async_fifo ingress_gate ctrl
+PROOFS := async_fifo ingress_gate ctrl fc
 
 .PHONY: all $(PROOFS) clean
 all: $(PROOFS)

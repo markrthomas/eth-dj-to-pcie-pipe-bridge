@@ -1,0 +1,26 @@
+# Link flow-control controller (fc_ctl, FLOW_CTRL on): prove (k-induction, unbounded; abc pdr did
+# not converge on the 16-bit modular arithmetic) + cover.
+[tasks]
+prove
+cover
+
+[options]
+prove: mode prove
+cover: mode cover
+cover: depth 40
+prove: depth 12
+
+[engines]
+prove: smtbmc yices
+cover: smtbmc yices
+
+[script]
+plugin -i slang
+read_slang --single-unit -D FORMAL -D FLOW_CTRL_OVERRIDE -I . --top fc_fv eth_dj_pipe7_pkg.sv fc_ctl.sv fc_fv.sv
+prep -top fc_fv
+async2sync
+
+[files]
+../rtl/eth_dj_pipe7_pkg.sv
+../rtl/fc_ctl.sv
+fc_fv.sv
