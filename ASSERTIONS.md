@@ -34,7 +34,7 @@ are printed by `make coverage` (from `coverage.dat`, not gated). **Not bound:**
 | PP5 | A pin-change state lasts at most PHY_TIMEOUT cycles (`a_pp5_phystatus_bound`) | pclk | bridge_sva.sv |
 | MB1 | No msgbus request while one is outstanding (`a_mb1_one_outstanding`) | pclk | bridge_sva.sv |
 | MB2 | write_ack/timeout consumed only in ST_CFG, and never both at once (`a_mb2_done_in_cfg`) | pclk | bridge_sva.sv |
-| MB3 | m2p carries only NOP/WR_C; WR_C is followed by the NOP data phase (`a_mb3_*`) | pclk | bridge_sva.sv |
+| MB3 | 8-bit byte-bus framing (D8): byte0 `{WR_C, addr[11:8]}`, byte1 `addr[7:0]`, then data; idle 8'h00 outside the frame (`a_mb3_byte0`, `a_mb3_byte1`, `a_mb3_idle`) | pclk | bridge_sva.sv |
 | MB4 | No PIPE pin change while a msgbus write is outstanding (`a_mb4_no_pin_chg_during_mb`) | pclk | bridge_sva.sv |
 | MB5 | ST_CFG lasts at most PHY_TIMEOUT+3 cycles (`a_mb5_cfg_bound`) | pclk | bridge_sva.sv |
 | CD1 | True occupancy (wbin − rbin) ≤ DEPTH, checked on both clocks (`a_cd1_*`) | wclk, rclk | async_fifo_sva.sv |
@@ -63,7 +63,7 @@ are printed by `make coverage` (from `coverage.dat`, not gated). **Not bound:**
 | F-PP4 | Pins change only in their change state (`a_fpp4_*`) | ctrl.sby | PASS |
 | F-PP5 | A pin-change state lasts at most PHY_TIMEOUT cycles (`a_fpp5_chg_bound`) | ctrl.sby | PASS |
 | F-MB1 | One msgbus op outstanding (`a_fmb1_one_outst`) | ctrl.sby | PASS |
-| F-MB3 | m2p framing (`a_fmb3_*`) | ctrl.sby | PASS |
+| F-MB3 | m2p byte-bus framing incl. data byte value and idle (`a_fmb3_byte0`, `a_fmb3_byte1`, `a_fmb3_data`, `a_fmb3_idle`) | ctrl.sby | PASS |
 | F-MB4 | No pin change during a msgbus write (`a_fmb4_no_chg_in_mb`) | ctrl.sby | PASS |
 | F-MB5 | msgbus busy ≤ PHY_TIMEOUT+3 cycles (`a_fmb5_busy_bound`) | ctrl.sby | PASS |
 | helpers | `h_chg_tmr`, `h_mb_addr`, `h_mb_data`, `h_mb_wait`: bound counters equal the RTL timers (proven, so PDR converges) | ctrl.sby | PASS |
@@ -82,6 +82,7 @@ All covers were reached in the `cover` tasks:
 | `tx_en` also high in ST_RATE_CHG | F-PP1 |
 | msgbus timeout 8 cycles late | `h_mb_wait` (step 1032) |
 | msgbus sends WR_C in the data phase | sim MB3 in `dv/vlt`. The same mutant **passes** with `SVA=0`, because the C++ PHY model does not check it. |
+| msgbus swaps the address and data bytes (D8 byte-bus port) | SVA `a_mb3_byte1` (dv/vlt, `--assert`) and formal `a_fmb3_byte1` (ctrl.sby prove fails at step 7); the iverilog smoke test also fails |
 
 ## Not covered by any property
 - The Rx path internals (`rx_ingress`, `rx_deframer`). These are checked end to end by the scoreboards and `tb_rxovf`.
