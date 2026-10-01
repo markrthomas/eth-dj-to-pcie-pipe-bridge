@@ -13,3 +13,9 @@
 display is available. `make waves` = `wave-loop`. `make wave-check-all` checks all
 seven sessions without a GUI. The Verilator env has its own FST trace
 (`make -C dv/vlt trace`); no .gtkw is provided for it.
+
+Notes: in the loopback tests PIPE Tx is wired to PIPE Rx, so the "PIPE Rx" group mirrors the Tx
+beats (the Rx flit-lock / capture activity is in `rx_idle` and the CDC / Rx health group). The
+message bus is only active in short bursts: the 3-byte PAM4 preset write and its write_ack at
+link-up (within the first ~0.1 us, before any frame, so it is invisible at full zoom: zoom to the
+start of the dump), and again in `pm` on every rate change and PAM4CFG write.
