@@ -72,4 +72,7 @@ formal/*.log
 sim_build_x*/
 dv/cocotb/results_fc.*
 dv/cocotb/fcov_fc.json
+lp/cocotb/sim_build/
+lp/cocotb/pd_results.json
+lp/cocotb/__pycache__/
 lp/oss/build/

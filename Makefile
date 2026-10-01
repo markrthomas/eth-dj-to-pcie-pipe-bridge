@@ -18,7 +18,7 @@ TOP     := eth_dj_pipe7_bridge
 RTL_TOP := $(RTL_DIR)/$(TOP).sv
 RTL_SRCS := $(RTL_DIR)/async_fifo.sv $(RTL_DIR)/tx_ingress_gate.sv $(RTL_DIR)/tx_framer.sv $(RTL_DIR)/tx_egress.sv $(RTL_DIR)/rx_ingress.sv $(RTL_DIR)/rx_deframer.sv $(RTL_DIR)/eth_egress.sv $(RTL_DIR)/pipe_msgbus.sv $(RTL_DIR)/msgbus_mac_tgt.sv $(RTL_DIR)/fc_ctl.sv $(RTL_DIR)/bridge_ctrl_fsm.sv $(RTL_DIR)/bridge_rf.sv $(RTL_TOP)
 
-.PHONY: default help lint sim regress coverage formal ci envs envs-fc vlt-fc systemc-fc uvm-fc cocotb-fc crosscheck \
+.PHONY: default help lint sim regress coverage formal ci envs envs-fc vlt-fc systemc-fc uvm-fc cocotb-fc pd-emu crosscheck \
         iverilog vlt uvm systemc cocotb waves wave-check-all upf upf-tb metrics dashboard stress clean
 
 default: help
@@ -89,6 +89,10 @@ systemc-fc:
 
 uvm-fc:
 	$(MAKE) -C dv/uvm fc
+
+# UPF-like power-state emulation of PD_DP (cocotb on Icarus, ~45 s): corruption / isolation / retention matrix
+pd-emu:
+	$(MAKE) -C lp/cocotb pd
 
 cocotb-fc:
 	$(MAKE) -C dv/cocotb fc
