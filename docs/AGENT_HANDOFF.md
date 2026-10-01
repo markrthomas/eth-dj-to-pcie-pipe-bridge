@@ -5,7 +5,7 @@ If a session ended, this is where you pick up. Read this, then
 
 ## Current state — 2026-10-01 (read this first; the log below is history)
 
-**`main` carries everything; all PRs through #28 are merged, none are open, and `main` is the only
+**`main` carries everything; all PRs through #30 are merged, none are open, and `main` is the only
 remote branch** (the 24 merged `claude/*` branches were deleted by the owner on 2026-10-01 — the cloud
 git proxy answers branch deletion with HTTP 403, so a session cannot do it; list leftovers for the
 owner instead). "Still open" notes inside the dated entries below are superseded by this block.
@@ -34,9 +34,9 @@ owner instead). "Still open" notes inside the dated entries below are superseded
 1. **Railway deploy and a first real swarm run** — need the owner's Railway account / an API key.
 2. **Commercial UPF run** of `lp/bridge.upf`; optional: narrow its `set_retention` to the 57-register list (~1 % of the state).
 3. **`msgbus_mac_tgt` register file costs ~4 % of the area** for registers nothing reads — shrink or make optional? (D17)
-4. **Datapath-local reset** is implemented as an opt-in (`-DDP_RESET_OVERRIDE`, D18): retain-nothing passes in `make pd-emu-dpr`. Owner to decide
-   whether it should become the default (it clears the Rx diagnostic counters on every P1/P2 episode and excludes link flow control) and to
-   author a retention-free UPF variant.
+4. **Datapath-local reset is the DEFAULT** (D18; opt out with `-DDP_RESET_DISABLE`; flow-control builds turn it off). Retain-nothing passes in
+   `make pd-emu`. Owner to author/verify a retention-free UPF variant (`bridge.upf` still carries the retention block, marked in a note), and to
+   re-run `make power-oss` (its numbers predate the flip). The `uvm` env was not runnable in the authoring container (UVM core vs Verilator).
 5. Known unmodelled: MAC register field attributes / reserved-bit masking; per-lane message-bus replication (only for a *Variable* PHY, D17);
    mid-frame power-down; X-propagation in the power emulation; iverilog `rxovf` with FC on (it forces overload); vlt/systemc/uvm/cocotb at x4 with FC.
 
@@ -46,7 +46,7 @@ design choice in `OPEN_DECISIONS.md` and list RTL behaviour changes under "Behav
 ran, commit/PR trailers as in the existing history.
 
 **Commands** (pinned OSS CAD Suite 2026-04-13 on `PATH`, `VERILATOR_ROOT` unset): `make regress` (lint x2 configs + all Icarus tests incl. `link`, `fc`) ·
-`make lanes4` · `make -C formal` · `make envs envs-fc crosscheck` · `make coverage` · `make pd-emu` · opt-in D18 build: `make -C dv/iverilog dpr`, `make vlt-dpr`, `make pd-emu-dpr` · `make upf-tb` · `make metrics` / `make dashboard` ·
+`make lanes4` · `make -C formal` · `make envs envs-fc crosscheck` · `make coverage` · `make pd-emu` · reset-disabled build (D18 opt-out): `make -C dv/iverilog nodpr`, `make vlt-nodpr`, `make pd-emu-ret` · `make upf-tb` · `make metrics` / `make dashboard` ·
 `make power-oss` (**~30 min, 10–14 GB RAM, network** — `lp/oss/README.md`; then `python3 metrics/collect.py --power-into-latest && make dashboard`).
 
 **New gotchas**
@@ -63,7 +63,13 @@ ran, commit/PR trailers as in the existing history.
 
 ### History (newest first; "Still open" lines in old entries are superseded by the block above)
 
-- **2026-10-01 (u)** — **Datapath-local reset, opt-in** (branch `claude/dp-reset`, D18): `-DDP_RESET_OVERRIDE` resets the PD_DP instances
+- **2026-10-01 (v)** — **Datapath-local reset made the default** (branch `claude/dp-reset-default`, D18): the reset is on unless
+  `-DDP_RESET_DISABLE` (or `-DFLOW_CTRL_OVERRIDE`). Flipping it exposed that the Rx path was never drained (D11): at x4 a frame in flight to the
+  sink was cut by the reset, so with the reset on `rx_idle` also requires an empty Rx path (`rx_out_idle`). Also fixed a latent race in
+  `eth_sink_model` (frame buffer overwritten by a back-to-back frame). Targets renamed: `dpr` -> `nodpr`, `pd-emu-dpr` -> `pd-emu-ret`
+  (the reset-disabled builds, in CI). Rx counters are now cleared per P1/P2 episode by default.
+
+- **2026-10-01 (u)** — **Datapath-local reset, opt-in** (PR #30; since made the default, see (v)): `-DDP_RESET_OVERRIDE` resets the PD_DP instances
   from ST_LOWPWR to the next ST_DRAIN (no new ports / FSM change; default build wired textually to the plain resets, bit-identical).
   `make -C dv/iverilog dpr`, `make vlt-dpr`, `make pd-emu-dpr` (CI): retain-nothing PASSES (default build needs 318 bits), mutation-checked.
   Behaviour change when on: Rx diagnostic counters cleared per P1/P2 episode; mutually exclusive with link flow control. Owner to decide

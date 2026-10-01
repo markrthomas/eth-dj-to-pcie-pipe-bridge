@@ -23,20 +23,23 @@ export PYTHONPATH := $(abspath .):$(COMMON):$(PYTHONPATH)
 COCOTB_SCRIPTS := $(shell python3 -c "import cocotb,os,sys,shutil;print(os.path.dirname(shutil.which('cocotb-config',path=os.path.dirname(sys.executable)+os.pathsep+os.environ['PATH'])))")
 export PATH := $(COCOTB_SCRIPTS):$(PATH)
 
-.PHONY: pd pd-dpr
+.PHONY: pd pd-ret
+# default build (datapath-local reset ON, D18): retaining NOTHING must pass
 pd:
 	rm -f results.xml pd_results.json
-	$(MAKE) sim PD_RESULTS=$(abspath pd_results.json)
+	$(MAKE) sim PD_DP_RESET=1 PD_RESULTS=$(abspath pd_results.json)
 	python3 check_pd.py results.xml pd_results.json
 
-# datapath-local reset build (-DDP_RESET_OVERRIDE, D18): retaining NOTHING must pass
-pd-dpr:
-	rm -rf results_dpr.xml pd_results_dpr.json
-	$(MAKE) sim SIM_BUILD=sim_build_dpr COMPILE_ARGS="-g2012 -I $(RTL_DIR) -DDP_RESET_OVERRIDE" \
-	  COCOTB_RESULTS_FILE=results_dpr.xml PD_DP_RESET=1 PD_RESULTS=$(abspath pd_results_dpr.json)
-	python3 check_pd.py results_dpr.xml pd_results_dpr.json
+# -DDP_RESET_DISABLE build (the pre-D18 behaviour, state survives P1/P2): retention is REQUIRED -
+# retain-nothing is the negative control (must fail) and the greedy minimal retained set is written to
+# retention_min.txt
+pd-ret:
+	rm -rf results_ret.xml pd_results_ret.json
+	$(MAKE) sim SIM_BUILD=sim_build_ret COMPILE_ARGS="-g2012 -I $(RTL_DIR) -DDP_RESET_DISABLE" \
+	  COCOTB_RESULTS_FILE=results_ret.xml PD_DP_RESET=0 PD_RESULTS=$(abspath pd_results_ret.json)
+	python3 check_pd.py results_ret.xml pd_results_ret.json
 
 include $(shell python3 -m cocotb.config --makefiles)/Makefile.sim
 
 clean::
-	rm -rf sim_build sim_build_dpr __pycache__ results.xml pd_results.json results_dpr.xml pd_results_dpr.json
+	rm -rf sim_build sim_build_ret __pycache__ results.xml pd_results.json results_ret.xml pd_results_ret.json

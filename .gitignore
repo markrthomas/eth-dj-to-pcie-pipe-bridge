@@ -81,3 +81,8 @@ dv/vlt/obj_dir_dpr/
 dv/vlt/dpr_run/
 lp/cocotb/sim_build_dpr/
 lp/cocotb/*_dpr.*
+dv/vlt/obj_dir_nodpr/
+dv/vlt/nodpr_run/
+lp/cocotb/sim_build_ret/
+lp/cocotb/*_ret.*
+dv/iverilog/sim_build_nodpr/

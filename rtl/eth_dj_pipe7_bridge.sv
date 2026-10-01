@@ -71,6 +71,9 @@ module eth_dj_pipe7_bridge
   logic        stp_s1, stp_s2, stp_s3;
   logic        tx_idle, rx_idle, framer_idle, egress_busy, fc_cr_req;
   logic        rx_ing_idle, rx_dfr_idle;
+`ifndef DP_RESET_OFF
+  logic        rx_out_idle;
+`endif
   logic        mb_req, mb_busy, mb_done, mb_timeout;
   logic        ev_op_done, ev_phy_timeout, ev_bad_pwr_req;
 
@@ -113,7 +116,14 @@ module eth_dj_pipe7_bridge
   // a wanted credit-only flit (FLOW_CTRL) counts as Tx activity: the FSM must not leave DRAIN in the
   // same cycle egress would start one (fc_cr_req is constant 0 without FLOW_CTRL)
   assign tx_idle = tx_fifo_empty && framer_idle && !egress_busy && !fc_cr_req;
-  assign rx_idle = rx_ing_idle;   // Rx frame-level state is not drained (D11)
+  // Without the datapath reset the Rx frame-level state is retained, not drained (D11).  With it
+  // (default) the Rx path must also be empty (rx_out_idle) or the reset would cut a frame that is
+  // on its way to the Ethernet sink.
+`ifndef DP_RESET_OFF
+  assign rx_idle = rx_ing_idle && rx_out_idle;
+`else
+  assign rx_idle = rx_ing_idle;
+`endif
 
   bridge_ctrl_fsm u_ctrl (
     .clk (pclk), .rst_n (pipe_rst_n),
@@ -161,13 +171,13 @@ module eth_dj_pipe7_bridge
   assign pipe_width     = width_v;
   assign pipe_powerdown = pipe_pwr_e'(pd_v);
 
-  // ---- datapath-local reset (compile-time opt-in, docs/OPEN_DECISIONS.md D18) ----------------
-  // Default: the datapath instances use pipe_rst_n / eth_rst_n DIRECTLY (textually, via the macros
-  // below, so the default netlist and its event ordering are untouched).
-  // -DDP_RESET_OVERRIDE: from the FSM's ST_LOWPWR until the next ST_DRAIN (the wake-up path
-  //   LOWPWR -> PWR_CHG -> DRAIN) the PD_DP instances are in reset; the eth_clk copy is a reset
-  //   synchroniser (async assert, 2-flop release), so a power-gated datapath needs no retention.
-`ifdef DP_RESET_OVERRIDE
+  // ---- datapath-local reset (D18; DEFAULT ON, see eth_dj_pipe7_pkg.sv for the switches) -----------
+  // From the FSM's ST_LOWPWR until the next ST_DRAIN (the wake-up path LOWPWR -> PWR_CHG -> DRAIN)
+  // the PD_DP instances are in reset; the eth_clk copy is a reset synchroniser (async assert,
+  // 2-flop release), so a power-gated datapath needs no retention.  With the reset switched off
+  // (-DDP_RESET_DISABLE, or flow control) the datapath uses pipe_rst_n / eth_rst_n DIRECTLY
+  // (textually, via the macros below, so that netlist and its event ordering are untouched).
+`ifndef DP_RESET_OFF
   logic dp_low_q, dp_eth_s1, dp_eth_s2;
   wire  dp_pipe_rst_n = pipe_rst_n && !dp_low_q;
   wire  dp_eth_rst_n  = eth_rst_n && dp_eth_s2;
@@ -279,6 +289,25 @@ module eth_dj_pipe7_bridge
     .eth_rx_tdata (eth_rx_tdata), .eth_rx_tkeep (eth_rx_tkeep),
     .eth_rx_tlast (eth_rx_tlast), .eth_rx_tuser (eth_rx_tuser)
   );
+
+`ifndef DP_RESET_OFF
+  // Rx path empty: deframer between frames, Rx CDC FIFO empty (write-side view, conservative) and
+  // eth_egress not presenting a beat (eth_clk -> pclk, 2 flops), held for 4 pclk cycles so the
+  // pointer / valid synchroniser skew cannot show a false idle.
+  logic [1:0] rx_val_s;
+  logic [2:0] rx_out_cnt;
+  always_ff @(posedge pclk or negedge pipe_rst_n) begin
+    if (!pipe_rst_n) begin
+      rx_val_s <= 2'b11; rx_out_cnt <= '0;
+    end else begin
+      rx_val_s <= {rx_val_s[0], eth_rx_tvalid};
+      if (rx_dfr_idle && rx_wfree == ($clog2(FIFO_DEPTH)+1)'(FIFO_DEPTH) && !rx_val_s[1])
+        rx_out_cnt <= (rx_out_cnt == 3'd4) ? rx_out_cnt : rx_out_cnt + 3'd1;
+      else rx_out_cnt <= '0;
+    end
+  end
+  assign rx_out_idle = (rx_out_cnt == 3'd4);
+`endif
 
   // mb_busy / rx_dfr_idle are observation points for DV/SVA (dv/sva binds).
   /* verilator lint_off UNUSEDSIGNAL */
