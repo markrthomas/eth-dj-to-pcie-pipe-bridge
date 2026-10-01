@@ -34,7 +34,9 @@ owner instead). "Still open" notes inside the dated entries below are superseded
 1. **Railway deploy and a first real swarm run** — need the owner's Railway account / an API key.
 2. **Commercial UPF run** of `lp/bridge.upf`; optional: narrow its `set_retention` to the 57-register list (~1 % of the state).
 3. **`msgbus_mac_tgt` register file costs ~4 % of the area** for registers nothing reads — shrink or make optional? (D17)
-4. D14's **"datapath reset on power-up"** alternative needs an RTL change (no datapath-local reset today); untestable until then.
+4. **Datapath-local reset** is implemented as an opt-in (`-DDP_RESET_OVERRIDE`, D18): retain-nothing passes in `make pd-emu-dpr`. Owner to decide
+   whether it should become the default (it clears the Rx diagnostic counters on every P1/P2 episode and excludes link flow control) and to
+   author a retention-free UPF variant.
 5. Known unmodelled: MAC register field attributes / reserved-bit masking; per-lane message-bus replication (only for a *Variable* PHY, D17);
    mid-frame power-down; X-propagation in the power emulation; iverilog `rxovf` with FC on (it forces overload); vlt/systemc/uvm/cocotb at x4 with FC.
 
@@ -44,7 +46,7 @@ design choice in `OPEN_DECISIONS.md` and list RTL behaviour changes under "Behav
 ran, commit/PR trailers as in the existing history.
 
 **Commands** (pinned OSS CAD Suite 2026-04-13 on `PATH`, `VERILATOR_ROOT` unset): `make regress` (lint x2 configs + all Icarus tests incl. `link`, `fc`) ·
-`make lanes4` · `make -C formal` · `make envs envs-fc crosscheck` · `make coverage` · `make pd-emu` · `make upf-tb` · `make metrics` / `make dashboard` ·
+`make lanes4` · `make -C formal` · `make envs envs-fc crosscheck` · `make coverage` · `make pd-emu` · opt-in D18 build: `make -C dv/iverilog dpr`, `make vlt-dpr`, `make pd-emu-dpr` · `make upf-tb` · `make metrics` / `make dashboard` ·
 `make power-oss` (**~30 min, 10–14 GB RAM, network** — `lp/oss/README.md`; then `python3 metrics/collect.py --power-into-latest && make dashboard`).
 
 **New gotchas**
