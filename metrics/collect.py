@@ -237,7 +237,8 @@ def resource(r):
           "CDC FIFO arrays (2 x 32 entries)")
     r.add("resource", "coarse_cells", float(len(m["cells"])), "cells", "estimated", None, src,
           "RTLIL coarse cells (word-level), not gates")
-    r.add("resource", "area_um2", kind="not_attributable", detail="no standard-cell library / synthesis to gates in this flow")
+    r.add("resource", "area_um2", kind="not_attributable",
+          detail="not in the default flow; mapped area is in the 'power' section (OSS flow: make -C lp/oss power-oss)")
 
 
 OSS_BUILD = os.path.join("lp", "oss", "build")
@@ -325,9 +326,23 @@ def main():
     ap.add_argument("--run", default="", help="comma-separated root make targets to run and time first")
     ap.add_argument("--note", default="")
     ap.add_argument("--db", default=DB)
+    ap.add_argument("--power-into-latest", action="store_true",
+                    help="only (re)write the 'power' rows of the latest run from lp/oss/build (the OSS power flow is "
+                         "~30 min / ~10 GB, so it is not part of `make metrics`)")
     a = ap.parse_args()
     con = sqlite3.connect(a.db)
     con.executescript(open(SCHEMA).read())
+    if a.power_into_latest:
+        row = con.execute("SELECT MAX(run_id) FROM runs").fetchone()
+        if not row or row[0] is None:
+            print("collect: no run in the database to attach power rows to")
+            return 1
+        con.execute("DELETE FROM metrics WHERE run_id=? AND category='power'", (row[0],))
+        r = Run(con, row[0])
+        power(r)
+        con.commit()
+        print(f"collect: run {row[0]}: {r.n} power rows written -> {os.path.relpath(a.db, ROOT)}")
+        return 0
     dirty = 1 if sh("git status --porcelain --untracked-files=no") else 0
     cur = con.execute("INSERT INTO runs (ts_utc, git_sha, git_branch, git_dirty, host, tools, note) VALUES (?,?,?,?,?,?,?)",
                       (datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),

@@ -71,3 +71,31 @@ To run on a PA flow:
 1. Compile `lp/tb_pipe7_upf_power.sv` and `lp/pipe7_pmu.sv` with `+define+UPF_SIM`, together with the RTL and `dv/common` BFMs (see `lp/Makefile`).
 2. Load `lp/bridge.upf` at `tb_pipe7_upf_power`.
 3. Run and look for `UPF-TB PASS`.
+
+## OSS power flow (zero-cost; area + power estimates, NOT power-aware simulation)
+
+`lp/oss/` (README there) maps the bridge to the Nangate45 liberty with Yosys, checks the gate-level
+netlist with the existing Verilator harness (7 scenarios, golden-model crc32s identical to the RTL),
+runs an Icarus gate-level window for switching activity and reports power with OpenSTA (pip
+`openroad` wheel). First numbers (also on the metrics dashboard, kind=estimated; 2 us of the `random`
+scenario, pclk 500 MHz / eth_clk 200 MHz, Nangate45 45 nm typical, no clock tree / parasitics):
+
+| | |
+|---|---|
+| area | 373,634 um2, 33.2 % sequential; PD_DP instances 356,673 (95.5 %), the rest 16,416 |
+| biggest | `u_tx_framer` 134,000; the two CDC FIFOs 75,000 + 74,800; `u_rx_deframer` 39,900; `u_rx_ingress` 29,700; `u_msgbus_tgt` 15,000 |
+| power | **154.5 mW** = 138.0 internal + 9.0 switching + 7.5 leakage |
+| by domain | PD_DP 150.9 mW (97.7 %), always-on + glue 3.6 mW; leakage in PD_DP 7.15 of 7.50 mW |
+| by block | `u_rx_cdc` 62.5, `u_tx_cdc` 50.2, `u_tx_framer` 17.7, `u_rx_ingress` 10.9, `u_rx_deframer` 5.1, `u_tx_egress` 4.5, `u_msgbus_tgt` 3.2 mW |
+
+What this tells us: the datapath (PD_DP) is ~96 % of the area and ~98 % of the power, so gating or
+shrinking it is where the savings are; the CDC FIFO arrays alone are ~73 % of the power (flop arrays -
+SRAM/latch macros or clock gating would cut this a lot, so treat it as pessimistic);
+`msgbus_mac_tgt` (the new MAC register file + write buffer, D17) costs ~4 % of the area for
+registers nothing in the bridge reads - candidate to shrink or make optional.
+What it does **not** tell us: retention area (Nangate45 has no retention flops), the saving from
+power gating beyond an upper bound (PD_DP leakage), isolation / header-switch overhead, and whether
+`bridge.upf` is correct - the UPF is still authored-not-run. A UPF-like *power-state* simulation
+(random corruption of PD_DP state at power-off, isolation clamps, retention, driven from cocotb)
+is **not built**; D14's "full retention vs DP reset" question therefore remains unmeasured.
+

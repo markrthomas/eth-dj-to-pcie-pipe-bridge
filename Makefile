@@ -159,6 +159,11 @@ lanes4:
 ci: regress coverage formal envs crosscheck envs-fc upf-tb lanes4
 	@echo "ci: OK"
 
+# zero-cost area/power estimate (Yosys -> Nangate45 -> OpenSTA); ~30 min, ~10-14 GB RAM, needs network (lp/oss/README.md)
+.PHONY: power-oss
+power-oss:
+	$(MAKE) -C lp/oss deps generic map gls-verify gls power
+
 clean:
 	rm -rf lp/sim_build metrics/_capture dv/*/sim_build dv/*/sim_build_x* dv/*/obj_dir dv/*/obj_dir_fc dv/*/fc_run dv/*/logs_fc dv/*/logs obj_dir coverage.info coverage.dat formal/*_prove formal/*_cover
 	rm -f dv/cocotb/results.xml dv/cocotb/results.json dv/cocotb/fcov.json dv/uvm/build.log dv/uvm/build_fc.log dv/cocotb/results_fc.xml dv/cocotb/results_fc.json dv/cocotb/fcov_fc.json

@@ -64,12 +64,13 @@ VVP      ?= vvp
 COMMON   := $(ROOT)/dv/common
 GLS_TB   := $(ROOT)/dv/iverilog/tb_scen.sv $(COMMON)/eth_mac_model.sv $(COMMON)/pipe_phy_model.sv \
             $(COMMON)/pipe_phy_ctrl_model.sv $(COMMON)/eth_sink_model.sv
-gls: $(BUILD)/gls.vcd
-$(BUILD)/gls.vcd: $(BUILD)/bridge_gl.v $(BUILD)/cells_sim.v gls_dump.sv $(GLS_TB)
+gls: $(BUILD)/gls_r.vcd
+$(BUILD)/gls_r.vcd $(BUILD)/gls.vcd: $(BUILD)/bridge_gl.v $(BUILD)/cells_sim.v gls_dump.sv $(GLS_TB)
 	$(IVERILOG) -g2012 -I $(ROOT)/rtl -I $(COMMON) -I $(ROOT)/dv/iverilog -s tb_scen -s gls_dump -o $(BUILD)/gls.vvp \
 	  $(GLS_TB) gls_dump.sv $(BUILD)/bridge_gl.v $(BUILD)/cells_sim.v
 	mkdir -p $(BUILD)/sim_build
 	cd $(BUILD) && $(VVP) gls.vvp +ton=$(TON) +toff=$(TOFF) | tee gls.log
+	python3 vcd_rebase.py $(BUILD)/gls.vcd $(BUILD)/gls_r.vcd
 
 # functional equivalence of the mapped netlist: the full 7-scenario Verilator harness (same C++ BFM and
 # golden-model checks as dv/vlt) on bridge_gl.v + liberty-derived cell models.  ~8 min, ~6 GB.
@@ -82,8 +83,8 @@ gls-verify: $(BUILD)/bridge_gl.v $(BUILD)/cells_sim.v $(ROOT)/dv/vlt/sim_main.cp
 	python3 $(COMMON)/crosscheck.py $(BUILD)/logs/results.json 2>/dev/null || true
 
 power: $(BUILD)/power.json
-$(BUILD)/power.json: $(BUILD)/gls.vcd $(BUILD)/bridge_gl.v deps power.py
-	$(PY) power.py --lib $(LIB) --tech-lef $(TECHLEF) --macro-lef $(MACROLEF) --netlist $(BUILD)/bridge_gl.v --vcd $(BUILD)/gls.vcd --out $@
+$(BUILD)/power.json: $(BUILD)/gls_r.vcd $(BUILD)/bridge_gl.v deps power.py
+	$(PY) power.py --lib $(LIB) --tech-lef $(TECHLEF) --macro-lef $(MACROLEF) --netlist $(BUILD)/bridge_gl.v --vcd $(BUILD)/gls_r.vcd --scope tb_scen/dut --out $@
 
 clean:
 	rm -rf $(BUILD)
