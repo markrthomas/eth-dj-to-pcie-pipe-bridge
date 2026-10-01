@@ -5,7 +5,7 @@
 // (dv/common/cpp/bridge_bfm.h): PIPE Tx looped to PIPE Rx, PHY control model,
 // CSR sequencer.  Runs the five cross-check scenarios plus two coverage-only
 // scenarios, writes results.json, and (built with --coverage) coverage.dat.
-// Plusargs: +trace (FST dump to logs/vlt.fst), +seed=N.
+// Plusargs: +trace (FST dump to logs/vlt.fst), +trace_file=PATH, +trace_from=PS +trace_to=PS (dump window), +seed=N.
 // Clocks: eth_clk 200 MHz (5 ns), pclk 500 MHz (2 ns); time unit = 1 ps.
 // ============================================================================
 #include <verilated.h>
@@ -106,8 +106,13 @@ int main(int argc, char** argv) {
     ctx->traceEverOn(true);
     tfp = std::make_unique<VerilatedFstC>();
     dut->trace(tfp.get(), 99);
-    tfp->open("logs/vlt.fst");
+    const char* tf = ctx->commandArgsPlusMatch("trace_file=");   // +trace_file=PATH (default logs/vlt.fst)
+    tfp->open((tf && *tf) ? tf + 12 : "logs/vlt.fst");
   }
+  // optional dump window in ps: +trace_from=N +trace_to=N (default: the whole run)
+  uint64_t trace_from = 0, trace_to = ~0ull;
+  if (const char* a = ctx->commandArgsPlusMatch("trace_from=")) if (*a) trace_from = strtoull(a + 12, nullptr, 10);
+  if (const char* a = ctx->commandArgsPlusMatch("trace_to="))   if (*a) trace_to   = strtoull(a + 10, nullptr, 10);
 #endif
 
   dut->eth_clk = 0;
@@ -140,7 +145,7 @@ int main(int argc, char** argv) {
     loopback(dut.get());
     dut->eval();
 #if VM_TRACE
-    if (tfp) tfp->dump(t);
+    if (tfp && t >= trace_from && t <= trace_to) tfp->dump(t);
 #endif
   }
   dut->final();

@@ -1,0 +1,13 @@
+# lp/oss/synth_map.ys — structural mapping of the bridge to the Nangate45 liberty (zero-cost flow).
+# Run from the repo root:  LIB=<liberty> OUT=<dir> yosys lp/oss/synth_map.ys  (see lp/oss/Makefile)
+# Hierarchy is KEPT (no -flatten) so power can be attributed per module / power domain.
+plugin -i slang
+read_slang --single-unit -I rtl --top eth_dj_pipe7_bridge rtl/eth_dj_pipe7_pkg.sv rtl/async_fifo.sv rtl/tx_ingress_gate.sv rtl/tx_framer.sv rtl/tx_egress.sv rtl/rx_ingress.sv rtl/rx_deframer.sv rtl/eth_egress.sv rtl/pipe_msgbus.sv rtl/msgbus_mac_tgt.sv rtl/fc_ctl.sv rtl/bridge_ctrl_fsm.sv rtl/bridge_rf.sv rtl/eth_dj_pipe7_bridge.sv
+hierarchy -top eth_dj_pipe7_bridge
+synth -top eth_dj_pipe7_bridge
+dfflibmap -liberty ${LIB}
+abc -liberty ${LIB}
+hilomap -hicell LOGIC1_X1 Z -locell LOGIC0_X1 Z
+opt_clean -purge
+tee -o ${OUT}/stat.txt stat -liberty ${LIB}
+write_verilog -noattr -noexpr ${OUT}/bridge_gl.v
