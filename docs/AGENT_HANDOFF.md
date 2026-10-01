@@ -5,6 +5,11 @@ If a session ended, this is where you pick up. Read this, then
 
 ## Where things stand (update this block every session)
 
+- **2026-10-01 (t)** — **PD_DP power-state emulation** (branch `claude/pd-emu`): `make pd-emu` (`lp/cocotb`: `pd_top.sv` = bridge
+  loopback + real PMU, `pd_emu.py` corruption/isolation/retention, `test_pd.py` matrix; in the CI cocotb job). Retain-all PASS,
+  retain-nothing FAIL (negative control), minimal retained set 318/31,751 bits (`retention_min.txt`). docs/power_state_emulation.md,
+  D14 follow-up. Not tested: DP-reset alternative (needs RTL change), mid-frame power-down, X-propagation. Open: PR #27 (OSS power flow).
+
 - **2026-09-30 (s)** — **Real spec found** (`markrthomas/summary`, `docs/PHY Interface ... .pdf`, PIPE 7.1 Rev 7.1; clone
   read-only via `add_repo`). **MAC register file §7.2 implemented** in `msgbus_mac_tgt` (defined addresses, RX2/TX2/CMN2
   windows, write buffer with atomic commit, reserved -> 0) + `tb_msgbus_mac` cases I-K; **multi-lane message bus:** no RTL

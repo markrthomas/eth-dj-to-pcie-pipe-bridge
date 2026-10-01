@@ -132,6 +132,8 @@ jobs:
         run: make cocotb
       - name: cocotb env, link flow control ON (D16)
         run: make cocotb-fc
+      - name: PD_DP power-state emulation (corruption / isolation / retention matrix)
+        run: make pd-emu
       - uses: actions/upload-artifact@v4
         if: always()
         with:
