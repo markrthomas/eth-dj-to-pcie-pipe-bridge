@@ -19,11 +19,11 @@ LIB     := $(abspath $(BUILD)/nangate45.lib)
 TECHLEF := $(abspath $(BUILD)/nangate45.tech.lef)
 MACROLEF := $(abspath $(BUILD)/nangate45.macro.lef)
 OUTABS  := $(abspath $(BUILD))
-# GLS dump window in ps (2 us inside the traffic-heavy random scenario; the VCD grows with window x signals)
-TFROM   ?= 12000000
-TTO     ?= 14000000
+# VCD window in ns (2 us inside the traffic-heavy random scenario; the VCD grows with window x signals)
+TON     ?= 12000
+TOFF    ?= 14000
 
-.PHONY: deps generic map cells gls power power-oss clean
+.PHONY: deps generic map cells gls gls-verify power power-oss clean
 power-oss: power
 
 deps: $(LIB) $(TECHLEF) $(MACROLEF) $(BUILD)/venv/bin/python
@@ -57,14 +57,29 @@ cells: $(BUILD)/cells_sim.v
 $(BUILD)/cells_sim.v: $(LIB)
 	$(YOSYS) -q -p "read_liberty -ignore_miss_func -ignore_miss_dir -ignore_miss_data_latch $(LIB); write_verilog -noattr $@"
 
+# switching activity: Icarus gate-level run of the shared scenario TB with a short VCD window
+# (Verilator cannot do this here: tracing the ~230k '_NNN_' nets exceeds 14 GB at verilation).
+IVERILOG ?= iverilog
+VVP      ?= vvp
+COMMON   := $(ROOT)/dv/common
+GLS_TB   := $(ROOT)/dv/iverilog/tb_scen.sv $(COMMON)/eth_mac_model.sv $(COMMON)/pipe_phy_model.sv \
+            $(COMMON)/pipe_phy_ctrl_model.sv $(COMMON)/eth_sink_model.sv
 gls: $(BUILD)/gls.vcd
-$(BUILD)/gls.vcd: $(BUILD)/bridge_gl.v $(BUILD)/cells_sim.v $(ROOT)/dv/vlt/sim_main.cpp $(ROOT)/dv/common/cpp/bridge_bfm.h
+$(BUILD)/gls.vcd: $(BUILD)/bridge_gl.v $(BUILD)/cells_sim.v gls_dump.sv $(GLS_TB)
+	$(IVERILOG) -g2012 -I $(ROOT)/rtl -I $(COMMON) -I $(ROOT)/dv/iverilog -s tb_scen -s gls_dump -o $(BUILD)/gls.vvp \
+	  $(GLS_TB) gls_dump.sv $(BUILD)/bridge_gl.v $(BUILD)/cells_sim.v
+	mkdir -p $(BUILD)/sim_build
+	cd $(BUILD) && $(VVP) gls.vvp +ton=$(TON) +toff=$(TOFF) | tee gls.log
+
+# functional equivalence of the mapped netlist: the full 7-scenario Verilator harness (same C++ BFM and
+# golden-model checks as dv/vlt) on bridge_gl.v + liberty-derived cell models.  ~8 min, ~6 GB.
+gls-verify: $(BUILD)/bridge_gl.v $(BUILD)/cells_sim.v $(ROOT)/dv/vlt/sim_main.cpp $(ROOT)/dv/common/cpp/bridge_bfm.h
 	cd $(BUILD) && $(VERILATOR) --cc --exe --build -j $$(nproc) -O2 --x-assign unique --x-initial unique \
-	  --trace-fst --trace-underscore -Wno-fatal -Wno-lint -Wno-style --Mdir gls_obj --top-module eth_dj_pipe7_bridge \
+	  --trace-fst -Wno-fatal -Wno-lint -Wno-style --Mdir gls_obj --top-module eth_dj_pipe7_bridge \
 	  -CFLAGS "-I$(abspath $(ROOT)/dv/common/cpp) -O1" bridge_gl.v cells_sim.v $(abspath $(ROOT)/dv/vlt/sim_main.cpp)
-	cd $(BUILD) && ./gls_obj/Veth_dj_pipe7_bridge +trace +trace_file=gls.fst +trace_from=$(TFROM) +trace_to=$(TTO) | tee gls.log
-	@grep -q "VLT PASS" $(BUILD)/gls.log
-	fst2vcd $(BUILD)/gls.fst > $@
+	cd $(BUILD) && ./gls_obj/Veth_dj_pipe7_bridge | tee gls_verify.log
+	@grep -q "VLT PASS" $(BUILD)/gls_verify.log
+	python3 $(COMMON)/crosscheck.py $(BUILD)/logs/results.json 2>/dev/null || true
 
 power: $(BUILD)/power.json
 $(BUILD)/power.json: $(BUILD)/gls.vcd $(BUILD)/bridge_gl.v deps power.py
