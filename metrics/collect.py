@@ -237,7 +237,76 @@ def resource(r):
           "CDC FIFO arrays (2 x 32 entries)")
     r.add("resource", "coarse_cells", float(len(m["cells"])), "cells", "estimated", None, src,
           "RTLIL coarse cells (word-level), not gates")
-    r.add("resource", "area_um2", kind="not_attributable", detail="no standard-cell library / synthesis to gates in this flow")
+    r.add("resource", "area_um2", kind="not_attributable",
+          detail="not in the default flow; mapped area is in the 'power' section (OSS flow: make -C lp/oss power-oss)")
+
+
+OSS_BUILD = os.path.join("lp", "oss", "build")
+PD_DP_INST = ["u_tx_gate", "u_tx_cdc", "u_tx_framer", "u_tx_egress", "u_rx_ingress", "u_rx_deframer",
+              "u_rx_cdc", "u_eth_egress"]          # PD_DP of lp/bridge.upf; everything else is PD_AON
+
+
+def power(r):
+    """Area + power from the zero-cost OSS flow (lp/oss): Yosys -> Nangate45 liberty -> Verilator GLS ->
+    OpenSTA report_power.  Always kind=estimated (45 nm typical corner, no placement/parasitics/clock tree)."""
+    stat = os.path.join(ROOT, OSS_BUILD, "stat.txt")
+    pj = os.path.join(ROOT, OSS_BUILD, "power.json")
+    why = "run `make -C lp/oss power-oss` (needs network + ~10 GB RAM, ~30 min)"
+    src_a = rel(stat) if os.path.exists(stat) else None
+    if not src_a:
+        r.add("power", "area_um2", kind="not_attributable", status="NOT_RUN", source=OSS_BUILD, detail="no stat.txt: " + why)
+    else:
+        txt = open(stat).read()
+        tot = re.search(r"Chip area for top module '\\eth_dj_pipe7_bridge': ([0-9.]+)", txt)
+        seqs = re.findall(r"of which used for sequential elements: ([0-9.]+) \(([0-9.]+)%\)", txt)
+        seq = seqs[-1] if seqs else None          # the last one is the top module's hierarchical total
+        note = "Yosys abc/dfflibmap to the Nangate45 liberty, hierarchy kept; no placement/routing"
+        if tot:
+            r.add("power", "area_um2", float(tot.group(1)), "um2", "estimated", None, src_a, note)
+        if seq:
+            r.add("power", "area_sequential_um2", float(seq[0]), "um2", "estimated", None, src_a,
+                  f"{seq[1]}% of total (flops only; no retention / clock-gate cells modelled)")
+        dp = aon = 0.0
+        for m in re.finditer(r"^\s+1\s+([0-9.eE+]+)\s+\S+\$eth_dj_pipe7_bridge\.(u_\w+)\s*$", txt, re.M):
+            a, inst = float(m.group(1)), m.group(2)
+            r.add("power", f"area_um2.{inst}", a, "um2", "estimated", None, src_a, "per instance (submodule area)")
+            if inst in PD_DP_INST:
+                dp += a
+            else:
+                aon += a
+        if dp or aon:
+            r.add("power", "area_um2.PD_DP", dp, "um2", "estimated", None, src_a,
+                  "sum of the PD_DP instances of lp/bridge.upf (sizing for full retention / a header switch)")
+            r.add("power", "area_um2.PD_AON", aon, "um2", "estimated", None, src_a, "sum of the other instances (top glue excluded)")
+    if not os.path.exists(pj):
+        r.add("power", "total_mW", kind="not_attributable", status="NOT_RUN", source=OSS_BUILD, detail="no power.json: " + why)
+        return
+    d = json.load(open(pj))
+    clk = d.get("clocks", {})
+    note = (f"OpenSTA report_power, Nangate45 typical, pclk {clk.get('pclk_ns')} ns / eth_clk {clk.get('eth_clk_ns')} ns; "
+            f"activity = GLS VCD {d.get('vcd')} (traffic-heavy window of the vlt scenario run)")
+    w = d.get("design_W", {})
+    for k, n in (("total", "total_mW"), ("internal", "internal_mW"), ("switching", "switching_mW"), ("leakage", "leakage_mW")):
+        if k in w:
+            r.add("power", n, w[k] * 1e3, "mW", "estimated", None, rel(pj), note)
+    dp = aon = 0.0
+    for inst, v in sorted(d.get("instances_W", {}).items()):
+        if "total" not in v:
+            continue
+        r.add("power", f"mW.{inst}", v["total"] * 1e3, "mW", "estimated", None, rel(pj), "per instance")
+        if inst in PD_DP_INST:
+            dp += v["total"] * 1e3
+        else:
+            aon += v["total"] * 1e3
+    if "total" in w:
+        r.add("power", "mW.PD_DP", dp, "mW", "estimated", None, rel(pj),
+              "sum of PD_DP instances; with power gating this is the part that can be switched off in P1/P2")
+        r.add("power", "mW.PD_AON_and_glue", w["total"] * 1e3 - dp, "mW", "estimated", None, rel(pj),
+              "rest of the design (always-on instances + top-level glue + clock network not attributed)")
+        if "leakage" in w and "leakage" in w:
+            lk = sum(v.get("leakage", 0.0) for i, v in d.get("instances_W", {}).items() if i in PD_DP_INST and "leakage" in v)
+            r.add("power", "leakage_mW.PD_DP", lk * 1e3, "mW", "estimated", None, rel(pj),
+                  "upper bound of what power-gating PD_DP saves in P1/P2 (header-switch leakage / retention flops not modelled)")
 
 
 def swarm(r):
@@ -257,9 +326,23 @@ def main():
     ap.add_argument("--run", default="", help="comma-separated root make targets to run and time first")
     ap.add_argument("--note", default="")
     ap.add_argument("--db", default=DB)
+    ap.add_argument("--power-into-latest", action="store_true",
+                    help="only (re)write the 'power' rows of the latest run from lp/oss/build (the OSS power flow is "
+                         "~30 min / ~10 GB, so it is not part of `make metrics`)")
     a = ap.parse_args()
     con = sqlite3.connect(a.db)
     con.executescript(open(SCHEMA).read())
+    if a.power_into_latest:
+        row = con.execute("SELECT MAX(run_id) FROM runs").fetchone()
+        if not row or row[0] is None:
+            print("collect: no run in the database to attach power rows to")
+            return 1
+        con.execute("DELETE FROM metrics WHERE run_id=? AND category='power'", (row[0],))
+        r = Run(con, row[0])
+        power(r)
+        con.commit()
+        print(f"collect: run {row[0]}: {r.n} power rows written -> {os.path.relpath(a.db, ROOT)}")
+        return 0
     dirty = 1 if sh("git status --porcelain --untracked-files=no") else 0
     cur = con.execute("INSERT INTO runs (ts_utc, git_sha, git_branch, git_dirty, host, tools, note) VALUES (?,?,?,?,?,?,?)",
                       (datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
@@ -274,6 +357,7 @@ def main():
     coverage(r)
     formal(r)
     resource(r)
+    power(r)
     swarm(r)
     con.commit()
     bad = con.execute("SELECT COUNT(*) FROM metrics WHERE run_id=? AND status='FAIL'", (r.run_id,)).fetchone()[0]

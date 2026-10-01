@@ -18,3 +18,8 @@ Known gaps (recorded as not_attributable): Eth->Eth latency (no monitor yet),
 Fmax/area (no liberty / STA), swarm agent x model (no swarm run recorded).
 Collecting without `--run` reads whatever artifacts are on disk, which may be
 from an older build; `make metrics` always reruns the flows first.
+
+`power` section (area / power): rows come from the OSS flow in `lp/oss` (Yosys -> Nangate45 -> OpenSTA),
+always `estimated`. That flow takes ~30 min and ~10-14 GB RAM, so `make metrics` does not run it; run
+`make -C lp/oss power-oss` then `python3 metrics/collect.py --power-into-latest && make dashboard`
+(rows are NOT_RUN until `lp/oss/build/stat.txt` / `power.json` exist).

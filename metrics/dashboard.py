@@ -23,6 +23,7 @@ SECTIONS = [
     ("formal", "Formal (SymbiYosys)"),
     ("perf", "Performance"),
     ("resource", "Resource (pre-synthesis estimate)"),
+    ("power", "Power &amp; area (Nangate45 liberty, OSS flow \u2014 estimate)"),
     ("swarm", "Agent swarm (agent x model)"),
 ]
 CSS = """

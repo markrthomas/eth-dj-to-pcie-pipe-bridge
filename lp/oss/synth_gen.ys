@@ -1,0 +1,9 @@
+# lp/oss/synth_gen.ys — stage 1: elaborate + generic synthesis, hierarchy kept (module = power-domain
+# attribution unit).  Output: ${OUT}/bridge_generic.il (RTLIL).  Slow and memory-hungry (~8 min,
+# ~10 GB peak) because the two 32 x 289-bit CDC FIFO arrays become flops; run once, map often.
+# Placeholders ${OUT} / ${LIB} are substituted by sed in lp/oss/Makefile (Yosys does not expand them).
+plugin -i slang
+read_slang --keep-hierarchy --single-unit -I rtl --top eth_dj_pipe7_bridge rtl/eth_dj_pipe7_pkg.sv rtl/async_fifo.sv rtl/tx_ingress_gate.sv rtl/tx_framer.sv rtl/tx_egress.sv rtl/rx_ingress.sv rtl/rx_deframer.sv rtl/eth_egress.sv rtl/pipe_msgbus.sv rtl/msgbus_mac_tgt.sv rtl/fc_ctl.sv rtl/bridge_ctrl_fsm.sv rtl/bridge_rf.sv rtl/eth_dj_pipe7_bridge.sv
+hierarchy -top eth_dj_pipe7_bridge
+synth -top eth_dj_pipe7_bridge
+write_rtlil ${OUT}/bridge_generic.il
