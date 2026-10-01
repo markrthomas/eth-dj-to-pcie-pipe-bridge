@@ -3,7 +3,63 @@
 If a session ended, this is where you pick up. Read this, then
 [`PLAN.md`](PLAN.md).
 
-## Where things stand (update this block every session)
+## Current state — 2026-10-01 (read this first; the log below is history)
+
+**`main` carries everything; all PRs through #28 are merged, none are open, and `main` is the only
+remote branch** (the 24 merged `claude/*` branches were deleted by the owner on 2026-10-01 — the cloud
+git proxy answers branch deletion with HTTP 403, so a session cannot do it; list leftovers for the
+owner instead). "Still open" notes inside the dated entries below are superseded by this block.
+
+**What exists**
+- **RTL** (`rtl/`): Eth AXI-S <-> Gen6 FLIT bridge (x1 default, `PIPE_NLANES_OVERRIDE` for x4): async CDC FIFOs, framer / egress,
+  Rx ingress / deframer / eth egress, `bridge_ctrl_fsm` (P-state / rate / width + PAM4 preset write), `pipe_msgbus` master,
+  `msgbus_mac_tgt` (MAC-side target **with the §7.2 register file**, write buffer depth 8, D17), `bridge_rf` CSR.
+  **Opt-in two-ended link flow control** (`-DFLOW_CTRL_OVERRIDE`, credits + seq loss repair, D16; default off, default results unchanged).
+- **DV:** five envs (iverilog, vlt, systemc, cocotb, uvm) cross-checked against `dv/common/scenarios.py`; every env also has a flow-control-on
+  `fc` target (CI); two-bridge `dv/iverilog/tb_link.sv` (flit killer); UVM FC overload test; SVA (`dv/sva`); formal
+  (`async_fifo`, `ingress_gate`, `ctrl` + `ctrl` with FC, `fc` credit invariants by k-induction); `make lanes4` incl. FC; coverage 92.1 % (floor 80);
+  waves, metrics DB + dashboard.
+- **Power (zero-cost, no commercial tool):** `lp/oss` (Yosys+slang -> Nangate45 -> Verilator gate-level equivalence -> Icarus activity ->
+  OpenSTA via the pip `openroad` wheel): 373,634 um2, **154.5 mW** (PD_DP 97.7 %; CDC FIFOs ~73 %, flop arrays so pessimistic), on the dashboard,
+  *estimates only*. `lp/cocotb` **`make pd-emu`** (CI): UPF-like PD_DP corruption / isolation / retention emulation on the real PMU — retain-all PASS,
+  retain-nothing FAIL, minimal retained set **318 of 31,751 register bits (1 %)**, `lp/cocotb/retention_min.txt`
+  (docs/power_state_emulation.md, D14 follow-up). `lp/bridge.upf` itself is still authored, never run.
+- **Spec:** the real PIPE 7.1 PDF (Rev 7.1, Ref 643108) is in the **public repo `markrthomas/summary`, `docs/`**
+  (`add_repo` gives a read-only clone; `pdftotext -layout` works). `~/proj` does not exist in the cloud container.
+- **Decisions:** `OPEN_DECISIONS.md` D1–D17 + follow-ups (D14: power-state emulation; D16: flow control; D17: MAC regs + multi-lane).
+- **Swarm:** `.claude/agents` (manager `opus`, `dv-env-tester`/`infra-agent` `sonnet`, `dv-runner` `haiku`). One run done: the manager had no sub-agent
+  dispatch tool, so it ran the four envs itself sequentially (still useful; no per-agent token data — `swarm.sh` only records tokens per model).
+
+**Owner's open items (nothing below needs more code from a session unless noted)**
+1. **Railway deploy and a first real swarm run** — need the owner's Railway account / an API key.
+2. **Commercial UPF run** of `lp/bridge.upf`; optional: narrow its `set_retention` to the 57-register list (~1 % of the state).
+3. **`msgbus_mac_tgt` register file costs ~4 % of the area** for registers nothing reads — shrink or make optional? (D17)
+4. D14's **"datapath reset on power-up"** alternative needs an RTL change (no datapath-local reset today); untestable until then.
+5. Known unmodelled: MAC register field attributes / reserved-bit masking; per-lane message-bus replication (only for a *Variable* PHY, D17);
+   mid-frame power-down; X-propagation in the power emulation; iverilog `rxovf` with FC on (it forces overload); vlt/systemc/uvm/cocotb at x4 with FC.
+
+**Working agreement in these sessions (owner's instructions, overriding the generic Guardrails below where they differ):** open PRs as
+**draft against `main`** (never stack PRs — it stranded merges twice), **the owner merges** (a session never merges unless told to), record every
+design choice in `OPEN_DECISIONS.md` and list RTL behaviour changes under "Behaviour to review" in the PR body, never claim an untested thing
+ran, commit/PR trailers as in the existing history.
+
+**Commands** (pinned OSS CAD Suite 2026-04-13 on `PATH`, `VERILATOR_ROOT` unset): `make regress` (lint x2 configs + all Icarus tests incl. `link`, `fc`) ·
+`make lanes4` · `make -C formal` · `make envs envs-fc crosscheck` · `make coverage` · `make pd-emu` · `make upf-tb` · `make metrics` / `make dashboard` ·
+`make power-oss` (**~30 min, 10–14 GB RAM, network** — `lp/oss/README.md`; then `python3 metrics/collect.py --power-into-latest && make dashboard`).
+
+**New gotchas**
+- Yosys `.ys` scripts do not expand `${VAR}` (`lp/oss` uses `sed`); flat synthesis of the 2 x (32 x 289-bit) FIFOs OOMs at ~8.6 GB, the hierarchical flow
+  peaks ~14 GB; Verilator `--trace-underscore` on the mapped netlist OOMs (>14 GB) — activity comes from an Icarus run; OpenSTA `read_vcd` needs the VCD
+  rebased to start at #0 (`lp/oss/vcd_rebase.py`) and the Nangate tech + macro LEF to link a netlist.
+- Never `pkill -f <pattern>` from a tool shell whose own command line contains the pattern — it kills the shell (happened twice).
+- cocotb 1.8.1 on Icarus: registers are `GPI_REGISTER`, memories `GPI_ARRAY` (indexable, elements deposit-able); a multi-case cocotb test must
+  `kill()` every coroutine it started between cases or clocks / models pile up (`lp/cocotb/test_pd.py`).
+- Merging PRs that all append to `.gitignore` / the shared docs conflicts trivially: merge `origin/main` into the branch and keep both sides.
+- Icarus on CI is stricter than local (declare-before-use, no `break`, no array literals).
+
+---
+
+### History (newest first; "Still open" lines in old entries are superseded by the block above)
 
 - **2026-10-01 (u)** — **Datapath-local reset, opt-in** (branch `claude/dp-reset`, D18): `-DDP_RESET_OVERRIDE` resets the PD_DP instances
   from ST_LOWPWR to the next ST_DRAIN (no new ports / FSM change; default build wired textually to the plain resets, bit-identical).
@@ -252,8 +308,8 @@ If a session ended, this is where you pick up. Read this, then
    top-to-bottom; each milestone has a `make` gate that must go green before the
    next.
 
-3. **Verify against the gate**, check the box in `PLAN.md`, update the "Where
-   things stand" block above, and commit.
+3. **Verify against the gate**, check the box in `PLAN.md`, update the "Current state"
+   block at the top (and add a dated line to the History), and commit.
 
 ## Environment gotchas (from workspace memory — heed these)
 
