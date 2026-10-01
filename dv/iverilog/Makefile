@@ -19,8 +19,8 @@ IVEXTRA  ?=
 WFLAGS    = $(if $(filter 1,$(WAVES)),-DDUMP_TOP=tb_$@ ../waves/wave_dump.sv)
 WRUN      = $(if $(filter 1,$(WAVES)),+dumpfile=$(BUILD)/$@.vcd)
 
-.PHONY: smoke tx loop pm rxovf scen msgbus msgbus_mac link fc dpr all clean
-all: smoke tx loop pm rxovf scen msgbus msgbus_mac link fc dpr
+.PHONY: smoke tx loop pm rxovf scen msgbus msgbus_mac link fc nodpr all clean
+all: smoke tx loop pm rxovf scen msgbus msgbus_mac link fc nodpr
 
 LOOP_TB_DEPS := $(COMMON)/eth_mac_model.sv $(COMMON)/pipe_phy_model.sv $(COMMON)/pipe_phy_ctrl_model.sv $(COMMON)/eth_sink_model.sv
 smoke:
@@ -74,13 +74,13 @@ fc:
 	@grep -q "SCEN PASS" $(FCB)/scen.log
 	python3 $(COMMON)/crosscheck.py $(FCB)/results.json
 
-# datapath-local reset ON (D18, -DDP_RESET_OVERRIDE): the PD_DP instances are reset from ST_LOWPWR to the
-# following ST_DRAIN.  smoke + tx + loop + pm (P1/P2 episodes under traffic) + rxovf + the shared scenarios
-# (golden model).  Separate build dir / results; default artefacts untouched.
-DPRB := sim_build_dpr
-dpr:
-	$(MAKE) BUILD=$(DPRB) IVEXTRA=-DDP_RESET_OVERRIDE smoke tx loop pm rxovf
-	$(IVERILOG) -g2012 -DDP_RESET_OVERRIDE -I $(RTL_DIR) -I $(COMMON) -I . -o $(DPRB)/scen.vvp tb_scen.sv $(LOOP_TB_DEPS) $(RTL_SRCS)
+# datapath-local reset OFF (D18, -DDP_RESET_DISABLE = the pre-D18 behaviour; the default build now has the
+# reset ON).  smoke + tx + loop + pm (P1/P2 episodes under traffic) + rxovf + the shared scenarios (golden
+# model).  Separate build dir / results; default artefacts untouched.
+DPRB := sim_build_nodpr
+nodpr:
+	$(MAKE) BUILD=$(DPRB) IVEXTRA=-DDP_RESET_DISABLE smoke tx loop pm rxovf
+	$(IVERILOG) -g2012 -DDP_RESET_DISABLE -I $(RTL_DIR) -I $(COMMON) -I . -o $(DPRB)/scen.vvp tb_scen.sv $(LOOP_TB_DEPS) $(RTL_SRCS)
 	$(VVP) $(DPRB)/scen.vvp +results=$(DPRB)/results.json | tee $(DPRB)/scen.log
 	@grep -q "SCEN PASS" $(DPRB)/scen.log
 	python3 $(COMMON)/crosscheck.py $(DPRB)/results.json

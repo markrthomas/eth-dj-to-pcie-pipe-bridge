@@ -67,12 +67,17 @@ set_isolation ISO_DP_1 -domain PD_DP \
   -isolation_signal u_pmu/dp_iso_en -isolation_sense high -location parent
 
 ## ---- retention ------------------------------------------------------------------------
-## The RTL has no datapath-local reset / power-good input, so non-retained PD_DP
-## state would come back corrupted with nothing to clear it.  First cut: retain
+## NOTE (D18): the default RTL now holds PD_DP in reset from ST_LOWPWR to the next
+## ST_DRAIN, so the default build needs NO retention (`make pd-emu`: retain-nothing
+## passes).  The retention below is kept for `-DDP_RESET_DISABLE` builds and until a
+## commercial-tool run confirms the retention-free variant (owner item).
+##
+## Without the reset, non-retained PD_DP state would come back corrupted with nothing
+## to clear it.  First cut for that build: retain
 ## ALL PD_DP sequential state (the datapath is drained before power-down, so the
 ## retained pointers/flags are consistent and the FIFO arrays hold no live data).
 ## An area-optimised alternative (retain only the Rx diagnostic counters and add a
-## DP reset on power-up) needs an RTL change — see docs/power_intent.md.
+## DP reset on power-up) is what the D18 reset provides — see docs/power_intent.md.
 set_retention RET_DP -domain PD_DP -retention_supply_set SS_AON \
   -save_signal    {u_pmu/dp_save    high} \
   -restore_signal {u_pmu/dp_restore high}

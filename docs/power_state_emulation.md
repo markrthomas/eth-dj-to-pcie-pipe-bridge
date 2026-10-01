@@ -1,6 +1,6 @@
 # PD_DP power-state emulation (UPF-like, no power tool)
 
-`make pd-emu` (= `make -C lp/cocotb pd`, ~45 s, cocotb 1.8.1 on Icarus, runs in the CI `cocotb` job)
+`make pd-emu-ret` (= `make -C lp/cocotb pd-ret`, the build WITHOUT the datapath reset; `make pd-emu` is the default build, see the last section, ~45 s, cocotb 1.8.1 on Icarus, runs in the CI `cocotb` job)
 emulates what `lp/bridge.upf` would do in a power-aware simulator, without one:
 
 | UPF intent | Emulation (`lp/cocotb/pd_emu.py`) |
@@ -46,10 +46,11 @@ which is why the minimal set comes from greedy elimination, not from the single-
   no power-up glitches, no supply-ramp or isolation-cell timing; the PMU/UPF correctness itself is not
   checked by this (only the retention requirement and the wake-up behaviour).
 
-## Datapath-local reset build (D18): retention is unnecessary
-`make pd-emu-dpr` runs the same emulation on `-DDP_RESET_OVERRIDE` (PD_DP in reset from ST_LOWPWR to the
+## Datapath-local reset (D18, now the default): retention is unnecessary
+`make pd-emu` runs the emulation on the default build (PD_DP in reset from ST_LOWPWR to the
 next ST_DRAIN). Result: **retain-nothing PASSES**, every single-group corruption passes and the greedy
-minimal retained set is **empty** (versus 318 of 31,751 register bits on the default build). Breaking the
-reset logic makes retain-nothing fail again, so the result is not vacuous. Cost: the Rx diagnostic counters
-are cleared by every P1/P2 episode; incompatible with link flow control. See OPEN_DECISIONS D18.
-
+minimal retained set is **empty**. `make pd-emu-ret` runs the same emulation on `-DDP_RESET_DISABLE`
+(the pre-D18 behaviour): there retain-nothing FAILS (negative control) and the minimal retained set is
+**318 of 31,751 register bits** (the figures in the table above). Breaking the reset logic makes
+retain-nothing fail on the default build, so the result is not vacuous. Cost: the Rx diagnostic counters
+are cleared by every P1/P2 episode; flow-control builds do not use the reset. See OPEN_DECISIONS D18.

@@ -10,7 +10,7 @@ if bad:
     print("PD FAIL: failed tests:", bad)
     sys.exit(1)
 r = json.load(open(sys.argv[2]))
-print("PD retention matrix (PD_DP power cycle via the PMU, UPF-like emulation%s):" % (", DP_RESET build" if r.get("_dp_reset") else ""))
+print("PD retention matrix (PD_DP power cycle via the PMU, UPF-like emulation%s):" % (", datapath-local reset ON" if r.get("_dp_reset") else ", reset DISABLED (retention required)"))
 for k in sorted(k for k in r if not k.startswith("_")):
     print("  %-34s %-4s %s" % (k, "PASS" if r[k]["ok"] else "FAIL", r[k]["reason"]))
 print("  single-group sensitive:", r.get("_single_sensitive"))

@@ -2,7 +2,7 @@
 // eth_sink_model.sv — DV-only 802.3dj MAC sink BFM (AXI4-Stream slave) + checker.
 // ready_pct (0..100) randomly throttles tready.  Checks tkeep legality (full
 // keep on non-last beats; contiguous low-aligned nonzero keep on the last beat),
-// reassembles frames into fbuf[]; frame_done pulses one eth_clk with done_len and
+// reassembles frames into wbuf[], copied to fbuf[] at tlast; frame_done pulses one eth_clk with done_len and
 // done_err (eth_rx_tuser[0] on the tlast beat = frame aborted by the bridge).
 // ============================================================================
 `timescale 1ns/1ps
@@ -22,7 +22,8 @@ module eth_sink_model
   input  logic                     eth_rx_tlast,
   input  logic                     eth_rx_err      // eth_rx_tuser[0]: frame aborted by the bridge
 );
-  logic [7:0] fbuf [0:MAX_FRAME-1];
+  logic [7:0] fbuf [0:MAX_FRAME-1];   // last completed frame (stable until the next tlast)
+  logic [7:0] wbuf [0:MAX_FRAME-1];   // frame being assembled
   int          ready_pct  = 100;
   int          fpos       = 0;
   int unsigned frames     = 0;
@@ -58,9 +59,10 @@ module eth_sink_model
         if (!eth_rx_tlast && nb != ETH_KEEP_W) kbad = 1'b1;  // partial beat mid-frame
         if (kbad) begin errors++; $display("[%0t] SINK ERROR: bad tkeep %h (last=%b)", $time, eth_rx_tkeep, eth_rx_tlast); end
         for (int i = 0; i < ETH_KEEP_W; i++)
-          if (eth_rx_tkeep[i] && fpos + i < MAX_FRAME) fbuf[fpos + i] = eth_rx_tdata[8*i +: 8];
+          if (eth_rx_tkeep[i] && fpos + i < MAX_FRAME) wbuf[fpos + i] = eth_rx_tdata[8*i +: 8];
         if (!eth_rx_tlast && eth_rx_err) begin errors++; $display("[%0t] SINK ERROR: tuser err on a non-last beat", $time); end
         if (eth_rx_tlast) begin
+          for (int i = 0; i < fpos + nb && i < MAX_FRAME; i++) fbuf[i] <= wbuf[i];   // NBA: lands after the scoreboard read of the previous frame
           frames++;
           if (eth_rx_err) err_frames++;
           done_err   <= eth_rx_err;

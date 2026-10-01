@@ -106,19 +106,24 @@ package eth_dj_pipe7_pkg;
   localparam bit FLOW_CTRL = 1'b0;
 `endif
   // ---- Datapath-local reset on low-power exit (docs/OPEN_DECISIONS.md D18) ------------------
-  // Opt-in, compile-time: -DDP_RESET_OVERRIDE.  The PD_DP instances (everything except the control
-  // plane: u_ctrl, u_rf, u_msgbus*, u_fc) are held in reset from the control FSM's ST_LOWPWR until the
-  // following ST_DRAIN, so a power-gated datapath needs NO retention (the datapath is drained before
-  // P1/P2 anyway).  Behaviour change when on: the Rx diagnostic counters (CSR RXCNT0/1) are cleared
-  // by every P1/P2 episode.  Mutually exclusive with link flow control (fc_ctl, rx_ingress credit
-  // state and the sequence numbers would go out of step across a datapath reset).
-`ifdef DP_RESET_OVERRIDE
+  // DEFAULT ON.  The PD_DP instances (everything except the control plane: u_ctrl, u_rf,
+  // u_msgbus*, u_fc) are held in reset from the control FSM's ST_LOWPWR until the following
+  // ST_DRAIN, so a power-gated datapath needs NO retention (the datapath is drained before P1/P2
+  // anyway).  Behaviour: the Rx diagnostic counters (CSR RXCNT0/1) are cleared by every P1/P2
+  // episode.  Switched OFF (plain resets, state survives P1/P2 and needs retention when
+  // power-gated) by -DDP_RESET_DISABLE, and automatically by -DFLOW_CTRL_OVERRIDE: link flow control
+  // (fc_ctl is always-on; the Rx credit / sequence state would go out of step across a datapath
+  // reset) is not supported together with it.
 `ifdef FLOW_CTRL_OVERRIDE
-  `DP_RESET_OVERRIDE_AND_FLOW_CTRL_OVERRIDE_ARE_MUTUALLY_EXCLUSIVE
+`define DP_RESET_OFF
 `endif
-  localparam bit DP_RESET = 1'b1;
-`else
+`ifdef DP_RESET_DISABLE
+`define DP_RESET_OFF
+`endif
+`ifdef DP_RESET_OFF
   localparam bit DP_RESET = 1'b0;
+`else
+  localparam bit DP_RESET = 1'b1;
 `endif
 
   localparam int unsigned FLIT_FC_OFF = 242;

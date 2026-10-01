@@ -25,7 +25,7 @@ RATE_GEN6 = 5
 CSR_CTRL, CSR_STATUS, CSR_RXCNT0, CSR_RXCNT1 = 0x00, 0x08, 0x10, 0x14
 MB_WR_C, MB_WR_ACK = 2, 5
 RESULTS = {}
-DPR = os.environ.get("PD_DP_RESET", "0") == "1"      # build has -DDP_RESET_OVERRIDE (D18): no retention needed
+DPR = os.environ.get("PD_DP_RESET", "1") == "1"      # default build: datapath-local reset ON (D18), no retention needed; 0 = -DDP_RESET_DISABLE build
 
 
 def ival(s):
@@ -284,11 +284,11 @@ async def t1_retain_all(dut):
 
 @cocotb.test()
 async def t2_retain_none(dut):
-    """Retain nothing.  Default build (negative control): the emulation must break the design.
-    DP_RESET build (D18): the datapath-local reset must make retention unnecessary."""
+    """Retain nothing.  DP_RESET build (the default, D18): the datapath-local reset must make retention
+    unnecessary.  -DDP_RESET_DISABLE build (PD_DP_RESET=0): negative control, the emulation must break the design."""
     ok = await run_case(dut, "retain_none", set())
     if DPR:
-        assert ok, "DP_RESET build: retain-nothing must pass (datapath reset on low-power exit)"
+        assert ok, "DP reset build: retain-nothing must pass (datapath reset on low-power exit)"
     else:
         assert not ok, "retain-nothing passed: the corruption emulation does not bite"
 
