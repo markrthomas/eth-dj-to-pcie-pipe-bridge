@@ -1,0 +1,10 @@
+# lp/oss/synth_map.ys — stage 2: map the generic netlist to the liberty (fast, ~1 min).
+# Placeholders substituted by sed in lp/oss/Makefile: LIB = liberty path, OUT = build dir.
+read_rtlil ${OUT}/bridge_generic.il
+hierarchy -top eth_dj_pipe7_bridge
+dfflibmap -liberty ${LIB}
+abc -liberty ${LIB}
+hilomap -hicell LOGIC1_X1 Z -locell LOGIC0_X1 Z
+opt_clean -purge
+tee -o ${OUT}/stat.txt stat -liberty ${LIB}
+write_verilog -noattr -noexpr ${OUT}/bridge_gl.v
