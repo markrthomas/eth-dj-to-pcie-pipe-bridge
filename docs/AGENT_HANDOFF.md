@@ -5,6 +5,12 @@ If a session ended, this is where you pick up. Read this, then
 
 ## Where things stand (update this block every session)
 
+- **2026-10-01 (u)** — **Datapath-local reset, opt-in** (branch `claude/dp-reset`, D18): `-DDP_RESET_OVERRIDE` resets the PD_DP instances
+  from ST_LOWPWR to the next ST_DRAIN (no new ports / FSM change; default build wired textually to the plain resets, bit-identical).
+  `make -C dv/iverilog dpr`, `make vlt-dpr`, `make pd-emu-dpr` (CI): retain-nothing PASSES (default build needs 318 bits), mutation-checked.
+  Behaviour change when on: Rx diagnostic counters cleared per P1/P2 episode; mutually exclusive with link flow control. Owner to decide
+  default-on and a retention-free UPF variant. Also fixed a latent race in `tb_pm` (PAM4CFG data check waits 4 pclk).
+
 - **2026-10-01 (t)** — **PD_DP power-state emulation** (branch `claude/pd-emu`): `make pd-emu` (`lp/cocotb`: `pd_top.sv` = bridge
   loopback + real PMU, `pd_emu.py` corruption/isolation/retention, `test_pd.py` matrix; in the CI cocotb job). Retain-all PASS,
   retain-nothing FAIL (negative control), minimal retained set 318/31,751 bits (`retention_min.txt`). docs/power_state_emulation.md,

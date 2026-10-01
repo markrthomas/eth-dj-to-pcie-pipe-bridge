@@ -60,6 +60,8 @@ jobs:
         run: make coverage
       - name: vlt env, link flow control ON (D16)
         run: make vlt-fc
+      - name: Verilator C++ env + SVA, datapath-local reset ON (D18)
+        run: make vlt-dpr
       - name: upload coverage + vlt results
         if: always()
         uses: actions/upload-artifact@v4
@@ -134,6 +136,8 @@ jobs:
         run: make cocotb-fc
       - name: PD_DP power-state emulation (corruption / isolation / retention matrix)
         run: make pd-emu
+      - name: PD_DP power-state emulation, datapath-local reset build (retain nothing must pass, D18)
+        run: make pd-emu-dpr
       - uses: actions/upload-artifact@v4
         if: always()
         with:

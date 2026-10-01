@@ -18,7 +18,7 @@ TOP     := eth_dj_pipe7_bridge
 RTL_TOP := $(RTL_DIR)/$(TOP).sv
 RTL_SRCS := $(RTL_DIR)/async_fifo.sv $(RTL_DIR)/tx_ingress_gate.sv $(RTL_DIR)/tx_framer.sv $(RTL_DIR)/tx_egress.sv $(RTL_DIR)/rx_ingress.sv $(RTL_DIR)/rx_deframer.sv $(RTL_DIR)/eth_egress.sv $(RTL_DIR)/pipe_msgbus.sv $(RTL_DIR)/msgbus_mac_tgt.sv $(RTL_DIR)/fc_ctl.sv $(RTL_DIR)/bridge_ctrl_fsm.sv $(RTL_DIR)/bridge_rf.sv $(RTL_TOP)
 
-.PHONY: default help lint sim regress coverage formal ci envs envs-fc vlt-fc systemc-fc uvm-fc cocotb-fc pd-emu crosscheck \
+.PHONY: default help lint sim regress coverage formal ci envs envs-fc vlt-fc systemc-fc uvm-fc cocotb-fc pd-emu vlt-dpr pd-emu-dpr crosscheck \
         iverilog vlt uvm systemc cocotb waves wave-check-all upf upf-tb metrics dashboard stress clean
 
 default: help
@@ -48,12 +48,13 @@ help:
 lint:
 	$(VERILATOR) --lint-only -Wall -I$(RTL_DIR) --top-module $(TOP) $(RTL_SRCS)
 	$(VERILATOR) --lint-only -Wall -DFLOW_CTRL_OVERRIDE -I$(RTL_DIR) --top-module $(TOP) $(RTL_SRCS)
-	@echo "lint: OK (default + FLOW_CTRL_OVERRIDE)"
+	$(VERILATOR) --lint-only -Wall -DDP_RESET_OVERRIDE -I$(RTL_DIR) --top-module $(TOP) $(RTL_SRCS)
+	@echo "lint: OK (default + FLOW_CTRL_OVERRIDE + DP_RESET_OVERRIDE)"
 
 sim: iverilog
 
 iverilog:
-	$(MAKE) -C dv/iverilog smoke tx loop pm rxovf scen msgbus msgbus_mac link fc
+	$(MAKE) -C dv/iverilog smoke tx loop pm rxovf scen msgbus msgbus_mac link fc dpr
 
 regress: lint sim
 	@echo "regress: OK"
@@ -84,6 +85,10 @@ cocotb:
 vlt-fc:
 	$(MAKE) -C dv/vlt fc
 
+# datapath-local reset ON (D18, -DDP_RESET_OVERRIDE) in the Verilator env (SVA + golden model)
+vlt-dpr:
+	$(MAKE) -C dv/vlt dpr
+
 systemc-fc:
 	$(MAKE) -C dv/systemc fc
 
@@ -93,6 +98,10 @@ uvm-fc:
 # UPF-like power-state emulation of PD_DP (cocotb on Icarus, ~45 s): corruption / isolation / retention matrix
 pd-emu:
 	$(MAKE) -C lp/cocotb pd
+
+# same emulation on the DP_RESET build: retaining nothing must pass (D18)
+pd-emu-dpr:
+	$(MAKE) -C lp/cocotb pd-dpr
 
 cocotb-fc:
 	$(MAKE) -C dv/cocotb fc

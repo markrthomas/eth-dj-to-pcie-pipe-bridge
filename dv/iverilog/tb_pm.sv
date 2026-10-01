@@ -150,6 +150,7 @@ module tb_pm;
     // PAM4CFG rewrite
     csr_wr(CSR_PAM4CFG, 32'hF5);            // bits [7:6] set: must be masked (bit 7 = coefficient-request strobe)
     wait_mb(3, "PAM4CFG write");
+    repeat (4) @(posedge pclk);             // the PHY model bumps mb_writes one cycle before it latches the data byte
     chk(phyc.last_mb_addr == MB_ADDR_TX_PRESET && phyc.last_mb_data == 8'h35, "PAM4CFG value at PHY (reserved bits masked)");
     csr_rd(CSR_PAM4CFG, d);
     chk(d === 32'h35, "PAM4CFG reads back with [7:6] = 0");

@@ -45,3 +45,11 @@ which is why the minimal set comes from greedy elimination, not from the single-
   P1 after the datapath drained, never mid-frame); 3 seeds; random-value corruption, no X propagation,
   no power-up glitches, no supply-ramp or isolation-cell timing; the PMU/UPF correctness itself is not
   checked by this (only the retention requirement and the wake-up behaviour).
+
+## Datapath-local reset build (D18): retention is unnecessary
+`make pd-emu-dpr` runs the same emulation on `-DDP_RESET_OVERRIDE` (PD_DP in reset from ST_LOWPWR to the
+next ST_DRAIN). Result: **retain-nothing PASSES**, every single-group corruption passes and the greedy
+minimal retained set is **empty** (versus 318 of 31,751 register bits on the default build). Breaking the
+reset logic makes retain-nothing fail again, so the result is not vacuous. Cost: the Rx diagnostic counters
+are cleared by every P1/P2 episode; incompatible with link flow control. See OPEN_DECISIONS D18.
+

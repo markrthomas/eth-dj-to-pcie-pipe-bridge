@@ -161,9 +161,39 @@ module eth_dj_pipe7_bridge
   assign pipe_width     = width_v;
   assign pipe_powerdown = pipe_pwr_e'(pd_v);
 
+  // ---- datapath-local reset (compile-time opt-in, docs/OPEN_DECISIONS.md D18) ----------------
+  // Default: the datapath instances use pipe_rst_n / eth_rst_n DIRECTLY (textually, via the macros
+  // below, so the default netlist and its event ordering are untouched).
+  // -DDP_RESET_OVERRIDE: from the FSM's ST_LOWPWR until the next ST_DRAIN (the wake-up path
+  //   LOWPWR -> PWR_CHG -> DRAIN) the PD_DP instances are in reset; the eth_clk copy is a reset
+  //   synchroniser (async assert, 2-flop release), so a power-gated datapath needs no retention.
+`ifdef DP_RESET_OVERRIDE
+  logic dp_low_q, dp_eth_s1, dp_eth_s2;
+  wire  dp_pipe_rst_n = pipe_rst_n && !dp_low_q;
+  wire  dp_eth_rst_n  = eth_rst_n && dp_eth_s2;
+  always_ff @(posedge pclk or negedge pipe_rst_n) begin
+    if (!pipe_rst_n)                                              dp_low_q <= 1'b0;
+    else if (ctrl_state == ST_LOWPWR)                             dp_low_q <= 1'b1;
+    else if (ctrl_state == ST_DRAIN || ctrl_state == ST_ACTIVE)   dp_low_q <= 1'b0;
+  end
+  always_ff @(posedge eth_clk or negedge dp_pipe_rst_n) begin
+    if (!dp_pipe_rst_n) {dp_eth_s2, dp_eth_s1} <= 2'b00;
+    else                {dp_eth_s2, dp_eth_s1} <= {dp_eth_s1, 1'b1};
+  end
+`undef DP_PIPE_RST
+`undef DP_ETH_RST
+`define DP_PIPE_RST dp_pipe_rst_n
+`define DP_ETH_RST  dp_eth_rst_n
+`else
+`undef DP_PIPE_RST
+`undef DP_ETH_RST
+`define DP_PIPE_RST pipe_rst_n
+`define DP_ETH_RST  eth_rst_n
+`endif
+
   // ---- Tx datapath ---------------------------------------------------------------
   tx_ingress_gate u_tx_gate (
-    .eth_clk (eth_clk), .eth_rst_n (eth_rst_n),
+    .eth_clk (eth_clk), .eth_rst_n (`DP_ETH_RST),
     .stop_req (ingress_stop), .fifo_full (tx_fifo_full),
     .eth_tvalid (eth_tvalid), .eth_tlast (eth_tlast),
     .eth_tready (eth_tready), .stopped (ingress_stopped_eth)
@@ -171,18 +201,18 @@ module eth_dj_pipe7_bridge
 
   logic [$clog2(FIFO_DEPTH):0] tx_wfree_unused;
   async_fifo #(.W(ETH_DATA_W+ETH_KEEP_W+1), .DEPTH(FIFO_DEPTH)) u_tx_cdc (
-    .wclk   (eth_clk),   .wrst_n (eth_rst_n),
+    .wclk   (eth_clk),   .wrst_n (`DP_ETH_RST),
     .winc   (eth_tvalid && eth_tready),
     .wdata  ({eth_tlast, eth_tkeep, eth_tdata}),
     .wfull  (tx_fifo_full), .wfree (tx_wfree_unused),
-    .rclk   (pclk),      .rrst_n (pipe_rst_n),
+    .rclk   (pclk),      .rrst_n (`DP_PIPE_RST),
     .rinc   (tx_fifo_rinc),
     .rdata  (tx_fifo_rdata),
     .rempty (tx_fifo_empty)
   );
 
   tx_framer u_tx_framer (
-    .clk (pclk), .rst_n (pipe_rst_n),
+    .clk (pclk), .rst_n (`DP_PIPE_RST),
     .fifo_rdata (tx_fifo_rdata), .fifo_empty (tx_fifo_empty), .fifo_rinc (tx_fifo_rinc),
     .flit_valid (flit_valid), .flit (flit), .flit_taken (flit_taken),
     .idle (framer_idle)
@@ -202,7 +232,7 @@ module eth_dj_pipe7_bridge
   );
 
   tx_egress u_tx_egress (
-    .clk (pclk), .rst_n (pipe_rst_n),
+    .clk (pclk), .rst_n (`DP_PIPE_RST),
     .tx_en (tx_en),
     .credit_ok (fc_credit_ok), .cr_req (fc_cr_req), .seq_now (fc_seq), .cl_now (fc_cl),
     .st_any (fc_st_any), .st_data (fc_st_data),
@@ -215,7 +245,7 @@ module eth_dj_pipe7_bridge
 
   // ---- Rx datapath: PIPE flit capture -> deframer -> async FIFO -> eth AXI-S ----
   rx_ingress u_rx_ingress (
-    .clk (pclk), .rst_n (pipe_rst_n),
+    .clk (pclk), .rst_n (`DP_PIPE_RST),
     .pipe_rx_data (pipe_rx_data), .pipe_rx_data_valid (pipe_rx_data_valid),
     .pipe_rx_start_block (pipe_rx_start_block),
     .flit_valid (rx_flit_valid), .flit (rx_flit), .flit_gap (rx_flit_gap),
@@ -225,7 +255,7 @@ module eth_dj_pipe7_bridge
   );
 
   rx_deframer u_rx_deframer (
-    .clk (pclk), .rst_n (pipe_rst_n),
+    .clk (pclk), .rst_n (`DP_PIPE_RST),
     .flit_valid (rx_flit_valid), .flit (rx_flit), .flit_gap (rx_flit_gap),
     .flit_taken (rx_flit_taken), .data_done (rx_data_done),
     .fifo_wdata (rx_fifo_wdata), .fifo_winc (rx_fifo_winc), .fifo_full (rx_fifo_full),
@@ -233,11 +263,11 @@ module eth_dj_pipe7_bridge
   );
 
   async_fifo #(.W(ETH_DATA_W+ETH_KEEP_W+2), .DEPTH(FIFO_DEPTH)) u_rx_cdc (
-    .wclk   (pclk),      .wrst_n (pipe_rst_n),
+    .wclk   (pclk),      .wrst_n (`DP_PIPE_RST),
     .winc   (rx_fifo_winc),
     .wdata  (rx_fifo_wdata),
     .wfull  (rx_fifo_full), .wfree (rx_wfree),
-    .rclk   (eth_clk),   .rrst_n (eth_rst_n),
+    .rclk   (eth_clk),   .rrst_n (`DP_ETH_RST),
     .rinc   (rx_fifo_rinc),
     .rdata  (rx_fifo_rdata),
     .rempty (rx_fifo_empty)

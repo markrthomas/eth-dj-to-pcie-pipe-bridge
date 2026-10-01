@@ -105,6 +105,22 @@ package eth_dj_pipe7_pkg;
 `else
   localparam bit FLOW_CTRL = 1'b0;
 `endif
+  // ---- Datapath-local reset on low-power exit (docs/OPEN_DECISIONS.md D18) ------------------
+  // Opt-in, compile-time: -DDP_RESET_OVERRIDE.  The PD_DP instances (everything except the control
+  // plane: u_ctrl, u_rf, u_msgbus*, u_fc) are held in reset from the control FSM's ST_LOWPWR until the
+  // following ST_DRAIN, so a power-gated datapath needs NO retention (the datapath is drained before
+  // P1/P2 anyway).  Behaviour change when on: the Rx diagnostic counters (CSR RXCNT0/1) are cleared
+  // by every P1/P2 episode.  Mutually exclusive with link flow control (fc_ctl, rx_ingress credit
+  // state and the sequence numbers would go out of step across a datapath reset).
+`ifdef DP_RESET_OVERRIDE
+`ifdef FLOW_CTRL_OVERRIDE
+  `DP_RESET_OVERRIDE_AND_FLOW_CTRL_OVERRIDE_ARE_MUTUALLY_EXCLUSIVE
+`endif
+  localparam bit DP_RESET = 1'b1;
+`else
+  localparam bit DP_RESET = 1'b0;
+`endif
+
   localparam int unsigned FLIT_FC_OFF = 242;
   // Worst case Rx CDC FIFO beats one data flit can add: 8 full beats + 1 partial (eof).
   localparam int unsigned CREDIT_BEATS_PER_FLIT = 9;

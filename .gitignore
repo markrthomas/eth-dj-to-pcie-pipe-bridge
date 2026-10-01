@@ -76,3 +76,8 @@ lp/cocotb/sim_build/
 lp/cocotb/pd_results.json
 lp/cocotb/__pycache__/
 lp/oss/build/
+dv/*/sim_build_dpr*/
+dv/vlt/obj_dir_dpr/
+dv/vlt/dpr_run/
+lp/cocotb/sim_build_dpr/
+lp/cocotb/*_dpr.*
