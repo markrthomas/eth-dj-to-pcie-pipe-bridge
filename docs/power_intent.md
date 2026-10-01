@@ -77,16 +77,23 @@ To run on a PA flow:
 `lp/oss/` (README there) maps the bridge to the Nangate45 liberty with Yosys, checks the gate-level
 netlist with the existing Verilator harness (7 scenarios, golden-model crc32s identical to the RTL),
 runs an Icarus gate-level window for switching activity and reports power with OpenSTA (pip
-`openroad` wheel). First numbers (also on the metrics dashboard, kind=estimated; 2 us of the `random`
+`openroad` wheel). Numbers re-measured on the default build with the datapath-local reset (D18, 2026-10-01; first numbers were 373,634 um2 / 154.5 mW on the pre-D18 RTL; also on the metrics dashboard, kind=estimated; 2 us of the `random`
 scenario, pclk 500 MHz / eth_clk 200 MHz, Nangate45 45 nm typical, no clock tree / parasitics):
 
 | | |
 |---|---|
-| area | 373,634 um2, 33.2 % sequential; PD_DP instances 356,673 (95.5 %), the rest 16,416 |
-| biggest | `u_tx_framer` 134,000; the two CDC FIFOs 75,000 + 74,800; `u_rx_deframer` 39,900; `u_rx_ingress` 29,700; `u_msgbus_tgt` 15,000 |
-| power | **154.5 mW** = 138.0 internal + 9.0 switching + 7.5 leakage |
-| by domain | PD_DP 150.9 mW (97.7 %), always-on + glue 3.6 mW; leakage in PD_DP 7.15 of 7.50 mW |
-| by block | `u_rx_cdc` 62.5, `u_tx_cdc` 50.2, `u_tx_framer` 17.7, `u_rx_ingress` 10.9, `u_rx_deframer` 5.1, `u_tx_egress` 4.5, `u_msgbus_tgt` 3.2 mW |
+| area | 378,070 um2, 32.8 % sequential; PD_DP instances 361,760 (95.7 %), the rest 16,310 |
+| biggest | `u_tx_framer` 139,000; the two CDC FIFOs 75,000 + 74,800; `u_rx_deframer` 39,900; `u_rx_ingress` 29,700; `u_msgbus_tgt` 14,800 |
+| power | **154.1 mW** = 137.4 internal + 9.0 switching + 7.6 leakage |
+| by domain | PD_DP 150.4 mW (97.6 %), always-on + glue 3.6 mW; leakage in PD_DP 7.29 of 7.64 mW |
+| by block | `u_rx_cdc` 62.5, `u_tx_cdc` 50.2, `u_tx_framer` 17.3, `u_rx_ingress` 10.9, `u_rx_deframer` 5.1, `u_tx_egress` 4.5, `u_msgbus_tgt` 3.2 mW |
+
+Effect of the D18 flip (new vs the earlier run): area +1.2 % (+4,436 um2), power -0.3 %. The reset
+itself adds almost nothing: the datapath flops already had an async reset, only the net driving it
+changed, plus `dp_low_q`, a 2-flop synchroniser and the Rx-drain hold counter. The only large per-block
+change is `u_tx_framer` (+3.7 % area, +7.6k cells) although `tx_framer.sv` has not changed since M3 -
+not isolated (possibly the earlier run used an older netlist or mapping variation); `u_msgbus_tgt`
+shrank by 314 cells. Treat sub-5 % differences as inside the noise of this flow.
 
 What this tells us: the datapath (PD_DP) is ~96 % of the area and ~98 % of the power, so gating or
 shrinking it is where the savings are; the CDC FIFO arrays alone are ~73 % of the power (flop arrays -
