@@ -23,7 +23,7 @@ SVA_FLAGS := $(if $(filter 1,$(SVA)),--assert --coverage-user)
 JOBS     ?= $(shell nproc 2>/dev/null || echo 4)
 BIN      := obj_dir/V$(TOP)
 
-.PHONY: smoke build coverage trace stress fc clean
+.PHONY: smoke build coverage trace stress fc dpr clean
 build: $(BIN)
 
 $(BIN): sim_main.cpp $(COMMON)/cpp/bridge_bfm.h $(RTL_SRCS) $(SVA_SRCS)
@@ -72,5 +72,17 @@ fc: sim_main.cpp $(COMMON)/cpp/bridge_bfm.h $(RTL_SRCS) $(SVA_SRCS)
 	@grep -q "VLT PASS" fc_run/logs/vlt.log
 	python3 $(COMMON)/crosscheck.py fc_run/logs/results.json
 
+# datapath-local reset ON (D18): same harness incl. SVA and the golden-model crosscheck
+DPRDIR := obj_dir_dpr
+dpr: sim_main.cpp $(COMMON)/cpp/bridge_bfm.h $(RTL_SRCS) $(SVA_SRCS)
+	$(VERILATOR) --cc --exe --build -j $(JOBS) -O2 --x-assign unique --x-initial unique \
+	  $(SVA_FLAGS) -DDP_RESET_OVERRIDE --Mdir $(DPRDIR) \
+	  -I$(RTL_DIR) --top-module $(TOP) -CFLAGS "-I$(abspath $(COMMON)/cpp) -O1" \
+	  $(RTL_SRCS) $(SVA_SRCS) sim_main.cpp
+	@mkdir -p dpr_run/logs
+	cd dpr_run && ../$(DPRDIR)/V$(TOP) | tee logs/vlt.log
+	@grep -q "VLT PASS" dpr_run/logs/vlt.log
+	python3 $(COMMON)/crosscheck.py dpr_run/logs/results.json
+
 clean:
-	rm -rf obj_dir obj_dir_fc fc_run logs coverage.info coverage.dat
+	rm -rf obj_dir obj_dir_fc fc_run obj_dir_dpr dpr_run logs coverage.info coverage.dat

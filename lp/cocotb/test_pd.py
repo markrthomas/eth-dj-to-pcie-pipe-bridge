@@ -25,6 +25,7 @@ RATE_GEN6 = 5
 CSR_CTRL, CSR_STATUS, CSR_RXCNT0, CSR_RXCNT1 = 0x00, 0x08, 0x10, 0x14
 MB_WR_C, MB_WR_ACK = 2, 5
 RESULTS = {}
+DPR = os.environ.get("PD_DP_RESET", "0") == "1"      # build has -DDP_RESET_OVERRIDE (D18): no retention needed
 
 
 def ival(s):
@@ -283,9 +284,13 @@ async def t1_retain_all(dut):
 
 @cocotb.test()
 async def t2_retain_none(dut):
-    """Negative control: with nothing retained the emulation must break the design."""
+    """Retain nothing.  Default build (negative control): the emulation must break the design.
+    DP_RESET build (D18): the datapath-local reset must make retention unnecessary."""
     ok = await run_case(dut, "retain_none", set())
-    assert not ok, "retain-nothing passed: the corruption emulation does not bite"
+    if DPR:
+        assert ok, "DP_RESET build: retain-nothing must pass (datapath reset on low-power exit)"
+    else:
+        assert not ok, "retain-nothing passed: the corruption emulation does not bite"
 
 
 @cocotb.test()
@@ -320,6 +325,7 @@ async def t8_bits(dut):
     bits = {g: sum(w for _, w in regs) for g, regs in emu.groups.items() if regs}
     RESULTS["_bits"] = bits
     must = set(RESULTS.get("_minimal_retain", []))
+    RESULTS["_dp_reset"] = DPR
     RESULTS["_bits_total"] = sum(bits.values())
     RESULTS["_bits_retained_minimal"] = sum(b for g, b in bits.items() if g in must)
     RESULTS["_minimal_regs"] = sorted("%s.%s[%d]" % (g.split("/")[0], h._name, w)

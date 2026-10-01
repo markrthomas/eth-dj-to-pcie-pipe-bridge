@@ -10,7 +10,7 @@ if bad:
     print("PD FAIL: failed tests:", bad)
     sys.exit(1)
 r = json.load(open(sys.argv[2]))
-print("PD retention matrix (PD_DP power cycle via the PMU, UPF-like emulation):")
+print("PD retention matrix (PD_DP power cycle via the PMU, UPF-like emulation%s):" % (", DP_RESET build" if r.get("_dp_reset") else ""))
 for k in sorted(k for k in r if not k.startswith("_")):
     print("  %-34s %-4s %s" % (k, "PASS" if r[k]["ok"] else "FAIL", r[k]["reason"]))
 print("  single-group sensitive:", r.get("_single_sensitive"))
@@ -20,7 +20,7 @@ if bt:
     print("  PD_DP register bits: total %d, minimal retained set %d (%.1f %%); per group:" % (bt, br, 100.0 * br / bt))
     for g, b in sorted(r["_bits"].items(), key=lambda kv: -kv[1]):
         print("    %-24s %6d" % (g, b))
-if r.get("_minimal_regs"):
+if r.get("_minimal_regs") and not r.get("_dp_reset"):
     open("retention_min.txt", "w").write(
         "# registers that must be retained across a PD_DP power cycle (lp/cocotb: greedy minimal set; "
         "<instance>.<reg>[width]); regenerate with `make -C lp/cocotb pd`\n" + "\n".join(r["_minimal_regs"]) + "\n")
