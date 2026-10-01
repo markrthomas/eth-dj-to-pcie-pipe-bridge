@@ -14,16 +14,25 @@ YOSYS   ?= yosys
 VERILATOR ?= verilator
 PY      ?= $(BUILD)/venv/bin/python
 LIB_URL := https://raw.githubusercontent.com/The-OpenROAD-Project/OpenROAD-flow-scripts/master/flow/platforms/nangate45/lib/NangateOpenCellLibrary_typical.lib
+LEF_URL := https://raw.githubusercontent.com/The-OpenROAD-Project/OpenROAD-flow-scripts/master/flow/platforms/nangate45/lef
 LIB     := $(abspath $(BUILD)/nangate45.lib)
+TECHLEF := $(abspath $(BUILD)/nangate45.tech.lef)
+MACROLEF := $(abspath $(BUILD)/nangate45.macro.lef)
 OUTABS  := $(abspath $(BUILD))
-# GLS dump window in ps (traffic-heavy part of the 7-scenario run; whole run is ~204 us)
-TFROM   ?= 8000000
-TTO     ?= 28000000
+# GLS dump window in ps (2 us inside the traffic-heavy random scenario; the VCD grows with window x signals)
+TFROM   ?= 12000000
+TTO     ?= 14000000
 
 .PHONY: deps generic map cells gls power power-oss clean
 power-oss: power
 
-deps: $(LIB) $(BUILD)/venv/bin/python
+deps: $(LIB) $(TECHLEF) $(MACROLEF) $(BUILD)/venv/bin/python
+$(TECHLEF):
+	mkdir -p $(BUILD)
+	curl -fsSL -o $@ $(LEF_URL)/NangateOpenCellLibrary.tech.lef
+$(MACROLEF):
+	mkdir -p $(BUILD)
+	curl -fsSL -o $@ $(LEF_URL)/NangateOpenCellLibrary.macro.lef
 $(LIB):
 	mkdir -p $(BUILD)
 	curl -fsSL -o $@ $(LIB_URL)
@@ -51,7 +60,7 @@ $(BUILD)/cells_sim.v: $(LIB)
 gls: $(BUILD)/gls.vcd
 $(BUILD)/gls.vcd: $(BUILD)/bridge_gl.v $(BUILD)/cells_sim.v $(ROOT)/dv/vlt/sim_main.cpp $(ROOT)/dv/common/cpp/bridge_bfm.h
 	cd $(BUILD) && $(VERILATOR) --cc --exe --build -j $$(nproc) -O2 --x-assign unique --x-initial unique \
-	  --trace-fst -Wno-fatal -Wno-lint -Wno-style --Mdir gls_obj --top-module eth_dj_pipe7_bridge \
+	  --trace-fst --trace-underscore -Wno-fatal -Wno-lint -Wno-style --Mdir gls_obj --top-module eth_dj_pipe7_bridge \
 	  -CFLAGS "-I$(abspath $(ROOT)/dv/common/cpp) -O1" bridge_gl.v cells_sim.v $(abspath $(ROOT)/dv/vlt/sim_main.cpp)
 	cd $(BUILD) && ./gls_obj/Veth_dj_pipe7_bridge +trace +trace_file=gls.fst +trace_from=$(TFROM) +trace_to=$(TTO) | tee gls.log
 	@grep -q "VLT PASS" $(BUILD)/gls.log
@@ -59,7 +68,7 @@ $(BUILD)/gls.vcd: $(BUILD)/bridge_gl.v $(BUILD)/cells_sim.v $(ROOT)/dv/vlt/sim_m
 
 power: $(BUILD)/power.json
 $(BUILD)/power.json: $(BUILD)/gls.vcd $(BUILD)/bridge_gl.v deps power.py
-	$(PY) power.py --lib $(LIB) --netlist $(BUILD)/bridge_gl.v --vcd $(BUILD)/gls.vcd --out $@
+	$(PY) power.py --lib $(LIB) --tech-lef $(TECHLEF) --macro-lef $(MACROLEF) --netlist $(BUILD)/bridge_gl.v --vcd $(BUILD)/gls.vcd --out $@
 
 clean:
 	rm -rf $(BUILD)

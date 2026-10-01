@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """lp/oss/power.py — switching-activity power estimate with OpenSTA (the pip `openroad` wheel).
 
-  power.py --lib nangate.lib --netlist bridge_gl.v --vcd gls.vcd [--scope TOP/eth_dj_pipe7_bridge]
+  power.py --lib nangate.lib --tech-lef T.lef --macro-lef M.lef --netlist bridge_gl.v --vcd gls.vcd [--scope TOP/eth_dj_pipe7_bridge]
            [--pclk-ns 2.0] [--eth-ns 5.0] --out report.json
 
 Reads the Yosys/Nangate45 gate netlist and the gate-level-simulation VCD, runs report_power for the
@@ -30,6 +30,8 @@ def parse_total(text):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--lib", required=True)
+    ap.add_argument("--tech-lef", required=True)
+    ap.add_argument("--macro-lef", required=True)
     ap.add_argument("--netlist", required=True)
     ap.add_argument("--vcd", required=True)
     ap.add_argument("--top", default="eth_dj_pipe7_bridge")
@@ -41,6 +43,8 @@ def main():
 
     from openroad import Tech, Design
     tech = Tech()
+    tech.readLef(os.path.abspath(a.tech_lef))          # odb needs the technology + cell LEFs to link a netlist
+    tech.readLef(os.path.abspath(a.macro_lef))
     tech.readLiberty(os.path.abspath(a.lib))
     d = Design(tech)
     tmp = tempfile.mkdtemp()
@@ -66,7 +70,7 @@ def main():
     inst = {}
     for u in PD_DP + ["u_ctrl", "u_msgbus", "u_msgbus_tgt", "u_rf", "u_fc"]:
         try:
-            inst[u] = parse_total(report(f"-instances [get_cells {u}] -digits 6", u))
+            inst[u] = parse_total(report(f"-instances [get_cells {u}/*] -digits 6", u))
         except Exception as e:                       # instance absent / flattened away
             inst[u] = {"error": str(e)[:80]}
     res["instances_W"] = inst
