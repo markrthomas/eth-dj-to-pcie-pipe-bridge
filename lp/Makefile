@@ -1,6 +1,6 @@
 # lp — power intent.  `make -C lp upf-tb`: functional (NON power-aware) Icarus run
 # of the power-aware TB: PMU sequencing + the no-handshake timing assumption +
-# traffic across P1/P2 episodes.  The UPF itself needs a commercial PA simulator.
+# traffic across P1/P2 episodes.  The UPF itself needs a power-aware simulator (commercial runs are out of scope here).
 IVERILOG ?= iverilog
 VVP      ?= vvp
 RTL_DIR  := ../rtl

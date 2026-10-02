@@ -3,8 +3,8 @@
 ##
 ## STATUS: AUTHORED, NOT RUN.  No OSS tool here reads UPF; this file has not been
 ## parsed or simulated by any tool (see docs/power_intent.md).  It must be
-## checked on a commercial power-aware flow (VCS-NLP / Questa-PA / Xcelium-LP)
-## before anything is claimed about it.
+## checked on a power-aware flow before anything is claimed about it; commercial-tool
+## runs are out of scope for this project (owner decision 2026-10-02), so it stays unrun.
 ##
 ## Scope: the power-aware TB top tb_pipe7_upf_power (lp/tb_pipe7_upf_power.sv):
 ##   u_dut  = eth_dj_pipe7_bridge            u_pmu = pipe7_pmu (DV-only sequencer)
@@ -69,8 +69,8 @@ set_isolation ISO_DP_1 -domain PD_DP \
 ## ---- retention ------------------------------------------------------------------------
 ## NOTE (D18): the default RTL now holds PD_DP in reset from ST_LOWPWR to the next
 ## ST_DRAIN, so the default build needs NO retention (`make pd-emu`: retain-nothing
-## passes).  The retention below is kept for `-DDP_RESET_DISABLE` builds and until a
-## commercial-tool run confirms the retention-free variant (owner item).
+## passes).  The retention below is kept for `-DDP_RESET_DISABLE` builds; a
+## retention-free variant is not planned (no commercial-tool runs).
 ##
 ## Without the reset, non-retained PD_DP state would come back corrupted with nothing
 ## to clear it.  First cut for that build: retain

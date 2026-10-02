@@ -174,7 +174,7 @@ make ci          # regress + coverage + formal + all five envs + crosscheck + up
 make stress      # all scenarios x 20 seeds on Verilator
 make wave-loop   # run a test with a VCD dump, check + open dv/waves/loop.gtkw
 make metrics     # run + time the flows -> metrics/metrics.db; make dashboard renders it
-make upf         # prints the "authored, not run" notice (commercial PA tool needed)
+make upf         # prints the "authored, not run" notice (no power-aware sim is run here)
 ```
 
 Tools: the OSS CAD Suite pinned in CI (`2026-04-13`: Verilator 5.047, Icarus,

@@ -30,14 +30,16 @@ owner instead). "Still open" notes inside the dated entries below are superseded
 - **Swarm:** `.claude/agents` (manager `opus`, `dv-env-tester`/`infra-agent` `sonnet`, `dv-runner` `haiku`). One run done: the manager had no sub-agent
   dispatch tool, so it ran the four envs itself sequentially (still useful; no per-agent token data — `swarm.sh` only records tokens per model).
 
+**Scope decision (owner, 2026-10-02): no commercial-tool runs.** `bridge.upf` stays *authored, not run* for good; there is no plan to run it on a
+commercial power-aware simulator, so no UPF/retention item is open. The power work that is done is OSS only: `make pd-emu` / `pd-emu-ret`, `make upf-tb`, `make power-oss`.
+
 **Owner's open items (nothing below needs more code from a session unless noted)**
 1. **Railway deploy and a first real swarm run** — need the owner's Railway account / an API key.
-2. **Commercial UPF run** of `lp/bridge.upf`; optional: narrow its `set_retention` to the 57-register list (~1 % of the state).
-3. **`msgbus_mac_tgt` register file costs ~4 % of the area** for registers nothing reads — shrink or make optional? (D17)
-4. **Datapath-local reset is the DEFAULT** (D18; opt out with `-DDP_RESET_DISABLE`; flow-control builds turn it off). Retain-nothing passes in
-   `make pd-emu`. Owner to author/verify a retention-free UPF variant (`bridge.upf` still carries the retention block, marked in a note), and to
-   re-run `make power-oss` (its numbers predate the flip). The `uvm` env was not runnable in the authoring container (UVM core vs Verilator).
-5. Known unmodelled: MAC register field attributes / reserved-bit masking; per-lane message-bus replication (only for a *Variable* PHY, D17);
+2. **`msgbus_mac_tgt` register file costs ~4 % of the area** for registers nothing reads — shrink or make optional? (D17)
+3. **Datapath-local reset is the DEFAULT** (D18; opt out with `-DDP_RESET_DISABLE`; flow-control builds turn it off). Retain-nothing passes in
+   `make pd-emu`. `bridge.upf` still carries the retention block (marked in a note, kept for `-DDP_RESET_DISABLE` builds). `lp/oss` numbers were re-measured on this
+   build (378,070 um2, 154.1 mW). The `uvm` env was not runnable in the authoring container (UVM core vs Verilator); CI runs it.
+4. Known unmodelled: MAC register field attributes / reserved-bit masking; per-lane message-bus replication (only for a *Variable* PHY, D17);
    mid-frame power-down; X-propagation in the power emulation; iverilog `rxovf` with FC on (it forces overload); vlt/systemc/uvm/cocotb at x4 with FC.
 
 **Working agreement in these sessions (owner's instructions, overriding the generic Guardrails below where they differ):** open PRs as
@@ -127,7 +129,7 @@ ran, commit/PR trailers as in the existing history.
   msgbus_mac` (in `make regress`), mutation-checked; SVA MB6 added, MB5 bound +8. Formal (master+FSM) and all
   envs incl. UVM re-run and pass locally. `pipe_msgbus` gained a `tx_active` output only. Removed the stale
   `.claude/worktrees/` checkouts. **Still open:** multi-lane bus scaling (needs spec text), real Rx flow
-  control, MAC register map (§7.2), commercial UPF run, Railway deploy, first real swarm run.
+  control, MAC register map (§7.2), Railway deploy, first real swarm run (the commercial UPF run was dropped from the plan 2026-10-02).
 
 - **2026-09-30 (k)** — Owner pasted the PIPE 7.1 Rx Control tables (7.1.4..7.1.11). **PAM4RestrictedLevels
   is Rx Control1 `12'h004` bit 2** (not 12'h406); it is LTSSM-timed (set after a Gen6 rate change if Tx EQ
@@ -190,7 +192,7 @@ ran, commit/PR trailers as in the existing history.
   M4–M7 landed via PRs #5–#8 (the owner merged #5–#7). **Open for the owner:** D14
   (DP reset/power-good vs full retention; FSM<->PMU handshake), D10 (timeout
   proceeds), D8 msgbus address/framing vs the PIPE 7.1 spec, D1 lane count;
-  running `lp/bridge.upf` on a commercial PA tool; a Railway deploy; a first swarm
+  a Railway deploy; a first swarm
   run. Known gaps: framer single-buffered (`c_b2b_flits` unhit), no latency metric,
   cocotb has no SVA.
 
@@ -336,8 +338,8 @@ ran, commit/PR trailers as in the existing history.
 - **Docker:** `.dockerignore` strips trailing slashes (`dir/*/` excludes files).
   Behind a TLS-intercepting proxy build with `--network host`, proxy build args
   and `--secret id=extra_ca,src=<pem>`.
-- **UPF:** no OSS power-aware simulator exists here; `make upf` is authored +
-  documented, run on a commercial tool, OSS-stubbed. (see `PLAN.md` §9)
+- **UPF:** no OSS power-aware simulator exists and commercial-tool runs are out of scope (owner, 2026-10-02); `make upf` is authored +
+  documented and prints a stub. (see `PLAN.md` §9)
 - **Icarus + SV struct literals:** Icarus-11 can't compile SV struct literals /
   `return` in some forms — keep a plain-Verilog model for anything that must run
   under Icarus or Yosys formal (this bit `IP-ucie-rdi-to-pcie-pipe`).

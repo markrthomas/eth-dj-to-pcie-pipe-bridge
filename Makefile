@@ -35,7 +35,7 @@ help:
 	@echo "  ci         regress + coverage + formal + all envs + crosscheck"
 	@echo "  waves|wave-<test>  run a test with a VCD dump, check + open dv/waves/<test>.gtkw"
 	@echo "  wave-check-all     check every test's .gtkw against a fresh dump (no GUI)"
-	@echo "  upf        power-aware sim: commercial only -> prints authored-not-run notice"
+	@echo "  upf        prints the authored-not-run notice (no power-aware sim is run here)"
 	@echo "  upf-tb     functional Icarus run of the power-aware TB (PMU sequencing, no UPF)"
 	@echo "  metrics    run+time METRICS_FLOWS, collect artifacts -> metrics/metrics.db"
 	@echo "  dashboard  render metrics/metrics.db -> metrics/dashboard.html"
@@ -117,10 +117,10 @@ crosscheck:
 envs: iverilog vlt uvm systemc cocotb
 
 upf:
-	@echo "upf: AUTHORED, NOT RUN.  lp/bridge.upf (IEEE 1801 / UPF 2.1) needs a commercial"
-	@echo "     power-aware simulator (VCS-NLP / Questa-PA / Xcelium-LP); none is available"
-	@echo "     here and no OSS tool models supplies/isolation/retention.  The UPF has not"
-	@echo "     been parsed or simulated.  See docs/power_intent.md for how to run it."
+	@echo "upf: AUTHORED, NOT RUN.  lp/bridge.upf (IEEE 1801 / UPF 2.1) needs a power-aware"
+	@echo "     simulator; no OSS tool models supplies/isolation/retention and commercial-tool"
+	@echo "     runs are out of scope for this project.  The UPF has not been parsed or"
+	@echo "     simulated.  See docs/power_intent.md."
 	@echo "     'make upf-tb' runs the power-aware TB functionally (no power semantics)."
 
 # functional (NOT power-aware) Icarus run of lp/tb_pipe7_upf_power: PMU sequencing
