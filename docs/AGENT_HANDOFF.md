@@ -34,13 +34,14 @@ owner instead). "Still open" notes inside the dated entries below are superseded
 commercial power-aware simulator, so no UPF/retention item is open. The commercial-tool target is kept: `make upf` (`make -C lp upf-pa`) runs the UPF TB on
 VCS-NLP / Xcelium / Questa-PA if one is on PATH (command lines UNTESTED), otherwise it reports the missing tool and exits 0. The power work that is done is OSS only: `make pd-emu` / `pd-emu-ret`, `make upf-tb`, `make power-oss`.
 
+**Decided (owner, 2026-10-02): the `msgbus_mac_tgt` MAC register file stays in the design** as it is (always included, not optional, not shrunk; ~4 % of the area, D17).
+
 **Owner's open items (nothing below needs more code from a session unless noted)**
 1. **Railway deploy and a first real swarm run** — need the owner's Railway account / an API key.
-2. **`msgbus_mac_tgt` register file costs ~4 % of the area** for registers nothing reads — shrink or make optional? (D17)
-3. **Datapath-local reset is the DEFAULT** (D18; opt out with `-DDP_RESET_DISABLE`; flow-control builds turn it off). Retain-nothing passes in
+2. **Datapath-local reset is the DEFAULT** (D18; opt out with `-DDP_RESET_DISABLE`; flow-control builds turn it off). Retain-nothing passes in
    `make pd-emu`. `bridge.upf` still carries the retention block (marked in a note, kept for `-DDP_RESET_DISABLE` builds). `lp/oss` numbers were re-measured on this
    build (378,070 um2, 154.1 mW). The `uvm` env (and `uvm-fc`) was re-run on this build on 2026-10-02 with the pinned suite and passes (see history (w)).
-4. Known unmodelled: MAC register field attributes / reserved-bit masking; per-lane message-bus replication (only for a *Variable* PHY, D17);
+3. Known unmodelled: MAC register field attributes / reserved-bit masking; per-lane message-bus replication (only for a *Variable* PHY, D17);
    mid-frame power-down; X-propagation in the power emulation; iverilog `rxovf` with FC on (it forces overload); vlt/systemc/uvm/cocotb at x4 with FC.
 
 **Working agreement in these sessions (owner's instructions, overriding the generic Guardrails below where they differ):** open PRs as
