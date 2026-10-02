@@ -26,7 +26,7 @@ MAC or PCS: it sits behind one and sees frames as an AXI4-Stream packet interfac
 |---|---|
 | `tvalid` / `tready` | Handshake: a beat transfers on a clock edge where both are 1. The source must keep `tvalid` and the data stable until `tready`. |
 | `tdata[255:0]` | 32 payload bytes per beat, byte 0 in bits [7:0]. |
-| `tkeep[31:0]` | Which bytes of the beat are valid. Here: contiguous and low-aligned, and only the **last** beat of a frame may be partial. |
+| `tkeep[31:0]` | Which bytes of the beat are valid. Here: contiguous and low-aligned, and only the **last** beat of a frame may be partial. A null beat (`tkeep` = 0) is tolerated: without `tlast` it is ignored, with `tlast` it ends the frame, and a lone null `tlast` beat (an empty frame) is dropped (D19). |
 | `tlast` | Last beat of the frame. |
 | `tuser[7:0]` | Sideband. Ingress `tuser` is not carried (D4). On egress, `tuser[0]` = 1 on the `tlast` beat marks an **aborted frame** (D9). |
 
@@ -105,8 +105,8 @@ The two share the one M2P bus, so a response is never inserted inside the master
 | `0x00` | CTRL | RW | `[1:0]` pwr_req, `[4:2]` rate_req, `[6:5]` width_req |
 | `0x04` | PAM4CFG | RW | `[5:0]` Tx preset index; a write re-sends it to the PHY |
 | `0x08` | STATUS | RO | powerdown, rate, width, FSM state, busy, link active, elec idle, rx valid |
-| `0x0C` | ERR | W1C | `[0]` PhyStatus timeout, `[1]` msgbus timeout, `[2]` P0s requested |
-| `0x10` | RXCNT0 | RO | dropped flits, lock errors |
+| `0x0C` | ERR | W1C | `[0]` PhyStatus timeout, `[1]` msgbus timeout, `[2]` P0s requested (once per CTRL write), `[3]` CTRL write ignored: reserved rate (> Gen6) or width (3) |
+| `0x10` | RXCNT0 | RO | dropped flits, lock errors (all four Rx counters saturate at 0xFFFF) |
 | `0x14` | RXCNT1 | RO | bad/orphan flits, aborted frames |
 | `0x18` | PMCNT | RO | completed control operations |
 
@@ -179,7 +179,7 @@ Two clocks, `eth_clk` and `pclk`, asynchronous to each other. Data crosses only 
 
 | Feature | Switch | Effect |
 |---|---|---|
-| x4 lanes | `-DPIPE_NLANES_OVERRIDE=4` | datapath is lane-parametric; `make lanes4` runs the suite |
+| x2 / x4 lanes | `-DPIPE_NLANES_OVERRIDE=4` | `make lanes4` runs the suite; x8 and up are refused at elaboration (the datapath moves one 256-bit beat per pclk, D1 / D19) |
 | Link flow control (D16) | `-DFLOW_CTRL_OVERRIDE` | credits + sequence numbers in the DLP bytes; both ends must agree; needs `fc_ctl` |
 | Datapath-local reset (D18) | default on; `-DDP_RESET_DISABLE` off | PD_DP held in reset in LOWPWR so it needs no retention; clears the Rx counters per P1/P2 episode; flow-control builds turn it off |
 
@@ -230,7 +230,7 @@ have to agree on the numbers.
 | cocotb | `dv/cocotb/` | cocotb + PyUVM, `fcov.py` | constrained random and functional coverage |
 
 Icarus-only directed tests: `tb_smoke` (reset to P0/Gen6, CSRs), `tb_tx` (Tx flit format),
-`tb_loop`, `tb_pm`, `tb_rxovf`, `tb_msgbus`, `tb_msgbus_mac`, `tb_link` (two bridges
+`tb_loop`, `tb_pm`, `tb_rxovf`, `tb_edge` (null tlast beats, CTRL range check, P0s flag, saturating counters), `tb_msgbus`, `tb_msgbus_mac`, `tb_link` (two bridges
 cross-connected, with flow control, a flit killer on the wire and a stalled sink).
 Icarus-safe SV only: no `break`, no array literals (D12).
 

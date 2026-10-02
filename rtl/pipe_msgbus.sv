@@ -16,8 +16,8 @@
 // transaction is a command; the remaining bytes are address/data and must not be
 // decoded as commands (e.g. a read_completion data byte 8'h5x is not a write_ack).
 // The framer runs continuously so it stays aligned when S_WAIT is entered.
-// Other P2M messages (read completions, PHY-initiated writes) are otherwise ignored:
-// this bridge implements no MAC-side register target, so it does not answer them.
+// Other P2M messages (read completions, PHY-initiated writes) are otherwise ignored here: the
+// MAC-side register target and the M2P arbiter that answers them are msgbus_mac_tgt.
 // ============================================================================
 `include "eth_dj_pipe7_pkg.sv"
 

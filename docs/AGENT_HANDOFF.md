@@ -17,7 +17,7 @@ owner instead). "Still open" notes inside the dated entries below are superseded
   **Opt-in two-ended link flow control** (`-DFLOW_CTRL_OVERRIDE`, credits + seq loss repair, D16; default off, default results unchanged).
 - **DV:** five envs (iverilog, vlt, systemc, cocotb, uvm) cross-checked against `dv/common/scenarios.py`; every env also has a flow-control-on
   `fc` target (CI); two-bridge `dv/iverilog/tb_link.sv` (flit killer); UVM FC overload test; SVA (`dv/sva`); formal
-  (`async_fifo`, `ingress_gate`, `ctrl` + `ctrl` with FC, `fc` credit invariants by k-induction); `make lanes4` incl. FC; coverage 92.5 % (floor 80, measured 2026-10-02);
+  (`async_fifo`, `ingress_gate`, `ctrl` + `ctrl` with FC, `fc` credit invariants by k-induction); `make lanes4` incl. FC; coverage 90.0 % (floor 80, measured 2026-10-02 after the D19 fixes; 92.5 % before);
   waves, metrics DB + dashboard.
 - **Power (zero-cost, no commercial tool):** `lp/oss` (Yosys+slang -> Nangate45 -> Verilator gate-level equivalence -> Icarus activity ->
   OpenSTA via the pip `openroad` wheel): 378,070 um2, **154.1 mW** on the default (D18 reset) build (PD_DP 97.6 %; CDC FIFOs ~73 %, flop arrays so pessimistic), on the dashboard,
@@ -67,6 +67,12 @@ ran, commit/PR trailers as in the existing history.
 ---
 
 ### History (newest first; "Still open" lines in old entries are superseded by the block above)
+
+- **2026-10-02 (x)** — **Swarm-review findings fixed** (branch `claude/rtl-review-fixes`, D19): null tlast beats (`tx_framer` holds an exactly-full flit
+  one beat), CTRL range check + ERR[3], P0s flagged once per write, saturating Rx counters, arbiter gated on `m_busy`, x8+ refused at elaboration
+  (x8 never worked: the datapath moves one 256-bit beat per pclk; D1 corrected), stale comments. New `tb_edge`, `tb_msgbus_mac` case L; both fail on the
+  old RTL. RTL behaviour changes are in D19. Gotcha: a full disk (this container's allowance) corrupts a half-built Verilator `obj_dir` and shows up as
+  an unexplained "make -C obj_dir exited with 2": free space and `rm -rf` that obj_dir.
 
 - **2026-10-02 (w)** — **Swarm review + test run of `main`** (branch `swarm/2026-10-02-ci-drift-lanes4`; tested at 4b0c1aa, the RTL/DV are
   unchanged at 24f4042). All green with the pinned suite (cocotb / pd-emu on apt Icarus, as in CI): `regress`, `lint` (3 configs), five envs +

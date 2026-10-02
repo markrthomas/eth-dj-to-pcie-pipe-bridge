@@ -12,7 +12,7 @@ See [`docs/pam4_notes.md`](docs/pam4_notes.md).
 > **Status: first cut complete (M0–M7; M8 close-out).** Tx + Rx datapaths and the
 > PIPE control plane; five DV environments (Icarus, Verilator C++, SystemC,
 > cocotb+PyUVM, UVM-on-Verilator) agree on a shared scenario set; line+branch
-> coverage 92.5% (floor 80%); bind-based SVA; SymbiYosys PDR proofs; UPF power intent
+> coverage 90.0% (floor 80%); bind-based SVA; SymbiYosys PDR proofs; UPF power intent
 > (**authored, not run** — no OSS power-aware simulator); GTKWave sessions,
 > metrics dashboard, Docker/Railway job and agent-swarm definitions.
 > Open owner decisions: [`docs/OPEN_DECISIONS.md`](docs/OPEN_DECISIONS.md).
@@ -154,7 +154,8 @@ flowchart TB
 ```
 
 Directed Icarus tests beyond the shared scenarios: `tb_smoke`, `tb_tx`, `tb_loop`, `tb_pm`
-(power/rate/width under traffic), `tb_rxovf` (Rx overload), `tb_msgbus`, `tb_msgbus_mac`,
+(power/rate/width under traffic), `tb_rxovf` (Rx overload), `tb_edge` (null tlast beats,
+CTRL range check, P0s flag, saturating counters), `tb_msgbus`, `tb_msgbus_mac`,
 `tb_link` (two bridges back to back, flow control).
 
 ## Tutorial

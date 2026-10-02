@@ -19,8 +19,8 @@ IVEXTRA  ?=
 WFLAGS    = $(if $(filter 1,$(WAVES)),-DDUMP_TOP=tb_$@ ../waves/wave_dump.sv)
 WRUN      = $(if $(filter 1,$(WAVES)),+dumpfile=$(BUILD)/$@.vcd)
 
-.PHONY: smoke tx loop pm rxovf scen msgbus msgbus_mac link fc nodpr all clean
-all: smoke tx loop pm rxovf scen msgbus msgbus_mac link fc nodpr
+.PHONY: smoke tx loop pm rxovf edge scen msgbus msgbus_mac link fc nodpr all clean
+all: smoke tx loop pm rxovf edge scen msgbus msgbus_mac link fc nodpr
 
 LOOP_TB_DEPS := $(COMMON)/eth_mac_model.sv $(COMMON)/pipe_phy_model.sv $(COMMON)/pipe_phy_ctrl_model.sv $(COMMON)/eth_sink_model.sv
 smoke:
@@ -52,6 +52,12 @@ rxovf:
 	$(IVERILOG) -g2012 $(IVEXTRA) $(WFLAGS) -I $(RTL_DIR) -I $(COMMON) -I . -o $(BUILD)/rxovf.vvp tb_rxovf.sv $(LOOP_TB_DEPS) $(RTL_SRCS)
 	$(VVP) $(BUILD)/rxovf.vvp $(WRUN) | tee $(BUILD)/rxovf.log
 	@grep -q "RXOVF PASS" $(BUILD)/rxovf.log
+
+edge:
+	@mkdir -p $(BUILD)
+	$(IVERILOG) -g2012 $(IVEXTRA) $(WFLAGS) -I $(RTL_DIR) -I $(COMMON) -I . -o $(BUILD)/edge.vvp tb_edge.sv $(LOOP_TB_DEPS) $(RTL_SRCS)
+	$(VVP) $(BUILD)/edge.vvp $(WRUN) | tee $(BUILD)/edge.log
+	@grep -q "EDGE PASS" $(BUILD)/edge.log
 
 # shared five-scenario set (dv/common/scenarios.py) -> $(BUILD)/results.json (default sim_build/results.json,
 # which `make crosscheck` and metrics read; `make lanes4` uses its own BUILD so the x1 results stay put)

@@ -43,7 +43,7 @@ module tb_msgbus_mac;
   wire [7:0]             last_wr_data;
 
   msgbus_mac_tgt tgt (.clk(clk), .rst_n(rst_n), .fsm_req(fsm_req), .fsm_addr(addr), .fsm_wdata(wdata),
-    .m_req(m_req), .m_addr(m_addr), .m_wdata(m_wdata), .m_tx_active(m_tx_active), .m_m2p(m_m2p),
+    .m_req(m_req), .m_addr(m_addr), .m_wdata(m_wdata), .m_busy(busy), .m_tx_active(m_tx_active), .m_m2p(m_m2p),
     .p2m(p2m), .m2p(m2p), .tgt_tx(tgt_tx), .phy_wr_cnt(phy_wr_cnt), .phy_rd_cnt(phy_rd_cnt),
     .drop_cnt(drop_cnt), .last_wr_addr(last_wr_addr), .last_wr_data(last_wr_data));
 
@@ -237,7 +237,26 @@ module tb_msgbus_mac;
     phy_rd(12'h40A); idle(6); expect_tx(n0, 4, 0, 8'h87, "K buffered entries applied (40Ah = 0x87)"); n0 = ntx;
     phy_rd(12'h40B); idle(6); expect_tx(n0, 4, 0, 8'h00, "K dropped entry (40Bh) not applied");
 
-    if (errors == 0) $display("MSGBUS-MAC PASS: target + arbiter + MAC registers (A-K)");
+    // L: a second FSM request while the master is still waiting for the first one's write_ack must be
+    //    held back until the master is idle (it used to be pulsed into the busy master and ignored,
+    //    leaving the arbiter waiting forever)
+    n0 = ntx; done_cnt = 0;
+    fsm_write(); idle(8);
+    chk(busy, "L first write is waiting for its write_ack");
+    fsm_write(); idle(4);
+    chk(busy && done_cnt == 0, "L still waiting, second request held back");
+    drive({MB_WR_ACK, 4'h0}); idle(10);
+    chk(done_cnt == 1, "L first write completes");
+    drive({MB_WR_ACK, 4'h0}); idle(8);
+    chk(done_cnt == 2 && !busy, "L second write completes (no arbiter hang)");
+    expect_tx(n0, 1, 12'h405, 8'h21, "L first frame intact");
+    expect_tx(n0 + 1, 1, 12'h405, 8'h21, "L second frame intact");
+    chk(ntx == n0 + 2, "L exactly two frames");
+    n0 = ntx;
+    phy_rd(12'h002); idle(8);
+    expect_tx(n0, 4, 0, 8'h00, "L arbiter still answers PHY reads afterwards");
+
+    if (errors == 0) $display("MSGBUS-MAC PASS: target + arbiter + MAC registers (A-L)");
     else             $display("MSGBUS-MAC FAIL: %0d error(s)", errors);
     $finish;
   end

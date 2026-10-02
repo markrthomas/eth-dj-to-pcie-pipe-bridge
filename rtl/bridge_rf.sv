@@ -11,7 +11,8 @@
 //   STATUS  RO  [1:0] powerdown [4:2] rate [6:5] width [9:7] ctrl state
 //               [10] busy (op in flight) [11] link active (ST_ACTIVE)
 //               [12] pipe_rx_elec_idle [13] pipe_rx_valid
-//   ERR     W1C [0] PhyStatus timeout [1] msgbus timeout [2] P0s requested (unsupported)
+//   ERR     W1C [0] PhyStatus timeout [1] msgbus timeout [2] P0s requested (unsupported, flagged per CTRL write)
+//               [3] CTRL write ignored: reserved rate (> Gen6) or width (3)
 //   RXCNT0  RO  [15:0] Rx flits dropped (overflow) [31:16] Rx lock errors
 //   RXCNT1  RO  [15:0] Rx bad/orphan flits [31:16] Rx frames aborted (tuser[0] err)
 //   PMCNT   RO  [15:0] completed control operations (saturating)
@@ -50,18 +51,24 @@ module bridge_rf
   input  logic                   ev_op_done,
   input  logic                   ev_phy_timeout,
   input  logic                   ev_mb_timeout,
-  input  logic                   ev_bad_pwr_req,
   input  logic [15:0]            rx_dropped_flits,
   input  logic [15:0]            rx_lock_errors,
   input  logic [15:0]            rx_bad_flits,
   input  logic [15:0]            rx_aborted_frames
 );
-  logic [2:0]  err_q;
+  logic [3:0]  err_q;
   logic [15:0] opcnt_q;
 
   wire wr = csr_valid && csr_write;
 
   assign pam4_wr = wr && (csr_addr == CSR_PAM4CFG);
+
+  // CTRL write checks (PIPE 7.1 Table: Rate 0-5 = 2.5..64 GT/s, Width 0/1/2 = 8/16/32 bits, 3-7 reserved):
+  // a write with a reserved rate or width is ignored as a whole and flagged in ERR[3]; a P0s request
+  // (unsupported, treated as P0 by the FSM) is flagged in ERR[2] once per CTRL write.
+  wire ctrl_wr     = wr && (csr_addr == CSR_CTRL);
+  wire ctrl_bad    = ctrl_wr && ((csr_wdata[4:2] > 3'(RATE_GEN6)) || (csr_wdata[6:5] == 2'd3));
+  wire ev_bad_p0s  = ctrl_wr && !ctrl_bad && (csr_wdata[1:0] == PWR_P0S);
 
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
@@ -72,15 +79,15 @@ module bridge_rf
       err_q     <= '0;
       opcnt_q   <= '0;
     end else begin
-      if (wr && csr_addr == CSR_CTRL) begin
+      if (ctrl_wr && !ctrl_bad) begin
         pwr_req   <= csr_wdata[1:0];
         rate_req  <= csr_wdata[4:2];
         width_req <= csr_wdata[6:5];
       end
       if (pam4_wr) pam4cfg <= {2'b00, csr_wdata[5:0]};
       // W1C, with set taking priority over a same-cycle clear
-      err_q <= (err_q & ~((wr && csr_addr == CSR_ERR) ? csr_wdata[2:0] : 3'b000))
-             | {ev_bad_pwr_req, ev_mb_timeout, ev_phy_timeout};
+      err_q <= (err_q & ~((wr && csr_addr == CSR_ERR) ? csr_wdata[3:0] : 4'b0000))
+             | {ctrl_bad, ev_bad_p0s, ev_mb_timeout, ev_phy_timeout};
       if (ev_op_done && opcnt_q != 16'hFFFF) opcnt_q <= opcnt_q + 16'd1;
     end
   end
@@ -95,7 +102,7 @@ module bridge_rf
       CSR_STATUS:  csr_rdata = {18'b0, st_rx_valid, st_rx_elec_idle,
                                 (st_state == ST_ACTIVE), busy, st_state,
                                 st_width, st_rate, st_powerdown};
-      CSR_ERR:     csr_rdata = {29'b0, err_q};
+      CSR_ERR:     csr_rdata = {28'b0, err_q};
       CSR_RXCNT0:  csr_rdata = {rx_lock_errors, rx_dropped_flits};
       CSR_RXCNT1:  csr_rdata = {rx_aborted_frames, rx_bad_flits};
       CSR_PMCNT:   csr_rdata = {16'b0, opcnt_q};

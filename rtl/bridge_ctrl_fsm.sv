@@ -55,8 +55,7 @@ module bridge_ctrl_fsm
   // status / events
   output logic [2:0]  state,
   output logic        ev_op_done,        // pulse: one power/rate/width/cfg op completed
-  output logic        ev_phy_timeout,    // pulse
-  output logic        ev_bad_pwr_req     // pulse (P0s requested)
+  output logic        ev_phy_timeout     // pulse
 );
   localparam int unsigned TW = $clog2(PHY_TIMEOUT + 1);
 
@@ -93,12 +92,10 @@ module bridge_ctrl_fsm
       mb_req         <= 1'b0;
       ev_op_done     <= 1'b0;
       ev_phy_timeout <= 1'b0;
-      ev_bad_pwr_req <= 1'b0;
     end else begin
       mb_req         <= 1'b0;
       ev_op_done     <= 1'b0;
       ev_phy_timeout <= 1'b0;
-      ev_bad_pwr_req <= 1'b0;
       if (pam4_wr) pam4_dirty_q <= 1'b1;
 
       case (st_q)
@@ -118,7 +115,6 @@ module bridge_ctrl_fsm
         end
 
         ST_ACTIVE: begin
-          if (pwr_req == PWR_P0S) ev_bad_pwr_req <= 1'b1;
           // 4-phase with tx_ingress_gate: leave ACTIVE only once the gate has
           // been seen open, so the `stopped` seen in ST_DRAIN is never stale.
           if ((need_rate || need_wid || need_cfg || need_pwr) && !ingress_stopped)
