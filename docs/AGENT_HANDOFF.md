@@ -20,7 +20,7 @@ owner instead). "Still open" notes inside the dated entries below are superseded
   (`async_fifo`, `ingress_gate`, `ctrl` + `ctrl` with FC, `fc` credit invariants by k-induction); `make lanes4` incl. FC; coverage 92.1 % (floor 80);
   waves, metrics DB + dashboard.
 - **Power (zero-cost, no commercial tool):** `lp/oss` (Yosys+slang -> Nangate45 -> Verilator gate-level equivalence -> Icarus activity ->
-  OpenSTA via the pip `openroad` wheel): 373,634 um2, **154.5 mW** (PD_DP 97.7 %; CDC FIFOs ~73 %, flop arrays so pessimistic), on the dashboard,
+  OpenSTA via the pip `openroad` wheel): 378,070 um2, **154.1 mW** on the default (D18 reset) build (PD_DP 97.6 %; CDC FIFOs ~73 %, flop arrays so pessimistic), on the dashboard,
   *estimates only*. `lp/cocotb` **`make pd-emu`** (CI): UPF-like PD_DP corruption / isolation / retention emulation on the real PMU — retain-all PASS,
   retain-nothing FAIL, minimal retained set **318 of 31,751 register bits (1 %)**, `lp/cocotb/retention_min.txt`
   (docs/power_state_emulation.md, D14 follow-up). `lp/bridge.upf` itself is still authored, never run.
