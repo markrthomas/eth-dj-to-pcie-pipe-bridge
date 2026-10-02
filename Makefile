@@ -26,13 +26,14 @@ default: help
 help:
 	@echo "eth-dj-pcie-pipe7_1-bridge — targets:"
 	@echo "  lint       Verilator --lint-only -Wall on rtl/"
-	@echo "  sim        Icarus directed tests: smoke tx loop pm rxovf scen msgbus msgbus_mac link (flow control, 2 bridges)"
+	@echo "  sim        Icarus directed tests: smoke tx loop pm rxovf scen msgbus msgbus_mac link (flow control, 2 bridges) fc nodpr"
 	@echo "  regress    lint + sim  — the fast CI gate"
 	@echo "  coverage   Verilator C++ env with --coverage -> coverage.info (floor 80%)"
 	@echo "  formal     SymbiYosys prove (PDR) + cover on formal/*.sby (OSS CAD Suite)"
 	@echo "  iverilog|vlt|uvm|systemc|cocotb   run one DV environment (shared scenarios)"
 	@echo "  crosscheck all five envs agree with dv/common/scenarios.py"
-	@echo "  ci         regress + coverage + formal + all envs + crosscheck"
+	@echo "  ci         every step of .github/workflows/ci.yml: regress coverage formal envs crosscheck envs-fc vlt-nodpr"
+	@echo "             upf-tb lanes4 wave-check-all pd-emu pd-emu-ret dashboard"
 	@echo "  waves|wave-<test>  run a test with a VCD dump, check + open dv/waves/<test>.gtkw"
 	@echo "  wave-check-all     check every test's .gtkw against a fresh dump (no GUI)"
 	@echo "  upf        UPF TB on VCS-NLP / Xcelium / Questa-PA if one is on PATH, else a missing-tool notice, exit 0"
@@ -163,12 +164,14 @@ lanes4:
 	$(VERILATOR) --lint-only -Wall -DPIPE_NLANES_OVERRIDE=$(LANES) -I$(RTL_DIR) --top-module $(TOP) $(RTL_SRCS)
 	$(VERILATOR) --lint-only -Wall -DPIPE_NLANES_OVERRIDE=$(LANES) -DFLOW_CTRL_OVERRIDE -I$(RTL_DIR) --top-module $(TOP) $(RTL_SRCS)
 	$(MAKE) -C dv/iverilog BUILD=sim_build_x$(LANES) IVEXTRA=-DPIPE_NLANES_OVERRIDE=$(LANES) smoke tx loop pm rxovf
-	$(MAKE) -C dv/iverilog IVEXTRA=-DPIPE_NLANES_OVERRIDE=$(LANES) scen
+	$(MAKE) -C dv/iverilog BUILD=sim_build_x$(LANES) IVEXTRA=-DPIPE_NLANES_OVERRIDE=$(LANES) scen
 	$(MAKE) -C dv/iverilog fc FCB=sim_build_x$(LANES)fc FCX=-DPIPE_NLANES_OVERRIDE=$(LANES)
 	$(MAKE) -C dv/iverilog link BUILD=sim_build_x$(LANES) IVEXTRA=-DPIPE_NLANES_OVERRIDE=$(LANES)
 	@echo "lanes4: OK (x$(LANES), incl. flow control)"
 
-ci: regress coverage formal envs crosscheck envs-fc upf-tb lanes4
+# Local mirror of .github/workflows/ci.yml (every CI step).  wave-check-all re-runs the Icarus
+# tests with WAVES=1 into dv/iverilog/sim_build, so it comes after crosscheck.
+ci: regress coverage formal envs crosscheck envs-fc vlt-nodpr upf-tb lanes4 wave-check-all pd-emu pd-emu-ret dashboard
 	@echo "ci: OK"
 
 # zero-cost area/power estimate (Yosys -> Nangate45 -> OpenSTA); ~30 min, ~10-14 GB RAM, needs network (lp/oss/README.md)

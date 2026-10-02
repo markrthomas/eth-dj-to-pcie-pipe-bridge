@@ -402,6 +402,10 @@ No DUT changes.
   another Anthropic-compatible provider can be used via `ANTHROPIC_BASE_URL` +
   `ANTHROPIC_AUTH_TOKEN`. The CLI JSON gives tokens per model, not per agent, so
   the agent column is "all". `swarm.yml` is `workflow_dispatch` only.
+- **D15 follow-up (2026-10-02, infra only):** `make ci` is the local mirror of `.github/workflows/ci.yml` and now runs every CI
+  step (it lacked `vlt-nodpr`, `wave-check-all`, `pd-emu`, `pd-emu-ret`, `dashboard`). `make lanes4` keeps its x4 `scen` build and
+  `results.json` in `dv/iverilog/sim_build_x4` (it used to overwrite the x1 `sim_build/results.json` read by `crosscheck` and metrics); the
+  `scen` rule passes `+results=$(BUILD)/results.json`. No check was removed or relaxed.
 
 ## D16. Two-ended link flow control (opt-in)
 - **Problem:** D9 (drop + abort on Rx overload) is a one-ended remedy; the sender never learns of it.

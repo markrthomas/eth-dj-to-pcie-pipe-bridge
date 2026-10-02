@@ -53,11 +53,12 @@ rxovf:
 	$(VVP) $(BUILD)/rxovf.vvp $(WRUN) | tee $(BUILD)/rxovf.log
 	@grep -q "RXOVF PASS" $(BUILD)/rxovf.log
 
-# shared five-scenario set (dv/common/scenarios.py) -> sim_build/results.json
+# shared five-scenario set (dv/common/scenarios.py) -> $(BUILD)/results.json (default sim_build/results.json,
+# which `make crosscheck` and metrics read; `make lanes4` uses its own BUILD so the x1 results stay put)
 scen:
 	@mkdir -p $(BUILD)
 	$(IVERILOG) -g2012 $(IVEXTRA) $(WFLAGS) -I $(RTL_DIR) -I $(COMMON) -I . -o $(BUILD)/scen.vvp tb_scen.sv $(LOOP_TB_DEPS) $(RTL_SRCS)
-	$(VVP) $(BUILD)/scen.vvp $(WRUN) | tee $(BUILD)/scen.log
+	$(VVP) $(BUILD)/scen.vvp $(WRUN) +results=$(BUILD)/results.json | tee $(BUILD)/scen.log
 	@grep -q "SCEN PASS" $(BUILD)/scen.log
 	python3 $(COMMON)/crosscheck.py $(BUILD)/results.json
 
