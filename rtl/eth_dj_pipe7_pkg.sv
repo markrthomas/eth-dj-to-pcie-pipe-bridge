@@ -5,8 +5,8 @@
 // BASELINE: PCIe Gen6 (64 GT/s, PAM4, FLIT mode) on the PIPE side; 802.3dj
 // 200G/lane PAM4 on the Ethernet side.  See docs/PLAN.md and docs/pam4_notes.md.
 //
-// STATUS: M0 scaffold — parameter values are the first-cut targets and are
-// marked [OPEN] in docs/PLAN.md §2.3 / §12 until frozen against the rate ratio.
+// STATUS: first cut complete — the values below are the adopted first-cut parameters; see
+// docs/OPEN_DECISIONS.md for the ones still open (D1 lane count, D3 widths).
 // ============================================================================
 `ifndef ETH_DJ_PIPE7_PKG_SV
 `define ETH_DJ_PIPE7_PKG_SV
@@ -47,7 +47,8 @@ package eth_dj_pipe7_pkg;
   //   byte 0        : {5'b0, eof, sof, valid}   (valid=1 for every emitted flit)
   //   byte 1        : payload byte count in this flit (0..FLIT_PAYLOAD_B)
   //   bytes 2..241  : frame bytes (FLIT_PAYLOAD_B = 240), zero padded
-  //   bytes 242..247: DLP placeholder (zero), 248..255: FEC/CRC placeholder (zero)
+  //   bytes 242..247: DLP placeholder (zero, except 242..245 = seq / cl with FLOW_CTRL),
+  //                 248..255: FEC/CRC placeholder (zero)
   // PIPE Tx serialises the flit LSB-byte first, PIPE_BUS_W bits per pclk beat.
   localparam int unsigned FLIT_HDR_B     = 2;
   localparam int unsigned FLIT_PAYLOAD_B = 240;
@@ -82,9 +83,9 @@ package eth_dj_pipe7_pkg;
   // ---- bridge_rf CSR map (pclk domain, docs/OPEN_DECISIONS.md D7) ----------
   localparam int unsigned CSR_ADDR_W = 8;
   localparam logic [7:0] CSR_CTRL    = 8'h00;  // RW  [1:0] pwr_req [4:2] rate_req [6:5] width_req
-  localparam logic [7:0] CSR_PAM4CFG = 8'h04;  // RW  [7:0] PAM4 Tx control sent over the msgbus
+  localparam logic [7:0] CSR_PAM4CFG = 8'h04;  // RW  [5:0] Tx preset index (PHY LocalPresetIndex), [7:6] read 0; a write is sent over the msgbus
   localparam logic [7:0] CSR_STATUS  = 8'h08;  // RO  see bridge_rf.sv
-  localparam logic [7:0] CSR_ERR     = 8'h0C;  // W1C [0] phystatus timeout [1] msgbus timeout [2] bad pwr req
+  localparam logic [7:0] CSR_ERR     = 8'h0C;  // W1C [0] phystatus timeout [1] msgbus timeout [2] P0s requested [3] reserved rate/width write ignored
   localparam logic [7:0] CSR_RXCNT0  = 8'h10;  // RO  [15:0] dropped flits [31:16] lock errors
   localparam logic [7:0] CSR_RXCNT1  = 8'h14;  // RO  [15:0] bad/orphan flits [31:16] aborted frames
   localparam logic [7:0] CSR_PMCNT   = 8'h18;  // RO  [15:0] completed power/rate/width/cfg operations

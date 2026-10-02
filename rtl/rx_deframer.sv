@@ -111,10 +111,10 @@ module rx_deframer
         acc_q          <= '0;
         acc_n_q        <= '0;
         in_frame_q     <= 1'b0;
-        aborted_frames <= aborted_frames + 16'd1;
+        aborted_frames <= (&aborted_frames) ? aborted_frames : aborted_frames + 16'd1;
       end
     end else if (drop) begin
-      bad_flits <= bad_flits + 16'd1;
+      bad_flits <= (&bad_flits) ? bad_flits : bad_flits + 16'd1;
     end else if (advance) begin
       acc_q      <= emit ? '0 : acc_n;
       acc_n_q    <= emit ? '0 : ACCW'(cnt_n);

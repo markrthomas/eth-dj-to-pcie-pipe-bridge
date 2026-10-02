@@ -99,7 +99,7 @@ module rx_ingress
       if (pipe_rx_data_valid) begin
         if (pipe_rx_start_block) begin
           if (locked_q) begin
-            lock_errors <= lock_errors + 16'd1;   // start_block mid-flit
+            lock_errors <= (&lock_errors) ? lock_errors : lock_errors + 16'd1;   // start_block mid-flit
             lost_q      <= 1'b1;
           end
           cap_q[PIPE_BUS_W-1:0] <= pipe_rx_data;
@@ -113,7 +113,7 @@ module rx_ingress
             if (arr_ok && arr_cr) begin
               if (seq_gap) lost_q <= 1'b1;         // credit-only: consumed, never stored
             end else if (full_q && !flit_taken) begin
-              dropped_flits <= dropped_flits + 16'd1;
+              dropped_flits <= (&dropped_flits) ? dropped_flits : dropped_flits + 16'd1;
               lost_q        <= 1'b1;
             end else begin
               flit_q <= cap_q;
@@ -126,13 +126,13 @@ module rx_ingress
             cnt_q <= cnt_q + CW'(1);
           end
         end else begin
-          lock_errors <= lock_errors + 16'd1;     // data outside a flit
+          lock_errors <= (&lock_errors) ? lock_errors : lock_errors + 16'd1;     // data outside a flit
           lost_q      <= 1'b1;
         end
       end else if (locked_q) begin
         locked_q    <= 1'b0;                      // valid dropped mid-flit
         cnt_q       <= '0;
-        lock_errors <= lock_errors + 16'd1;
+        lock_errors <= (&lock_errors) ? lock_errors : lock_errors + 16'd1;
         lost_q      <= 1'b1;
       end
     end

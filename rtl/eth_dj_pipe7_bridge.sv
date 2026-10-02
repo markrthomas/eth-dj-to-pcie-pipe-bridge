@@ -1,9 +1,9 @@
 // ============================================================================
 // eth_dj_pipe7_bridge.sv — TOP of the 802.3dj Ethernet <-> PCIe PIPE 7.1 bridge.
 //
-// STATUS: M3 — Tx (eth -> PIPE) and Rx (PIPE -> eth) datapaths plus the control
-// plane (bridge_rf CSRs, bridge_ctrl_fsm, pipe_msgbus, tx_ingress_gate).  Ports
-// per docs/PLAN.md §2 plus the M3 CSR port (docs/OPEN_DECISIONS.md D7).
+// STATUS: first cut complete — Tx (eth -> PIPE) and Rx (PIPE -> eth) datapaths plus the control
+// plane (bridge_rf CSRs, bridge_ctrl_fsm, pipe_msgbus + msgbus_mac_tgt, tx_ingress_gate, optional
+// fc_ctl).  Ports per docs/PLAN.md §2 plus the CSR port (docs/OPEN_DECISIONS.md D7).
 // Out of reset the link is in P1; with the reset CSR values the control FSM
 // brings it to P0 / Gen6, sends the PAM4 Tx control over the message bus, and
 // then opens the Ethernet ingress.
@@ -51,7 +51,7 @@ module eth_dj_pipe7_bridge
   input  logic                     pipe_phy_status,
   input  logic                     pipe_rx_valid,
   input  logic                     pipe_rx_elec_idle,
-  // 4-bit message bus (rate/width/power/margining handshakes)
+  // 8-bit PIPE message bus (M2P / P2M byte buses, PAM4 Tx control and MAC register access)
   output logic [MSGBUS_W-1:0]      pipe_m2p_msgbus,
   input  logic [MSGBUS_W-1:0]      pipe_p2m_msgbus,
 
@@ -75,7 +75,7 @@ module eth_dj_pipe7_bridge
   logic        rx_out_idle;
 `endif
   logic        mb_req, mb_busy, mb_done, mb_timeout;
-  logic        ev_op_done, ev_phy_timeout, ev_bad_pwr_req;
+  logic        ev_op_done, ev_phy_timeout;
 
   // ---- Tx path: eth AXI-S -> ingress gate -> async FIFO -> flit framer -> PIPE ----
   logic                                 tx_fifo_full;
@@ -101,7 +101,7 @@ module eth_dj_pipe7_bridge
     .st_powerdown (pd_v), .st_rate (rate_v), .st_width (width_v), .st_state (ctrl_state),
     .st_rx_elec_idle (pipe_rx_elec_idle), .st_rx_valid (pipe_rx_valid),
     .ev_op_done (ev_op_done), .ev_phy_timeout (ev_phy_timeout),
-    .ev_mb_timeout (mb_timeout), .ev_bad_pwr_req (ev_bad_pwr_req),
+    .ev_mb_timeout (mb_timeout),
     .rx_dropped_flits (rx_dropped_flits), .rx_lock_errors (rx_lock_errors),
     .rx_bad_flits (rx_bad_flits), .rx_aborted_frames (rx_aborted_frames)
   );
@@ -132,8 +132,7 @@ module eth_dj_pipe7_bridge
     .tx_en (tx_en), .ingress_stop (ingress_stop), .ingress_stopped (stp_s3),
     .tx_idle (tx_idle), .rx_idle (rx_idle),
     .mb_req (mb_req), .mb_done (mb_done), .mb_timeout (mb_timeout),
-    .state (ctrl_state), .ev_op_done (ev_op_done), .ev_phy_timeout (ev_phy_timeout),
-    .ev_bad_pwr_req (ev_bad_pwr_req)
+    .state (ctrl_state), .ev_op_done (ev_op_done), .ev_phy_timeout (ev_phy_timeout)
   );
 
   // Local copy of the pkg constant: Icarus turns a bare imported name used
@@ -154,7 +153,7 @@ module eth_dj_pipe7_bridge
     .clk (pclk), .rst_n (pipe_rst_n),
     .fsm_req (mb_req), .fsm_addr (mb_addr), .fsm_wdata (pam4cfg),
     .m_req (mb_m_req), .m_addr (mb_m_addr), .m_wdata (mb_m_wdata),
-    .m_tx_active (mb_tx_active), .m_m2p (mb_m_m2p),
+    .m_busy (mb_busy), .m_tx_active (mb_tx_active), .m_m2p (mb_m_m2p),
     .p2m (pipe_p2m_msgbus), .m2p (pipe_m2p_msgbus),
     .tgt_tx (mb_tgt_tx), .phy_wr_cnt (mb_phy_wr_cnt), .phy_rd_cnt (mb_phy_rd_cnt),
     .drop_cnt (mb_drop_cnt), .last_wr_addr (mb_last_wr_addr), .last_wr_data (mb_last_wr_data)
@@ -170,6 +169,15 @@ module eth_dj_pipe7_bridge
   assign pipe_rate      = pipe_rate_e'(rate_v);
   assign pipe_width     = width_v;
   assign pipe_powerdown = pipe_pwr_e'(pd_v);
+
+  // Supported lane counts: x1, x2, x4.  The framer / deframer move one Ethernet beat (ETH_DATA_W bits)
+  // per pclk, so a PIPE bus wider than that (x8 and up) is rate-limited by them: the Tx flit rate
+  // exceeds what the deframer can unpack, and PIPE Rx cannot be back-pressured (D9), so frames are
+  // dropped / aborted - with the old RTL as well (docs/OPEN_DECISIONS.md D1 / D19).  Refuse to elaborate.
+  if (PIPE_BUS_W > ETH_DATA_W) begin : g_unsupported_lane_count
+    $error("PIPE_NLANES=%0d is not supported: PIPE_BUS_W (%0d) exceeds ETH_DATA_W (%0d); x1, x2, x4 only (D1)",
+           PIPE_NLANES, PIPE_BUS_W, ETH_DATA_W);
+  end
 
   // ---- datapath-local reset (D18; DEFAULT ON, see eth_dj_pipe7_pkg.sv for the switches) -----------
   // From the FSM's ST_LOWPWR until the next ST_DRAIN (the wake-up path LOWPWR -> PWR_CHG -> DRAIN)

@@ -4,6 +4,11 @@
 //
 // FIFO word = {tlast, tkeep[ETH_KEEP_W-1:0], tdata[ETH_DATA_W-1:0]}.  tkeep is
 // assumed to be a contiguous low-aligned mask (only the last beat may be partial).
+// A null beat (tkeep = 0) is tolerated: without tlast it is ignored; with tlast it ends the frame
+// (the flit holding the frame's last bytes gets eof) - an empty frame (only a null tlast beat) is
+// dropped, no flit is emitted.  To make that possible a flit that is exactly full at the end of a
+// non-last beat is held open until the next beat shows whether it is a null tlast beat
+// (docs/OPEN_DECISIONS.md D19); every other flit closes as soon as it is full.
 // One flit buffer: while a completed flit is being serialised (flit_valid=1) the
 // framer stalls.  Throughput is intentionally simple for M1.
 // ============================================================================
@@ -41,7 +46,7 @@ module tx_framer
   logic [FLIT_BYTES*8-1:0] flit_n;
   logic [FILLW-1:0]        fill_n;
   logic [OFFW-1:0]         off_n;
-  logic                    beat_done, eof, close;
+  logic                    beat_done, eof, close, full, hold, empty_eof;
   logic [OFFW-1:0]         nbytes;
   int                      space, avail, ncopy;
 
@@ -52,6 +57,9 @@ module tx_framer
     beat_done = 1'b0;
     eof       = 1'b0;
     close     = 1'b0;
+    full      = 1'b0;
+    hold      = 1'b0;
+    empty_eof = 1'b0;
     nbytes    = '0;
     space     = 0;
     avail     = 0;
@@ -73,7 +81,10 @@ module tx_framer
       off_n     = OFFW'(int'(in_off_q) + ncopy);
       beat_done = (int'(off_n) == int'(nbytes));
       eof       = beat_done && beat_last;
-      close     = (int'(fill_n) == FLIT_PAYLOAD_B) || eof;
+      full      = (int'(fill_n) == FLIT_PAYLOAD_B);
+      hold      = full && beat_done && !beat_last;      // exactly full: wait for the next beat
+      empty_eof = eof && (fill_n == '0);               // empty frame (null tlast beat only)
+      close     = ((full && !hold) || eof) && !empty_eof;
       fifo_rinc = beat_done;
 
       if (close) begin

@@ -154,7 +154,8 @@ flowchart TB
 ```
 
 Directed Icarus tests beyond the shared scenarios: `tb_smoke`, `tb_tx`, `tb_loop`, `tb_pm`
-(power/rate/width under traffic), `tb_rxovf` (Rx overload), `tb_msgbus`, `tb_msgbus_mac`,
+(power/rate/width under traffic), `tb_rxovf` (Rx overload), `tb_edge` (null tlast beats,
+CTRL range check, P0s flag, saturating counters), `tb_msgbus`, `tb_msgbus_mac`,
 `tb_link` (two bridges back to back, flow control).
 
 ## Tutorial

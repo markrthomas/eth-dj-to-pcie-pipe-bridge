@@ -49,12 +49,14 @@ lint:
 	$(VERILATOR) --lint-only -Wall -I$(RTL_DIR) --top-module $(TOP) $(RTL_SRCS)
 	$(VERILATOR) --lint-only -Wall -DFLOW_CTRL_OVERRIDE -I$(RTL_DIR) --top-module $(TOP) $(RTL_SRCS)
 	$(VERILATOR) --lint-only -Wall -DDP_RESET_DISABLE -I$(RTL_DIR) --top-module $(TOP) $(RTL_SRCS)
-	@echo "lint: OK (default + FLOW_CTRL_OVERRIDE + DP_RESET_DISABLE)"
+	@if $(VERILATOR) --lint-only -Wall -DPIPE_NLANES_OVERRIDE=8 -I$(RTL_DIR) --top-module $(TOP) $(RTL_SRCS) >/dev/null 2>&1; then \
+	  echo "lint: x8 must be refused at elaboration (PIPE_BUS_W > ETH_DATA_W, D1/D19)"; exit 1; fi
+	@echo "lint: OK (default + FLOW_CTRL_OVERRIDE + DP_RESET_DISABLE; x8 correctly refused)"
 
 sim: iverilog
 
 iverilog:
-	$(MAKE) -C dv/iverilog smoke tx loop pm rxovf scen msgbus msgbus_mac link fc nodpr
+	$(MAKE) -C dv/iverilog smoke tx loop pm rxovf edge scen msgbus msgbus_mac link fc nodpr
 
 regress: lint sim
 	@echo "regress: OK"
@@ -162,7 +164,7 @@ LANES ?= 4
 lanes4:
 	$(VERILATOR) --lint-only -Wall -DPIPE_NLANES_OVERRIDE=$(LANES) -I$(RTL_DIR) --top-module $(TOP) $(RTL_SRCS)
 	$(VERILATOR) --lint-only -Wall -DPIPE_NLANES_OVERRIDE=$(LANES) -DFLOW_CTRL_OVERRIDE -I$(RTL_DIR) --top-module $(TOP) $(RTL_SRCS)
-	$(MAKE) -C dv/iverilog BUILD=sim_build_x$(LANES) IVEXTRA=-DPIPE_NLANES_OVERRIDE=$(LANES) smoke tx loop pm rxovf
+	$(MAKE) -C dv/iverilog BUILD=sim_build_x$(LANES) IVEXTRA=-DPIPE_NLANES_OVERRIDE=$(LANES) smoke tx loop pm rxovf edge
 	$(MAKE) -C dv/iverilog IVEXTRA=-DPIPE_NLANES_OVERRIDE=$(LANES) scen
 	$(MAKE) -C dv/iverilog fc FCB=sim_build_x$(LANES)fc FCX=-DPIPE_NLANES_OVERRIDE=$(LANES)
 	$(MAKE) -C dv/iverilog link BUILD=sim_build_x$(LANES) IVEXTRA=-DPIPE_NLANES_OVERRIDE=$(LANES)

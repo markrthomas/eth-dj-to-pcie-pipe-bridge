@@ -66,6 +66,12 @@ ran, commit/PR trailers as in the existing history.
 
 ### History (newest first; "Still open" lines in old entries are superseded by the block above)
 
+- **2026-10-02 (x)** — **Swarm-review findings fixed** (branch `claude/rtl-review-fixes`, D19): null tlast beats (`tx_framer` holds an exactly-full flit
+  one beat), CTRL range check + ERR[3], P0s flagged once per write, saturating Rx counters, arbiter gated on `m_busy`, x8+ refused at elaboration
+  (x8 never worked: the datapath moves one 256-bit beat per pclk; D1 corrected), stale comments. New `tb_edge`, `tb_msgbus_mac` case L; both fail on the
+  old RTL. RTL behaviour changes are in D19. Gotcha: a full disk (this container's allowance) corrupts a half-built Verilator `obj_dir` and shows up as
+  an unexplained "make -C obj_dir exited with 2": free space and `rm -rf` that obj_dir.
+
 - **2026-10-01 (v)** — **Datapath-local reset made the default** (branch `claude/dp-reset-default`, D18): the reset is on unless
   `-DDP_RESET_DISABLE` (or `-DFLOW_CTRL_OVERRIDE`). Flipping it exposed that the Rx path was never drained (D11): at x4 a frame in flight to the
   sink was cut by the reset, so with the reset on `rx_idle` also requires an empty Rx path (`rx_out_idle`). Also fixed a latent race in

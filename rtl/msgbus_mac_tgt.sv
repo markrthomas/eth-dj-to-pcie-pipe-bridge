@@ -49,6 +49,7 @@ module msgbus_mac_tgt
   output logic                     m_req,
   output logic [MB_ADDR_W-1:0]     m_addr,
   output logic [7:0]               m_wdata,
+  input  logic                     m_busy,        // master is mid-transaction (incl. waiting for its ack)
   input  logic                     m_tx_active,   // master is driving byte0/byte1 of its frame
   input  logic [MSGBUS_W-1:0]      m_m2p,
 
@@ -186,7 +187,9 @@ module msgbus_mac_tgt
   logic                 step_q;         // read_completion: 0 = command byte, 1 = data byte
   logic [7:0]           rd_data_q;
 
-  assign m_req   = (arb_q == A_IDLE) && fsm_pend_q;
+  // m_req only while the master is idle: a request pulsed into a busy pipe_msgbus is ignored there,
+  // which would leave the arbiter in A_MST forever (it would wait for a frame that never starts)
+  assign m_req   = (arb_q == A_IDLE) && fsm_pend_q && !m_busy;
   assign m_addr  = addr_q;
   assign m_wdata = wdata_q;
   assign tgt_tx  = (arb_q == A_TGT);
@@ -216,7 +219,7 @@ module msgbus_mac_tgt
       end
       case (arb_q)
         A_IDLE: begin
-          if (fsm_pend_q) begin                // master has priority; m_req pulses this cycle
+          if (fsm_pend_q && !m_busy) begin     // master has priority; m_req pulses this cycle
             fsm_pend_q <= fsm_req;             // (a back-to-back new request stays pending)
             arb_q      <= A_MST;
             seen_tx_q  <= 1'b0;

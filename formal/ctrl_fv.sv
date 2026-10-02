@@ -42,7 +42,7 @@ module ctrl_fv
   logic [1:0] pd, width;
   logic [2:0] rate, state;
   logic       tx_en, ingress_stop, mb_req, mb_busy, mb_done, mb_timeout;
-  logic       ev_op_done, ev_phy_timeout, ev_bad_pwr_req;
+  logic       ev_op_done, ev_phy_timeout;
   logic       flit_taken, egress_busy, tx_valid, tx_sb;
   logic [PIPE_BUS_W-1:0] tx_data;
   logic [MSGBUS_W-1:0] m2p;
@@ -57,7 +57,7 @@ module ctrl_fv
     .tx_en(tx_en), .ingress_stop(ingress_stop), .ingress_stopped(ingress_stopped),
     .tx_idle(tx_idle), .rx_idle(rx_idle), .mb_req(mb_req), .mb_done(mb_done),
     .mb_timeout(mb_timeout), .state(state), .ev_op_done(ev_op_done),
-    .ev_phy_timeout(ev_phy_timeout), .ev_bad_pwr_req(ev_bad_pwr_req));
+    .ev_phy_timeout(ev_phy_timeout));
 
   pipe_msgbus u_mb (
     .clk(clk), .rst_n(rst_n), .req(mb_req), .addr(mb_addr), .wdata(mb_wdata),

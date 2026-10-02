@@ -2,6 +2,8 @@
 // eth_mac_model.sv — DV-only 802.3dj MAC/PCS source BFM (AXI4-Stream master).
 // send_frame(id, len) streams a frame of pattern bytes (eth_dj_pat.svh),
 // honouring tready.  gap_pct (0..100) randomly inserts idle cycles between beats.
+// null_last = 1: the frame's last data beat is sent WITHOUT tlast and the frame is ended by a null
+// beat (tkeep = 0, tlast = 1); send_null_beat() sends a lone null tlast beat (an empty frame).
 // Drives with nonblocking assignments after posedge eth_clk (no races).
 // ============================================================================
 `timescale 1ns/1ps
@@ -21,6 +23,7 @@ module eth_mac_model
   `include "eth_dj_pat.svh"
 
   int gap_pct = 0;
+  int null_last = 0;
   int beats_sent = 0;
 
   initial begin
@@ -53,12 +56,26 @@ module eth_mac_model
         eth_tvalid <= 1'b1;
         eth_tdata  <= d;
         eth_tkeep  <= k;
-        eth_tlast  <= (off + n == len);
+        eth_tlast  <= (off + n == len) && !null_last;
         @(posedge eth_clk);
         while (!eth_tready) @(posedge eth_clk);
         beats_sent++;
         off += n;
       end
+      if (null_last && len > 0) send_null_beat();
+      eth_tvalid <= 1'b0;
+      eth_tlast  <= 1'b0;
+    end
+  endtask
+
+  task automatic send_null_beat();
+    begin
+      eth_tvalid <= 1'b1;
+      eth_tdata  <= '0;
+      eth_tkeep  <= '0;
+      eth_tlast  <= 1'b1;
+      @(posedge eth_clk);
+      while (!eth_tready) @(posedge eth_clk);
       eth_tvalid <= 1'b0;
       eth_tlast  <= 1'b0;
     end
