@@ -7,9 +7,11 @@
 # .claude/agents/ definitions are discoverable; the task (default
 # docker/swarm-task.md) tells the swarm-manager what to dispatch.
 # Needs: `claude` on PATH (npm i -g @anthropic-ai/claude-code; the image has it
-# when built with --build-arg WITH_CLAUDE=1), ANTHROPIC_API_KEY (or another
-# provider via ANTHROPIC_BASE_URL + ANTHROPIC_AUTH_TOKEN, e.g. an
-# Anthropic-compatible endpoint), and optionally GITHUB_TOKEN so it can push a
+# when built with --build-arg WITH_CLAUDE=1), a credential in the environment -
+# CLAUDE_CODE_OAUTH_TOKEN (what the Railway service uses; the Claude Code CLI reads it
+# itself) or ANTHROPIC_API_KEY (or another provider via ANTHROPIC_BASE_URL +
+# ANTHROPIC_AUTH_TOKEN, e.g. an Anthropic-compatible endpoint) - never put it in the
+# repo or the image: set it as a Railway service variable / GitHub secret; and optionally GITHUB_TOKEN so it can push a
 # branch / open a draft PR.  A human merges.
 # Writes docker/last-run-metrics.json (tokens per model, from the CLI's JSON
 # output) for metrics/collect.py.  Per-agent token split is not available from
@@ -43,8 +45,8 @@ if [ "$dry" = 1 ]; then
 fi
 
 command -v claude >/dev/null || { echo "swarm.sh: claude CLI not found" >&2; exit 2; }
-if [ -z "${ANTHROPIC_API_KEY:-}" ] && [ -z "${ANTHROPIC_AUTH_TOKEN:-}" ]; then
-  echo "swarm.sh: set ANTHROPIC_API_KEY (or ANTHROPIC_BASE_URL + ANTHROPIC_AUTH_TOKEN)" >&2
+if [ -z "${CLAUDE_CODE_OAUTH_TOKEN:-}" ] && [ -z "${ANTHROPIC_API_KEY:-}" ] && [ -z "${ANTHROPIC_AUTH_TOKEN:-}" ]; then
+  echo "swarm.sh: set CLAUDE_CODE_OAUTH_TOKEN (or ANTHROPIC_API_KEY, or ANTHROPIC_BASE_URL + ANTHROPIC_AUTH_TOKEN)" >&2
   exit 2
 fi
 
