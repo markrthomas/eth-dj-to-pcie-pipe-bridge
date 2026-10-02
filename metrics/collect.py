@@ -2,6 +2,7 @@
 """Collect one run's metrics into metrics/metrics.db (schema.sql).
 
   collect.py [--run FLOW,...] [--note TEXT] [--db PATH]
+  collect.py --import-dir DIR [--db PATH]     merge Railway runs (runs/*/ from the metrics-data branch)
 
 --run  runs the listed root make targets first, each timed with a wall clock
        (kind=measured) and recorded PASS/FAIL.  Default: collect only from the
@@ -321,17 +322,64 @@ def swarm(r):
               detail="no swarm run recorded (docker/last-run-metrics.json absent)")
 
 
+def import_runs(con, src_db, host):
+    """Merge the runs of another metrics.db into `con` (new run ids, rows copied verbatim, so the
+    kind / status of every value is preserved).  A run already present (same ts_utc + git_sha) is
+    skipped, so the import can be repeated.  `host` replaces the source host (the container name)."""
+    n_runs = n_rows = 0
+    src = sqlite3.connect(src_db)
+    for rid, ts, sha, br, dirty, h, tools, note in src.execute(
+            "SELECT run_id, ts_utc, git_sha, git_branch, git_dirty, host, tools, note FROM runs ORDER BY run_id"):
+        if con.execute("SELECT 1 FROM runs WHERE ts_utc=? AND git_sha IS ? AND host LIKE ?",
+                       (ts, sha, host.split("/")[0] + "%")).fetchone():
+            continue
+        note2 = (note + " | " if note else "") + f"imported from {h}"
+        cur = con.execute("INSERT INTO runs (ts_utc, git_sha, git_branch, git_dirty, host, tools, note) "
+                          "VALUES (?,?,?,?,?,?,?)", (ts, sha, br, dirty, host, tools, note2))
+        rows = src.execute("SELECT category, name, value, unit, status, kind, source, detail FROM metrics "
+                           "WHERE run_id=?", (rid,)).fetchall()
+        con.executemany("INSERT INTO metrics VALUES (%d,?,?,?,?,?,?,?,?)" % cur.lastrowid, rows)
+        n_runs += 1
+        n_rows += len(rows)
+    src.close()
+    return n_runs, n_rows
+
+
+def import_dir(con, d):
+    n_runs = n_rows = 0
+    for sub in sorted(glob.glob(os.path.join(d, "runs", "*")) or glob.glob(os.path.join(d, "*"))):
+        db = os.path.join(sub, "metrics.db")
+        if not os.path.exists(db):
+            continue
+        meta = {}
+        try:
+            meta = json.load(open(os.path.join(sub, "run.json")))
+        except Exception:
+            pass
+        host = "railway/" + (meta.get("service") or "unknown")
+        a, b = import_runs(con, db, host)
+        n_runs += a
+        n_rows += b
+    con.commit()
+    return n_runs, n_rows
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--run", default="", help="comma-separated root make targets to run and time first")
     ap.add_argument("--note", default="")
     ap.add_argument("--db", default=DB)
+    ap.add_argument("--import-dir", default="", help="merge the runs of DIR/runs/*/metrics.db (host railway/<service>)")
     ap.add_argument("--power-into-latest", action="store_true",
                     help="only (re)write the 'power' rows of the latest run from lp/oss/build (the OSS power flow is "
                          "~30 min / ~10 GB, so it is not part of `make metrics`)")
     a = ap.parse_args()
     con = sqlite3.connect(a.db)
     con.executescript(open(SCHEMA).read())
+    if a.import_dir:
+        n, rows = import_dir(con, a.import_dir)
+        print(f"collect: imported {n} run(s), {rows} metric rows from {a.import_dir}")
+        return 0
     if a.power_into_latest:
         row = con.execute("SELECT MAX(run_id) FROM runs").fetchone()
         if not row or row[0] is None:

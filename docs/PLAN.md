@@ -321,6 +321,9 @@ Config-as-code batch job (not a web service): `builder = DOCKERFILE`,
 stress/random regressions that exceed the GitHub runner budget. Port
 `axi-on-ucie-to-mem/railway.toml` + `Dockerfile` + `docker/entrypoint.sh`.
 
+Results leave the (ephemeral) container through `docker/publish_metrics.sh` (branch `metrics-data`) and
+re-enter the dashboard with `make railway-import` - see `docs/railway.md`.
+
 ### AI agent swarm (execution option)
 Port `axi-on-ucie-to-mem/docker/swarm.sh` + `.claude/agents/`:
 - Agents: `swarm-manager` (dispatch), one `dv-env-tester` per DV environment,
