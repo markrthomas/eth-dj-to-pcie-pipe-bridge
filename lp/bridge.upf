@@ -3,8 +3,10 @@
 ##
 ## STATUS: AUTHORED, NOT RUN.  No OSS tool here reads UPF; this file has not been
 ## parsed or simulated by any tool (see docs/power_intent.md).  It must be
-## checked on a power-aware flow before anything is claimed about it; commercial-tool
-## runs are out of scope for this project (owner decision 2026-10-02), so it stays unrun.
+## checked on a commercial power-aware flow (VCS-NLP / Questa-PA / Xcelium-LP) before
+## anything is claimed about it.  `make upf` runs it if such a tool is on PATH, else it
+## only reports the missing tool and exits 0 (owner decision 2026-10-02: commercial runs
+## are not planned here).
 ##
 ## Scope: the power-aware TB top tb_pipe7_upf_power (lp/tb_pipe7_upf_power.sv):
 ##   u_dut  = eth_dj_pipe7_bridge            u_pmu = pipe7_pmu (DV-only sequencer)

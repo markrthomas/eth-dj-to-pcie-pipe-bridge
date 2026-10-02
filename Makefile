@@ -35,7 +35,7 @@ help:
 	@echo "  ci         regress + coverage + formal + all envs + crosscheck"
 	@echo "  waves|wave-<test>  run a test with a VCD dump, check + open dv/waves/<test>.gtkw"
 	@echo "  wave-check-all     check every test's .gtkw against a fresh dump (no GUI)"
-	@echo "  upf        prints the authored-not-run notice (no power-aware sim is run here)"
+	@echo "  upf        UPF TB on VCS-NLP / Xcelium / Questa-PA if one is on PATH, else a missing-tool notice, exit 0"
 	@echo "  upf-tb     functional Icarus run of the power-aware TB (PMU sequencing, no UPF)"
 	@echo "  metrics    run+time METRICS_FLOWS, collect artifacts -> metrics/metrics.db"
 	@echo "  dashboard  render metrics/metrics.db -> metrics/dashboard.html"
@@ -116,12 +116,11 @@ crosscheck:
 
 envs: iverilog vlt uvm systemc cocotb
 
+# UPF run on a commercial power-aware simulator.  If none of vcs / xrun / vsim is on PATH this
+# only prints a notice and exits 0 (the tool is not available in the OSS environment; it is not a
+# failure).  See lp/Makefile (upf-pa) and docs/power_intent.md.
 upf:
-	@echo "upf: AUTHORED, NOT RUN.  lp/bridge.upf (IEEE 1801 / UPF 2.1) needs a power-aware"
-	@echo "     simulator; no OSS tool models supplies/isolation/retention and commercial-tool"
-	@echo "     runs are out of scope for this project.  The UPF has not been parsed or"
-	@echo "     simulated.  See docs/power_intent.md."
-	@echo "     'make upf-tb' runs the power-aware TB functionally (no power semantics)."
+	$(MAKE) -C lp upf-pa
 
 # functional (NOT power-aware) Icarus run of lp/tb_pipe7_upf_power: PMU sequencing
 upf-tb:

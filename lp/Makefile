@@ -1,6 +1,6 @@
 # lp — power intent.  `make -C lp upf-tb`: functional (NON power-aware) Icarus run
 # of the power-aware TB: PMU sequencing + the no-handshake timing assumption +
-# traffic across P1/P2 episodes.  The UPF itself needs a power-aware simulator (commercial runs are out of scope here).
+# traffic across P1/P2 episodes.  The UPF itself needs a commercial power-aware simulator: `make -C lp upf-pa` runs it if one is on PATH, else prints a notice and exits 0.
 IVERILOG ?= iverilog
 VVP      ?= vvp
 RTL_DIR  := ../rtl
@@ -15,6 +15,40 @@ BUILD    := sim_build
 WAVES    ?= 0
 WFLAGS    = $(if $(filter 1,$(WAVES)),-DDUMP_TOP=tb_pipe7_upf_power ../dv/waves/wave_dump.sv)
 WRUN      = $(if $(filter 1,$(WAVES)),+dumpfile=$(BUILD)/upf_tb.vcd)
+
+# ---- UPF on a commercial power-aware simulator (optional) -------------------------------------
+# Picks the first of vcs (VCS-NLP), xrun (Xcelium), vsim (Questa-PA) found on PATH.  With none of
+# them it prints a notice and exits 0: the tool is not available in the OSS environment, so the UPF
+# stays authored-not-run there.  The per-tool command lines below are UNTESTED (no licence has ever
+# been available here); adjust the flags to your tool version.  Pass/fail = "UPF-TB PASS" in the log.
+PA_SRCS := tb_pipe7_upf_power.sv pipe7_pmu.sv $(TB_DEPS) $(RTL_SRCS)
+PA_TOOL := $(firstword $(foreach t,vcs xrun vsim,$(if $(shell command -v $(t) 2>/dev/null),$(t))))
+.PHONY: upf-pa
+upf-pa:
+ifeq ($(PA_TOOL),)
+	@echo "upf: no commercial power-aware simulator on PATH (looked for vcs, xrun, vsim) - skipping."
+	@echo "     lp/bridge.upf stays AUTHORED, NOT RUN here (no OSS tool models UPF supplies /"
+	@echo "     isolation / retention).  'make upf-tb' runs the same TB functionally (no power semantics)."
+else
+	@mkdir -p $(BUILD)/pa
+	@echo "upf: using $(PA_TOOL) (command line untested - see lp/Makefile)"
+ifeq ($(PA_TOOL),vcs)
+	cd $(BUILD)/pa && vcs -full64 -sverilog -timescale=1ns/1ps +define+UPF_SIM -debug_access+all \
+	  -upf $(abspath bridge.upf) -top tb_pipe7_upf_power -I $(abspath $(RTL_DIR)) -I $(abspath $(COMMON)) -I $(abspath ../dv/iverilog) \
+	  $(addprefix $(CURDIR)/,$(PA_SRCS)) -o simv && ./simv | tee ../upf_pa.log
+endif
+ifeq ($(PA_TOOL),xrun)
+	cd $(BUILD)/pa && xrun -64bit -sv -timescale 1ns/1ps +define+UPF_SIM -lps_1801 -upf $(abspath bridge.upf) \
+	  -top tb_pipe7_upf_power -incdir $(abspath $(RTL_DIR)) -incdir $(abspath $(COMMON)) -incdir $(abspath ../dv/iverilog) \
+	  $(addprefix $(CURDIR)/,$(PA_SRCS)) | tee ../upf_pa.log
+endif
+ifeq ($(PA_TOOL),vsim)
+	cd $(BUILD)/pa && vlog -sv +define+UPF_SIM +incdir+$(abspath $(RTL_DIR)) +incdir+$(abspath $(COMMON)) +incdir+$(abspath ../dv/iverilog) \
+	  $(addprefix $(CURDIR)/,$(PA_SRCS)) && vopt -pa -pa_upf $(abspath bridge.upf) tb_pipe7_upf_power -o tb_pa_opt \
+	  && vsim -c -pa tb_pa_opt -do "run -all; quit" | tee ../upf_pa.log
+endif
+	@grep -q "UPF-TB PASS" $(BUILD)/upf_pa.log
+endif
 
 .PHONY: upf-tb clean
 upf-tb:

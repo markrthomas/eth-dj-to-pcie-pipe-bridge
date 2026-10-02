@@ -30,8 +30,9 @@ owner instead). "Still open" notes inside the dated entries below are superseded
 - **Swarm:** `.claude/agents` (manager `opus`, `dv-env-tester`/`infra-agent` `sonnet`, `dv-runner` `haiku`). One run done: the manager had no sub-agent
   dispatch tool, so it ran the four envs itself sequentially (still useful; no per-agent token data — `swarm.sh` only records tokens per model).
 
-**Scope decision (owner, 2026-10-02): no commercial-tool runs.** `bridge.upf` stays *authored, not run* for good; there is no plan to run it on a
-commercial power-aware simulator, so no UPF/retention item is open. The power work that is done is OSS only: `make pd-emu` / `pd-emu-ret`, `make upf-tb`, `make power-oss`.
+**Scope decision (owner, 2026-10-02): no commercial-tool runs.** `bridge.upf` stays *authored, not run*; there is no plan to run it on a
+commercial power-aware simulator, so no UPF/retention item is open. The commercial-tool target is kept: `make upf` (`make -C lp upf-pa`) runs the UPF TB on
+VCS-NLP / Xcelium / Questa-PA if one is on PATH (command lines UNTESTED), otherwise it reports the missing tool and exits 0. The power work that is done is OSS only: `make pd-emu` / `pd-emu-ret`, `make upf-tb`, `make power-oss`.
 
 **Owner's open items (nothing below needs more code from a session unless noted)**
 1. **Railway deploy and a first real swarm run** — need the owner's Railway account / an API key.
@@ -339,7 +340,7 @@ ran, commit/PR trailers as in the existing history.
   Behind a TLS-intercepting proxy build with `--network host`, proxy build args
   and `--secret id=extra_ca,src=<pem>`.
 - **UPF:** no OSS power-aware simulator exists and commercial-tool runs are out of scope (owner, 2026-10-02); `make upf` is authored +
-  documented and prints a stub. (see `PLAN.md` §9)
+  documented and exits 0 with a "tool not available" notice unless a commercial simulator is on PATH. (see `PLAN.md` §9)
 - **Icarus + SV struct literals:** Icarus-11 can't compile SV struct literals /
   `return` in some forms — keep a plain-Verilog model for anything that must run
   under Icarus or Yosys formal (this bit `IP-ucie-rdi-to-pcie-pipe`).

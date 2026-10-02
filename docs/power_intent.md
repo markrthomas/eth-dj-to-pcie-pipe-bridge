@@ -61,13 +61,13 @@ runs the functional TB and fails on any error.
   - With `PWR_UP_CYC=20`, the timing check fires.
   - Powering off in the same step as `save` makes the sequence-order check fire.
 
-## Not verified (would need a power-aware simulator; commercial-tool runs are out of scope)
+## Not verified (needs a commercial power-aware simulator; none available, none planned)
 
 - That `bridge.upf` parses, and that the element and pin paths resolve. They follow the RTL instance names but have never been elaborated.
 - Corruption of PD_DP while it is off, the clamp values in action, and retention save/restore behaviour.
 - The legality of the power states / PST.
 
-If someone does run it on a power-aware flow elsewhere (not planned here):
+`make upf` automates this when vcs / xrun / vsim is on PATH (command lines untested); otherwise it reports the missing tool and exits 0. By hand:
 1. Compile `lp/tb_pipe7_upf_power.sv` and `lp/pipe7_pmu.sv` with `+define+UPF_SIM`, together with the RTL and `dv/common` BFMs (see `lp/Makefile`).
 2. Load `lp/bridge.upf` at `tb_pipe7_upf_power`.
 3. Run and look for `UPF-TB PASS`.

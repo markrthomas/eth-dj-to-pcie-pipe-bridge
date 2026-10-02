@@ -65,8 +65,9 @@ reinvent — port and adapt.**
 3. All five DV environments build and pass their smoke test.
 4. SVA assertions bound and passing in at least the Verilator and cocotb flows;
    formal proves the flow-control safety properties.
-5. UPF power intent authored and documented; `make upf` prints a clear "authored, not run"
-   stub (no commercial-tool runs: owner decision 2026-10-02 — see §9).
+5. UPF power intent authored and documented; `make upf` runs it if a commercial
+   power-aware simulator is on PATH, else reports the missing tool and exits 0 (no commercial-tool runs
+   are planned: owner decision 2026-10-02 — see §9).
 6. Dashboard renders; GTKWave session opens per test; Railway job defined.
 
 ---
@@ -261,7 +262,7 @@ Exactly the `DV_STANDARDS.md` contract, plus this repo's extras:
 | `make ci` | `regress` + `coverage` + `formal` + all-env smoke. |
 | `make <env>` | `iverilog` / `vlt` / `uvm` / `systemc` / `cocotb` run each env. |
 | `make waves` / `wave-<test>` | Run a test with dump + open its `dv/waves/*.gtkw`. |
-| `make upf` | Prints the "authored, not run" stub (no power-aware sim is run here — §9). |
+| `make upf` | Runs the UPF TB on a commercial power-aware simulator if on PATH, else notice + exit 0 (§9). |
 | `make metrics` / `make dashboard` | Collect run data → `metrics.db` → `dashboard.html`. |
 | `make stress` | All scenarios on the Verilator env across `STRESS_SEEDS` seeds (gap/backpressure patterns). |
 | `make clean` | Remove all build artifacts. |
@@ -284,8 +285,9 @@ Port the `ucie_rdi_to_pcie6_pipe7` UPF flow (`test/upf/bridge.upf`,
   power ports — controls come from the PMU).
 - **OSS reality:** Verilator/Icarus/Yosys do **not** model UPF supply/isolation/
   retention/corruption, and **commercial power-aware runs are out of scope for this
-  project (owner decision 2026-10-02)**. `make upf` prints a clear "authored, not
-  run" stub and exits 0. The power behaviour is instead checked without a UPF
+  project (owner decision 2026-10-02)**. `make upf` keeps the target: it runs on
+  VCS-NLP / Xcelium / Questa-PA if one is on PATH (command lines untested), else it
+  prints a clear "tool not available, authored not run" notice and exits 0. The power behaviour is instead checked without a UPF
   tool: `make upf-tb` (PMU sequencing), `make pd-emu` / `pd-emu-ret` (corruption /
   isolation / retention emulation) and `make power-oss` (area + power estimate).
   Document the intent in `docs/power_intent.md`; the file is review-validated,
@@ -388,7 +390,7 @@ IDs are what `AGENT_HANDOFF.md` points at.
 
 ### M6 — Low power (UPF)
 - [x] **T6.1** `lp/bridge.upf` + `pipe7_pmu` + `tb_pipe7_upf_power` +
-  `docs/power_intent.md`; `make upf` (stub, §9).
+  `docs/power_intent.md`; `make upf` (runs if a tool exists, else notice, §9).
   UPF **authored, not run** (no PA simulator). `make upf-tb` = functional Icarus run
   of the TB (PMU sequencing + timing assumption), GREEN. rf moved to PD_AON (D14).
 
