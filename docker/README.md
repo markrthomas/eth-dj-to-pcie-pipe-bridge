@@ -3,7 +3,8 @@
 - `../Dockerfile` — Ubuntu 24.04 + pinned OSS CAD Suite 2026-04-13 (last on PATH)
   + apt Icarus/SystemC + venv with cocotb 1.8.1/pyuvm/pyvsc. `--build-arg
   WITH_CLAUDE=1` also installs the Claude Code CLI for the swarm.
-  Optional `--secret id=extra_ca,src=<pem>` for TLS-intercepting proxies.
+  Optional: put `*.crt` files in `docker/extra_ca/` before building to trust an extra CA
+  (TLS-intercepting proxies). No `RUN --mount=type=secret`: Railway's builder rejects it.
 - `entrypoint.sh` — default: `make metrics` over every flow (incl. uvm, formal),
   `make crosscheck`, `make dashboard`; exits non-zero on any failure. `swarm`
   runs `swarm.sh`; anything else is executed as a command.
