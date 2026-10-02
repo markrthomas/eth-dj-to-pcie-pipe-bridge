@@ -44,6 +44,8 @@ DUT_GROUPS = [
     ("PIPE Tx / link (pclk)", [("pclk", 1), ("pipe_rst_n", 1), ("pipe_tx_data_valid", 1),
                                ("pipe_tx_start_block", 1), ("pipe_tx_data", 64), ("pipe_powerdown", 2),
                                ("pipe_rate", 3), ("pipe_width", 2), ("pipe_phy_status", 1)]),
+    ("PIPE Rx (pclk)", [("pipe_rx_data_valid", 1), ("pipe_rx_start_block", 1), ("pipe_rx_data", 64),
+                        ("pipe_rx_valid", 1), ("pipe_rx_elec_idle", 1)]),
     ("Message bus", [("pipe_m2p_msgbus", 8), ("pipe_p2m_msgbus", 8)]),
     ("Control plane", [("ctrl_state", 3), ("tx_en", 1), ("ingress_stop", 1), ("stp_s3", 1),
                        ("tx_idle", 1), ("rx_idle", 1), ("mb_busy", 1), ("pam4_wr", 1)]),

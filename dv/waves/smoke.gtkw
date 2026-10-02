@@ -56,6 +56,18 @@ tb_smoke.dut.pipe_width[1:0]
 @28
 tb_smoke.dut.pipe_phy_status
 @200
+-PIPE Rx (pclk)
+@28
+tb_smoke.dut.pipe_rx_data_valid
+@28
+tb_smoke.dut.pipe_rx_start_block
+@22
+tb_smoke.dut.pipe_rx_data[63:0]
+@28
+tb_smoke.dut.pipe_rx_valid
+@28
+tb_smoke.dut.pipe_rx_elec_idle
+@200
 -Message bus
 @22
 tb_smoke.dut.pipe_m2p_msgbus[7:0]
