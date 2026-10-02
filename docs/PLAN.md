@@ -415,7 +415,7 @@ IDs are what `AGENT_HANDOFF.md` points at.
 | # | Criterion | Status |
 |---|---|---|
 | 1 | `make regress` green locally + CI | Met |
-| 2 | `make ci` green; line coverage ≥ 80% | Met locally (pinned suite); CI runs the same jobs split up. Line+branch 95.7% |
+| 2 | `make ci` green; line coverage ≥ 80% | Met locally (pinned suite); CI runs the same jobs split up. Line+branch 90.0% (2026-10-02, after D19; 92.5% before it, 95.7% before the MAC register file, D17) |
 | 3 | Five envs build + pass smoke | Met (all five in CI; crosscheck job) |
 | 4 | SVA bound + passing in Verilator and cocotb flows; formal proves flow-control safety | SVA in vlt/systemc/uvm, **not cocotb** (Icarus, D13); formal proofs pass |
 | 5 | UPF authored + documented; `make upf` stub | Authored + documented; **never run** (commercial-tool runs out of scope); `upf-tb` / `pd-emu` are the OSS checks |

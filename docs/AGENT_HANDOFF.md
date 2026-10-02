@@ -17,7 +17,7 @@ owner instead). "Still open" notes inside the dated entries below are superseded
   **Opt-in two-ended link flow control** (`-DFLOW_CTRL_OVERRIDE`, credits + seq loss repair, D16; default off, default results unchanged).
 - **DV:** five envs (iverilog, vlt, systemc, cocotb, uvm) cross-checked against `dv/common/scenarios.py`; every env also has a flow-control-on
   `fc` target (CI); two-bridge `dv/iverilog/tb_link.sv` (flit killer); UVM FC overload test; SVA (`dv/sva`); formal
-  (`async_fifo`, `ingress_gate`, `ctrl` + `ctrl` with FC, `fc` credit invariants by k-induction); `make lanes4` incl. FC; coverage 92.1 % (floor 80);
+  (`async_fifo`, `ingress_gate`, `ctrl` + `ctrl` with FC, `fc` credit invariants by k-induction); `make lanes4` incl. FC; coverage 90.0 % (floor 80, measured 2026-10-02 after the D19 fixes; 92.5 % before);
   waves, metrics DB + dashboard.
 - **Power (zero-cost, no commercial tool):** `lp/oss` (Yosys+slang -> Nangate45 -> Verilator gate-level equivalence -> Icarus activity ->
   OpenSTA via the pip `openroad` wheel): 378,070 um2, **154.1 mW** on the default (D18 reset) build (PD_DP 97.6 %; CDC FIFOs ~73 %, flop arrays so pessimistic), on the dashboard,
@@ -39,7 +39,7 @@ VCS-NLP / Xcelium / Questa-PA if one is on PATH (command lines UNTESTED), otherw
 2. **`msgbus_mac_tgt` register file costs ~4 % of the area** for registers nothing reads — shrink or make optional? (D17)
 3. **Datapath-local reset is the DEFAULT** (D18; opt out with `-DDP_RESET_DISABLE`; flow-control builds turn it off). Retain-nothing passes in
    `make pd-emu`. `bridge.upf` still carries the retention block (marked in a note, kept for `-DDP_RESET_DISABLE` builds). `lp/oss` numbers were re-measured on this
-   build (378,070 um2, 154.1 mW). The `uvm` env was not runnable in the authoring container (UVM core vs Verilator); CI runs it.
+   build (378,070 um2, 154.1 mW). The `uvm` env (and `uvm-fc`) was re-run on this build on 2026-10-02 with the pinned suite and passes (see history (w)).
 4. Known unmodelled: MAC register field attributes / reserved-bit masking; per-lane message-bus replication (only for a *Variable* PHY, D17);
    mid-frame power-down; X-propagation in the power emulation; iverilog `rxovf` with FC on (it forces overload); vlt/systemc/uvm/cocotb at x4 with FC.
 
@@ -48,7 +48,7 @@ VCS-NLP / Xcelium / Questa-PA if one is on PATH (command lines UNTESTED), otherw
 design choice in `OPEN_DECISIONS.md` and list RTL behaviour changes under "Behaviour to review" in the PR body, never claim an untested thing
 ran, commit/PR trailers as in the existing history.
 
-**Commands** (pinned OSS CAD Suite 2026-04-13 on `PATH`, `VERILATOR_ROOT` unset): `make regress` (lint x2 configs + all Icarus tests incl. `link`, `fc`) ·
+**Commands** (pinned OSS CAD Suite 2026-04-13 on `PATH`, `VERILATOR_ROOT` unset): `make regress` (lint x3 configs + all Icarus tests incl. `link`, `fc`, `nodpr`) · `make ci` (every step of `ci.yml`, in one run) ·
 `make lanes4` · `make -C formal` · `make envs envs-fc crosscheck` · `make coverage` · `make pd-emu` · reset-disabled build (D18 opt-out): `make -C dv/iverilog nodpr`, `make vlt-nodpr`, `make pd-emu-ret` · `make upf-tb` · `make metrics` / `make dashboard` ·
 `make power-oss` (**~30 min, 10–14 GB RAM, network** — `lp/oss/README.md`; then `python3 metrics/collect.py --power-into-latest && make dashboard`).
 
@@ -61,6 +61,8 @@ ran, commit/PR trailers as in the existing history.
   `kill()` every coroutine it started between cases or clocks / models pile up (`lp/cocotb/test_pd.py`).
 - Merging PRs that all append to `.gitignore` / the shared docs conflicts trivially: merge `origin/main` into the branch and keep both sides.
 - Icarus on CI is stricter than local (declare-before-use, no `break`, no array literals).
+- Disk: each UVM build dir (`dv/uvm/obj_dir`, `obj_dir_fc`) is ~750 MB; a full disk truncates `Vtb_uvm_top__ALL.a` ("file too short" at link).
+  Delete the partial `obj_dir` before rebuilding.
 
 ---
 
@@ -71,6 +73,16 @@ ran, commit/PR trailers as in the existing history.
   (x8 never worked: the datapath moves one 256-bit beat per pclk; D1 corrected), stale comments. New `tb_edge`, `tb_msgbus_mac` case L; both fail on the
   old RTL. RTL behaviour changes are in D19. Gotcha: a full disk (this container's allowance) corrupts a half-built Verilator `obj_dir` and shows up as
   an unexplained "make -C obj_dir exited with 2": free space and `rm -rf` that obj_dir.
+
+- **2026-10-02 (w)** — **Swarm review + test run of `main`** (branch `swarm/2026-10-02-ci-drift-lanes4`; tested at 4b0c1aa, the RTL/DV are
+  unchanged at 24f4042). All green with the pinned suite (cocotb / pd-emu on apt Icarus, as in CI): `regress`, `lint` (3 configs), five envs +
+  `crosscheck` (5 agree), `envs-fc` (uvm `fc_overload`: 40 intact, 0 dropped), `coverage` 92.5 %, `formal` (all 10 tasks incl. the
+  `async_fifo` cover: `yices` is in the pinned suite), `lanes4`, `upf-tb`, `wave-check-all`, `pd-emu` (retain-nothing PASS), `pd-emu-ret`
+  (retain-nothing FAIL as the negative control, 318 bits), `dashboard`. One mutation (`eth_egress` flips bit 0 of every tlast beat) fails
+  all five envs. Infra fixes: `make lanes4` wrote its x4 `scen` results into `dv/iverilog/sim_build` (the x1 results that `crosscheck` /
+  metrics read) - now `sim_build_x4`; `make ci` now runs every `ci.yml` step (`vlt-nodpr`, `wave-check-all`, `pd-emu`, `pd-emu-ret`,
+  `dashboard` were missing). Not run: `make metrics` (runs a Yosys elaboration, excluded this run), `make power-oss`. RTL review findings
+  (no RTL changed) are listed in the PR.
 
 - **2026-10-01 (v)** — **Datapath-local reset made the default** (branch `claude/dp-reset-default`, D18): the reset is on unless
   `-DDP_RESET_DISABLE` (or `-DFLOW_CTRL_OVERRIDE`). Flipping it exposed that the Rx path was never drained (D11): at x4 a frame in flight to the
