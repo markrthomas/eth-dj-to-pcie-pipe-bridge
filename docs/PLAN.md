@@ -65,8 +65,9 @@ reinvent — port and adapt.**
 3. All five DV environments build and pass their smoke test.
 4. SVA assertions bound and passing in at least the Verilator and cocotb flows;
    formal proves the flow-control safety properties.
-5. UPF power-aware sim documented and runnable (commercial tool; OSS-stubbed
-   with a clear message — see §9).
+5. UPF power intent authored and documented; `make upf` runs it if a commercial
+   power-aware simulator is on PATH, else reports the missing tool and exits 0 (no commercial-tool runs
+   are planned: owner decision 2026-10-02 — see §9).
 6. Dashboard renders; GTKWave session opens per test; Railway job defined.
 
 ---
@@ -261,7 +262,7 @@ Exactly the `DV_STANDARDS.md` contract, plus this repo's extras:
 | `make ci` | `regress` + `coverage` + `formal` + all-env smoke. |
 | `make <env>` | `iverilog` / `vlt` / `uvm` / `systemc` / `cocotb` run each env. |
 | `make waves` / `wave-<test>` | Run a test with dump + open its `dv/waves/*.gtkw`. |
-| `make upf` | Power-aware sim (commercial; OSS prints a stub — §9). |
+| `make upf` | Runs the UPF TB on a commercial power-aware simulator if on PATH, else notice + exit 0 (§9). |
 | `make metrics` / `make dashboard` | Collect run data → `metrics.db` → `dashboard.html`. |
 | `make stress` | All scenarios on the Verilator env across `STRESS_SEEDS` seeds (gap/backpressure patterns). |
 | `make clean` | Remove all build artifacts. |
@@ -271,7 +272,7 @@ keep it in `metrics/` and `dv/waves/`, not scattered shell.
 
 ---
 
-## 9. UPF power-aware simulation
+## 9. UPF power intent (authored, not run)
 
 Port the `ucie_rdi_to_pcie6_pipe7` UPF flow (`test/upf/bridge.upf`,
 `docs/power_intent.md`):
@@ -283,9 +284,12 @@ Port the `ucie_rdi_to_pcie6_pipe7` UPF flow (`test/upf/bridge.upf`,
   instantiates the DUT plus the DV-only `pipe7_pmu` sequencer (the DUT has no
   power ports — controls come from the PMU).
 - **OSS reality:** Verilator/Icarus/Yosys do **not** model UPF supply/isolation/
-  retention/corruption. `make upf` runs on a commercial power-aware flow
-  (VCS-NLP / Questa-PA / Xcelium) and, in the OSS environment, prints a clear
-  "authored, not run here" stub and exits 0 (same convention as the sibling).
+  retention/corruption, and **commercial power-aware runs are out of scope for this
+  project (owner decision 2026-10-02)**. `make upf` keeps the target: it runs on
+  VCS-NLP / Xcelium / Questa-PA if one is on PATH (command lines untested), else it
+  prints a clear "tool not available, authored not run" notice and exits 0. The power behaviour is instead checked without a UPF
+  tool: `make upf-tb` (PMU sequencing), `make pd-emu` / `pd-emu-ret` (corruption /
+  isolation / retention emulation) and `make power-oss` (area + power estimate).
   Document the intent in `docs/power_intent.md`; the file is review-validated,
   not CI-gated.
 
@@ -386,7 +390,7 @@ IDs are what `AGENT_HANDOFF.md` points at.
 
 ### M6 — Low power (UPF)
 - [x] **T6.1** `lp/bridge.upf` + `pipe7_pmu` + `tb_pipe7_upf_power` +
-  `docs/power_intent.md`; `make upf` (commercial run / OSS stub §9).
+  `docs/power_intent.md`; `make upf` (runs if a tool exists, else notice, §9).
   UPF **authored, not run** (no PA simulator). `make upf-tb` = functional Icarus run
   of the TB (PMU sequencing + timing assumption), GREEN. rf moved to PD_AON (D14).
 
@@ -414,7 +418,7 @@ IDs are what `AGENT_HANDOFF.md` points at.
 | 2 | `make ci` green; line coverage ≥ 80% | Met locally (pinned suite); CI runs the same jobs split up. Line+branch 95.7% |
 | 3 | Five envs build + pass smoke | Met (all five in CI; crosscheck job) |
 | 4 | SVA bound + passing in Verilator and cocotb flows; formal proves flow-control safety | SVA in vlt/systemc/uvm, **not cocotb** (Icarus, D13); formal proofs pass |
-| 5 | UPF documented + runnable (commercial; OSS stub) | Authored + documented; **never run** (no PA tool); `upf-tb` functional only |
+| 5 | UPF authored + documented; `make upf` stub | Authored + documented; **never run** (commercial-tool runs out of scope); `upf-tb` / `pd-emu` are the OSS checks |
 | 6 | Dashboard renders; GTKWave per test; Railway job defined | Met; image built + run locally; **not deployed** to Railway |
 
 ---
