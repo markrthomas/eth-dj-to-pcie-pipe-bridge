@@ -99,7 +99,7 @@ What this tells us: the datapath (PD_DP) is ~96 % of the area and ~98 % of the p
 shrinking it is where the savings are; the CDC FIFO arrays alone are ~73 % of the power (flop arrays -
 SRAM/latch macros or clock gating would cut this a lot, so treat it as pessimistic);
 `msgbus_mac_tgt` (the new MAC register file + write buffer, D17) costs ~4 % of the area for
-registers nothing in the bridge reads - candidate to shrink or make optional.
+registers nothing in the bridge reads; kept on purpose (owner decision 2026-10-02: the register file is always included).
 What it does **not** tell us: retention area (Nangate45 has no retention flops), the saving from
 power gating beyond an upper bound (PD_DP leakage), isolation / header-switch overhead, and whether
 `bridge.upf` is correct - the UPF is still authored-not-run. A UPF-like *power-state* simulation
