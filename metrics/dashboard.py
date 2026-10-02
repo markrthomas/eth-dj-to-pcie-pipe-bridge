@@ -81,18 +81,41 @@ def section(con, run_id, cat):
 
 
 def history(con):
-    runs = con.execute("SELECT run_id, ts_utc, git_sha, git_branch, git_dirty, note FROM runs ORDER BY run_id DESC").fetchall()
-    out = ["<div class='wrap'><table><tr><th>Run</th><th>UTC</th><th>Commit</th><th>PASS</th><th>FAIL</th>"
+    runs = con.execute("SELECT run_id, ts_utc, git_sha, git_branch, git_dirty, note, host FROM runs "
+                       "ORDER BY run_id DESC").fetchall()
+    out = ["<div class='wrap'><table><tr><th>Run</th><th>UTC</th><th>Host</th><th>Commit</th><th>PASS</th><th>FAIL</th>"
            "<th>Not run</th><th>Line+branch %</th><th>Note</th></tr>"]
-    for rid, ts, sha, br, dirty, note in runs:
+    for rid, ts, sha, br, dirty, note, host in runs:
         c = dict(con.execute("SELECT status, COUNT(*) FROM metrics WHERE run_id=? AND status IS NOT NULL "
                              "GROUP BY status", (rid,)).fetchall())
         cov = con.execute("SELECT value FROM metrics WHERE run_id=? AND name='line_branch_rtl'", (rid,)).fetchone()
-        out.append(f"<tr><td>{rid}</td><td>{html.escape(ts)}</td><td><code>{html.escape(sha or '')}</code> "
+        out.append(f"<tr><td>{rid}</td><td>{html.escape(ts)}</td><td>{html.escape(host or '')}</td><td><code>{html.escape(sha or '')}</code> "
                    f"{html.escape(br or '')}{' (dirty)' if dirty else ''}</td>"
                    f"<td class='num s-PASS'>{c.get('PASS', 0)}</td><td class='num s-FAIL'>{c.get('FAIL', 0)}</td>"
                    f"<td class='num'>{c.get('NOT_RUN', 0)}</td><td class='num'>{fmt(cov[0]) if cov else '&mdash;'}</td>"
                    f"<td class='detail'>{html.escape(note or '')}</td></tr>")
+    out.append("</table></div>")
+    return "\n".join(out)
+
+
+def railway(con):
+    """Runs imported from the Railway batch job (host railway/<service>): one row per run with the
+    flow results and the total wall time of the flows."""
+    runs = con.execute("SELECT run_id, ts_utc, git_sha, host FROM runs WHERE host LIKE 'railway/%' "
+                       "ORDER BY run_id DESC LIMIT 30").fetchall()
+    if not runs:
+        return ("<p class='note'>No Railway runs imported yet: the nightly job publishes to the "
+                "<code>metrics-data</code> branch (docs/railway.md); import with <code>make railway-import</code>.</p>")
+    out = ["<div class='wrap'><table><tr><th>Run</th><th>UTC</th><th>Service</th><th>Commit</th><th>Flows PASS</th>"
+           "<th>Flows FAIL</th><th>Flow wall time</th></tr>"]
+    for rid, ts, sha, host in runs:
+        c = dict(con.execute("SELECT status, COUNT(*) FROM metrics WHERE run_id=? AND category='flow' "
+                             "AND status IS NOT NULL GROUP BY status", (rid,)).fetchall())
+        wall = con.execute("SELECT SUM(value) FROM metrics WHERE run_id=? AND category='flow'", (rid,)).fetchone()[0]
+        out.append(f"<tr><td>{rid}</td><td>{html.escape(ts)}</td><td>{html.escape(host.split('/', 1)[1])}</td>"
+                   f"<td><code>{html.escape(sha or '')}</code></td>"
+                   f"<td class='num s-PASS'>{c.get('PASS', 0)}</td><td class='num s-FAIL'>{c.get('FAIL', 0)}</td>"
+                   f"<td class='num'>{fmt(wall) + ' s' if wall is not None else '&mdash;'}</td></tr>")
     out.append("</table></div>")
     return "\n".join(out)
 
@@ -106,7 +129,10 @@ def main():
         print(f"dashboard: {a.db} not found; run `make metrics` first")
         return 1
     con = sqlite3.connect(a.db)
+    # headline = the newest run that is not a Railway import (a Railway run has no power / local-only rows)
     last = con.execute("SELECT run_id, ts_utc, git_sha, git_branch, git_dirty, host, tools, note FROM runs "
+                       "WHERE host IS NULL OR host NOT LIKE 'railway/%' ORDER BY run_id DESC LIMIT 1").fetchone() or \
+           con.execute("SELECT run_id, ts_utc, git_sha, git_branch, git_dirty, host, tools, note FROM runs "
                        "ORDER BY run_id DESC LIMIT 1").fetchone()
     if not last:
         print("dashboard: no runs in the database")
@@ -126,6 +152,8 @@ def main():
     for cat, title in SECTIONS:
         body.append(f"<h2>{title}</h2>")
         body.append(section(con, rid, cat))
+    body.append("<h2>Railway runs (nightly batch job)</h2>")
+    body.append(railway(con))
     body.append("<h2>Run history</h2>")
     body.append(history(con))
     page = ("<!doctype html><html lang='en'><head><meta charset='utf-8'>"

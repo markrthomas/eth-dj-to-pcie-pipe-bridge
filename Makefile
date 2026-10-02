@@ -38,6 +38,7 @@ help:
 	@echo "  wave-check-all     check every test's .gtkw against a fresh dump (no GUI)"
 	@echo "  upf        UPF TB on VCS-NLP / Xcelium / Questa-PA if one is on PATH, else a missing-tool notice, exit 0"
 	@echo "  upf-tb     functional Icarus run of the power-aware TB (PMU sequencing, no UPF)"
+	@echo "  railway-import  merge the Railway job's published runs (branch metrics-data) into metrics.db + dashboard"
 	@echo "  metrics    run+time METRICS_FLOWS, collect artifacts -> metrics/metrics.db"
 	@echo "  dashboard  render metrics/metrics.db -> metrics/dashboard.html"
 	@echo "  envs-fc    vlt/systemc/uvm/cocotb with link flow control ON (vlt-fc systemc-fc uvm-fc cocotb-fc)"
@@ -175,6 +176,17 @@ lanes4:
 # tests with WAVES=1 into dv/iverilog/sim_build, so it comes after crosscheck.
 ci: regress coverage formal envs crosscheck envs-fc vlt-nodpr upf-tb lanes4 wave-check-all pd-emu pd-emu-ret dashboard
 	@echo "ci: OK"
+
+# Pull the results published by the Railway batch job (docker/publish_metrics.sh -> branch metrics-data)
+# into metrics/metrics.db and re-render the dashboard.  Needs read access to the repo (git fetch).
+.PHONY: railway-import
+railway-import:
+	git fetch origin metrics-data
+	rm -rf $(CURDIR)/.railway-import && mkdir -p $(CURDIR)/.railway-import
+	git archive origin/metrics-data runs | tar -x -C $(CURDIR)/.railway-import
+	python3 metrics/collect.py --import-dir $(CURDIR)/.railway-import
+	rm -rf $(CURDIR)/.railway-import
+	$(MAKE) dashboard
 
 # zero-cost area/power estimate (Yosys -> Nangate45 -> OpenSTA); ~30 min, ~10-14 GB RAM, needs network (lp/oss/README.md)
 .PHONY: power-oss

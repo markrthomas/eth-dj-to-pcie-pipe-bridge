@@ -86,3 +86,4 @@ dv/vlt/nodpr_run/
 lp/cocotb/sim_build_ret/
 lp/cocotb/*_ret.*
 dv/iverilog/sim_build_nodpr/
+.railway-import/

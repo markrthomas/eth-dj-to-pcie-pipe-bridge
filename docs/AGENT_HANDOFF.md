@@ -37,7 +37,7 @@ VCS-NLP / Xcelium / Questa-PA if one is on PATH (command lines UNTESTED), otherw
 **Decided (owner, 2026-10-02): the `msgbus_mac_tgt` MAC register file stays in the design** as it is (always included, not optional, not shrunk; ~4 % of the area, D17).
 
 **Owner's open items (nothing below needs more code from a session unless noted)**
-1. **Railway deploy and a first real swarm run** — need the owner's Railway account. The swarm authenticates with **`CLAUDE_CODE_OAUTH_TOKEN`** (set it as a Railway service variable; `ANTHROPIC_API_KEY` also works). Never commit the token or paste it in a chat; for the GitHub Actions swarm add it as a repository secret of the same name.
+1. **Railway deploy** — need the owner's Railway account; the nightly job's results now leave the container (`docker/publish_metrics.sh` -> branch `metrics-data`, `make railway-import`, docs/railway.md; needs a `GITHUB_TOKEN` service variable, untested on Railway). The first GitHub-Actions swarm run happened 2026-10-02 (it worked). The swarm authenticates with **`CLAUDE_CODE_OAUTH_TOKEN`** (set it as a Railway service variable; `ANTHROPIC_API_KEY` also works). Never commit the token or paste it in a chat; for the GitHub Actions swarm add it as a repository secret of the same name.
 2. **Datapath-local reset is the DEFAULT** (D18; opt out with `-DDP_RESET_DISABLE`; flow-control builds turn it off). Retain-nothing passes in
    `make pd-emu`. `bridge.upf` still carries the retention block (marked in a note, kept for `-DDP_RESET_DISABLE` builds). `lp/oss` numbers were re-measured on this
    build (378,070 um2, 154.1 mW). The `uvm` env (and `uvm-fc`) was re-run on this build on 2026-10-02 with the pinned suite and passes (see history (w)).

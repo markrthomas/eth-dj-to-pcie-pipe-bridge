@@ -15,6 +15,9 @@ case "$mode" in
     make crosscheck || rc=$?
     make dashboard || rc=$?
     cp -f metrics/metrics.db metrics/dashboard.html "${ARTIFACT_DIR:-/tmp}/" 2>/dev/null || true
+    # the container is ephemeral: publish the results to the repo's metrics-data branch (docs/railway.md);
+    # a publishing problem is reported but does not change the run's exit code
+    docker/publish_metrics.sh "$rc" || echo "entrypoint: WARNING: publishing the results failed (see above)"
     echo "entrypoint: done (rc=$rc)"
     exit "$rc"
     ;;
