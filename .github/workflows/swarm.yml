@@ -1,5 +1,6 @@
 # Manual-only: run the Claude Code agent swarm (docker/swarm.sh) in the CI image.
-# Needs repository secret ANTHROPIC_API_KEY.  The swarm may push a feature branch
+# Needs a repository secret CLAUDE_CODE_OAUTH_TOKEN (preferred, same variable as the Railway
+# service) or ANTHROPIC_API_KEY.  The swarm may push a feature branch
 # and open a DRAFT PR with GITHUB_TOKEN; a human reviews and merges.
 name: swarm
 
@@ -23,18 +24,20 @@ jobs:
     timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
-      - name: require the API key
+      - name: require a credential
         env:
+          OAUTH: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        run: test -n "$KEY" || { echo "::error::set the ANTHROPIC_API_KEY repository secret"; exit 1; }
+        run: test -n "$OAUTH$KEY" || { echo "::error::set the CLAUDE_CODE_OAUTH_TOKEN (or ANTHROPIC_API_KEY) repository secret"; exit 1; }
       - name: build image (with Claude Code CLI)
         run: docker build --build-arg WITH_CLAUDE=1 -t bridge-swarm .
       - name: run swarm
         env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          docker run --rm -e ANTHROPIC_API_KEY -e GITHUB_TOKEN -v "$PWD:/repo" bridge-swarm \
+          docker run --rm -e CLAUDE_CODE_OAUTH_TOKEN -e ANTHROPIC_API_KEY -e GITHUB_TOKEN -v "$PWD:/repo" bridge-swarm \
             swarm --task "${{ inputs.task }}" ${{ inputs.model != '' && format('--model {0}', inputs.model) || '' }}
       - uses: actions/upload-artifact@v4
         if: always()

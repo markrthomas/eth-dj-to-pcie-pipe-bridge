@@ -2,7 +2,7 @@
 # docker/entrypoint.sh — container entrypoint (Railway batch job / local run).
 #   (no args) | ci : run + time every flow (make metrics), 5-env crosscheck,
 #                    render the dashboard; exit non-zero if anything failed
-#   swarm          : run the agent swarm (docker/swarm.sh; needs an API key)
+#   swarm          : run the agent swarm (docker/swarm.sh; needs CLAUDE_CODE_OAUTH_TOKEN or ANTHROPIC_API_KEY)
 #   <cmd...>       : run an arbitrary command inside the image
 set -euo pipefail
 cd /repo
