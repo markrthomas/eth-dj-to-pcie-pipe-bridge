@@ -49,7 +49,8 @@ TEST_PASS = {  # test -> (log, regex with named groups)
     "upf-tb": ("lp/sim_build/upf_tb.log", r"UPF-TB PASS: (?P<frames>\d+) frames"),
 }
 RTL = ["async_fifo", "tx_ingress_gate", "tx_framer", "tx_egress", "rx_ingress", "rx_deframer",
-       "eth_egress", "pipe_msgbus", "bridge_ctrl_fsm", "bridge_rf", "eth_dj_pipe7_bridge"]
+       "eth_egress", "pipe_msgbus", "msgbus_mac_tgt", "fc_ctl", "bridge_ctrl_fsm", "bridge_rf",
+       "eth_dj_pipe7_bridge"]
 
 
 class Run:
