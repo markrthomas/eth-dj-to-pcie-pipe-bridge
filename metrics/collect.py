@@ -331,8 +331,9 @@ def import_runs(con, src_db, host):
     src = sqlite3.connect(src_db)
     for rid, ts, sha, br, dirty, h, tools, note in src.execute(
             "SELECT run_id, ts_utc, git_sha, git_branch, git_dirty, host, tools, note FROM runs ORDER BY run_id"):
-        if con.execute("SELECT 1 FROM runs WHERE ts_utc=? AND git_sha IS ? AND host LIKE ?",
-                       (ts, sha, host.split("/")[0] + "%")).fetchone():
+        # skip a run that is already here under any host: the container image carries the committed
+        # metrics.db, so every container DB starts with the repo's own earlier run(s)
+        if con.execute("SELECT 1 FROM runs WHERE ts_utc=? AND git_sha IS ?", (ts, sha)).fetchone():
             continue
         note2 = (note + " | " if note else "") + f"imported from {h}"
         cur = con.execute("INSERT INTO runs (ts_utc, git_sha, git_branch, git_dirty, host, tools, note) "
@@ -395,7 +396,8 @@ def main():
     dirty = 1 if sh("git status --porcelain --untracked-files=no") else 0
     cur = con.execute("INSERT INTO runs (ts_utc, git_sha, git_branch, git_dirty, host, tools, note) VALUES (?,?,?,?,?,?,?)",
                       (datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-                       sh("git rev-parse --short HEAD"), sh("git rev-parse --abbrev-ref HEAD"), dirty,
+                       sh("git rev-parse --short HEAD") or os.environ.get("RAILWAY_GIT_COMMIT_SHA", "")[:7],
+                       sh("git rev-parse --abbrev-ref HEAD") or os.environ.get("RAILWAY_GIT_BRANCH", ""), dirty,
                        os.uname().nodename, json.dumps(tool_versions()), a.note))
     r = Run(con, cur.lastrowid)
     if a.run:

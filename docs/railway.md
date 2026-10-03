@@ -47,6 +47,18 @@ the log); `run.json` contains only non-secret facts (time, commit, `RAILWAY_SERV
   other local-only rows; Railway runs appear in their own table and in the run history (Host column).
 - Look at one run without importing: `git show origin/metrics-data:latest/dashboard.html`.
 
+## Notes from the first real run (2026-10-03)
+- The first Railway run worked end to end (build, `regress` PASS in ~23 s, push to `metrics-data`, import).
+- `crosscheck` needs all five envs, so with a reduced `METRICS_FLOWS` it can never pass; the entrypoint
+  now skips it unless `METRICS_FLOWS` is unset or `RUN_CROSSCHECK=1`.
+- **Set the service's restart policy to Never** (service Settings -> Deploy). With a non-zero exit and
+  the default policy Railway restarted the container every ~40 s, and each restart published another run
+  to `metrics-data` (7 in 4 minutes). `railway.toml` asks for `NEVER`, but the service evidently did not
+  apply it; the dashboard setting is the one that counts.
+- The image has no `.git`, so the run's commit comes from `RAILWAY_GIT_COMMIT_SHA` (previously empty in
+  `metrics.db`). The importer also skips runs it already has under any host (each container DB starts
+  with the repo's committed baseline run, which was being re-imported as a Railway run).
+
 ## Not done / not tested
 
 - **Nothing here has run on Railway.** The publish script and the importer were tested against a local
