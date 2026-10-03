@@ -317,7 +317,7 @@ Jobs per `DV_STANDARDS.md`, all `ubuntu-latest`, OSS CAD Suite pinned to
 ### Railway (larger runs) — `railway.toml`
 Config-as-code batch job (not a web service): `builder = DOCKERFILE`,
 `restartPolicyType = "NEVER"`, no `startCommand` (image ENTRYPOINT runs
-`make ci`), optional `cronSchedule` for a nightly full run. Use for long
+`make ci`), optional `cronSchedule` for a scheduled (currently weekly) full run. Use for long
 stress/random regressions that exceed the GitHub runner budget. Port
 `axi-on-ucie-to-mem/railway.toml` + `Dockerfile` + `docker/entrypoint.sh`.
 

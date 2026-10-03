@@ -14,6 +14,6 @@
 - `swarm.sh` / `swarm-task.md` — non-interactive Claude Code run with the
   `.claude/agents/` definitions (`--dry-run` prints the command).
 - `../railway.toml` — Railway batch job (DOCKERFILE builder, restart NEVER,
-  nightly cron, no startCommand).
+  weekly cron (Sundays 03:17 UTC), no startCommand).
 
 Local use: `docker build -t bridge-ci .` then `docker run --rm bridge-ci`.
