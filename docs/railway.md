@@ -59,6 +59,13 @@ the log); `run.json` contains only non-secret facts (time, commit, `RAILWAY_SERV
   `metrics.db`). The importer also skips runs it already has under any host (each container DB starts
   with the repo's committed baseline run, which was being re-imported as a Railway run).
 
+- **A hung flow.** The first full run showed `Starting Container` + the `collect.py --run ...` line and
+  nothing else for ~10 h, with no publish: Python block-buffered its output (progress only appeared at
+  exit) and nothing bounded a flow. `collect.py` now prints `make <flow>: started` / result lines
+  flushed (and `PYTHONUNBUFFERED=1` is set in the image), and kills a flow after `METRICS_FLOW_TIMEOUT`
+  seconds (default 2700) recording it as FAIL with a TIMEOUT note, so the run continues, publishes and
+  exits. Which flow hung in that run is unknown.
+
 ## Not done / not tested
 
 - **Nothing here has run on Railway.** The publish script and the importer were tested against a local

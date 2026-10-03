@@ -17,7 +17,8 @@ FROM ubuntu:24.04
 ARG OSS_CAD_SUITE_VERSION=2026-04-13
 # 1 = also install Node + the Claude Code CLI (for docker/swarm.sh)
 ARG WITH_CLAUDE=0
-ENV DEBIAN_FRONTEND=noninteractive \
+ENV PYTHONUNBUFFERED=1 \
+    DEBIAN_FRONTEND=noninteractive \
     OSS_CAD_SUITE_VERSION=${OSS_CAD_SUITE_VERSION}
 
 # optional extra CA certificates (*.crt in docker/extra_ca/; the directory only holds a .gitkeep by default)

@@ -89,15 +89,35 @@ def rel(p):
     return os.path.join(ROOT, p)
 
 
+FLOW_TIMEOUT = int(os.environ.get("METRICS_FLOW_TIMEOUT", "2700"))   # seconds per flow (default 45 min)
+
+
 def run_flows(r, flows):
+    """Run each root make target, timed.  A flow that exceeds FLOW_TIMEOUT is killed (the whole process
+    group, so verilator / vvp / yosys children go too) and recorded as FAIL - a hung flow must not hold a
+    container (and its bill) forever.  Progress lines are flushed so a container log shows them live."""
     for f in flows:
+        print(f"collect: make {f}: started (timeout {FLOW_TIMEOUT} s)", flush=True)
         t0 = time.monotonic()
-        res = subprocess.run(["make", f], cwd=ROOT, capture_output=True, text=True)
+        p = subprocess.Popen(["make", f], cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+                             start_new_session=True)
+        timed_out = False
+        try:
+            out, err = p.communicate(timeout=FLOW_TIMEOUT)
+        except subprocess.TimeoutExpired:
+            timed_out = True
+            try:
+                os.killpg(p.pid, 9)
+            except ProcessLookupError:
+                pass
+            out, err = p.communicate()
         dt = time.monotonic() - t0
-        st = "PASS" if res.returncode == 0 else "FAIL"
-        r.add("flow", f"make {f}", round(dt, 2), "s", "measured", st, "wall clock around `make`",
-              None if st == "PASS" else res.stdout[-400:] + res.stderr[-400:])
-        print(f"collect: make {f}: {st} in {dt:.1f} s")
+        st = "PASS" if (p.returncode == 0 and not timed_out) else "FAIL"
+        detail = None
+        if st == "FAIL":
+            detail = (f"TIMEOUT after {FLOW_TIMEOUT} s (killed); " if timed_out else "") + (out or "")[-400:] + (err or "")[-400:]
+        r.add("flow", f"make {f}", round(dt, 2), "s", "measured", st, "wall clock around `make`", detail)
+        print(f"collect: make {f}: {st}{' (TIMEOUT)' if timed_out else ''} in {dt:.1f} s", flush=True)
 
 
 def tests(r):
