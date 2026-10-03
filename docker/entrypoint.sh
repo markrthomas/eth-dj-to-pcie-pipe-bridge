@@ -12,7 +12,13 @@ case "$mode" in
     rc=0
     make metrics METRICS_FLOWS="${METRICS_FLOWS:-regress,coverage,systemc,cocotb,uvm,formal,upf-tb}" \
                  METRICS_NOTE="${METRICS_NOTE:-container run}" || rc=$?
-    make crosscheck || rc=$?
+    # crosscheck needs all five envs; with a reduced METRICS_FLOWS (a quick test run) it would always
+    # fail on "no results for required env", so it only runs for the default flow list or RUN_CROSSCHECK=1
+    if [ "${RUN_CROSSCHECK:-}" = "1" ] || { [ -z "${RUN_CROSSCHECK:-}" ] && [ -z "${METRICS_FLOWS:-}" ]; }; then
+      make crosscheck || rc=$?
+    else
+      echo "entrypoint: crosscheck skipped (METRICS_FLOWS=${METRICS_FLOWS:-}; set RUN_CROSSCHECK=1 to force it)"
+    fi
     make dashboard || rc=$?
     cp -f metrics/metrics.db metrics/dashboard.html "${ARTIFACT_DIR:-/tmp}/" 2>/dev/null || true
     # the container is ephemeral: publish the results to the repo's metrics-data branch (docs/railway.md);
