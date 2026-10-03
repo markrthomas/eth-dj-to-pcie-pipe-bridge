@@ -66,6 +66,13 @@ the log); `run.json` contains only non-secret facts (time, commit, `RAILWAY_SERV
   seconds (default 2700) recording it as FAIL with a TIMEOUT note, so the run continues, publishes and
   exits. Which flow hung in that run is unknown.
 
+- **Memory pegged at the plan limit (8 GB) during `uvm`.** The DV Makefiles use `JOBS ?= $(nproc)` and
+  in a container `nproc` reports the host's cores, so a UVM / Verilator build ran dozens of g++ jobs at
+  once (which is also why `coverage` / `systemc` "finished" in 3-4 s). `docker/entrypoint.sh` now sets
+  `JOBS` from the cgroup memory limit (about 3 GB per job, capped by the cores, 4 if no limit is
+  visible); set the Railway variable `JOBS` to override. UVM already runs on every GitHub CI build, so
+  `METRICS_FLOWS` can also simply leave it out on a small plan.
+
 ## Not done / not tested
 
 - **Nothing here has run on Railway.** The publish script and the importer were tested against a local

@@ -6,6 +6,24 @@
 #   <cmd...>       : run an arbitrary command inside the image
 set -euo pipefail
 cd /repo
+
+# Build parallelism.  The DV Makefiles default to `JOBS ?= $(nproc)`, and in a container nproc reports the
+# HOST's cores (dozens) while the memory limit is a few GB: a UVM / Verilator build then runs that many
+# g++ jobs at once and the container sits at its memory limit (thrashing / killed).  Unless JOBS is set,
+# derive it from the cgroup memory limit (about 3 GB per job), capped by the visible cores.
+if [ -z "${JOBS:-}" ]; then
+  cores="$(nproc 2>/dev/null || echo 4)"
+  lim="$(cat /sys/fs/cgroup/memory.max 2>/dev/null || cat /sys/fs/cgroup/memory/memory.limit_in_bytes 2>/dev/null || echo max)"
+  if [ "$lim" != "max" ] && [ "$lim" -lt 1099511627776 ] 2>/dev/null; then
+    jobs=$(( lim / 1073741824 / 3 ))
+  else
+    jobs=4                                   # no (usable) memory limit visible
+  fi
+  [ "$jobs" -lt 1 ] && jobs=1
+  [ "$jobs" -gt "$cores" ] && jobs="$cores"
+  export JOBS="$jobs"
+  echo "entrypoint: JOBS=$JOBS (cores=$cores, memory limit=$lim; set JOBS to override)"
+fi
 mode="${1:-ci}"
 case "$mode" in
   ci)
