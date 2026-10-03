@@ -1,0 +1,3 @@
+# extra CA certificates trusted by the image build (see Dockerfile): put *.crt here locally; never commit them
+*.crt
+*.pem

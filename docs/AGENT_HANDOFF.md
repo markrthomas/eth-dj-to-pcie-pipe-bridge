@@ -357,7 +357,7 @@ ran, commit/PR trailers as in the existing history.
   hierarchical references into free wires — only use them in slang-read harnesses.
 - **Docker:** `.dockerignore` strips trailing slashes (`dir/*/` excludes files).
   Behind a TLS-intercepting proxy build with `--network host`, proxy build args
-  and `--secret id=extra_ca,src=<pem>`.
+  and a `*.crt` in `docker/extra_ca/` (a `--secret` mount is not allowed: Railway's builder rejects it).
 - **UPF:** no OSS power-aware simulator exists and commercial-tool runs are out of scope (owner, 2026-10-02); `make upf` is authored +
   documented and exits 0 with a "tool not available" notice unless a commercial simulator is on PATH. (see `PLAN.md` §9)
 - **Icarus + SV struct literals:** Icarus-11 can't compile SV struct literals /

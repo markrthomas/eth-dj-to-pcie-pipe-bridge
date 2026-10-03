@@ -8,7 +8,9 @@
 # The OSS CAD Suite goes LAST on PATH so python3/iverilog resolve to the venv /
 # apt copies (the suite ships its own python + cocotb 2.x).
 # ENTRYPOINT runs docker/entrypoint.sh (default: full run + metrics + dashboard).
-# Optional: --secret id=extra_ca,src=<pem> adds a CA (TLS-intercepting proxies).
+# Optional: drop one or more *.crt files into docker/extra_ca/ before building to trust an extra CA
+# (TLS-intercepting proxies).  Not a `RUN --mount=type=secret`: Railway's Dockerfile builder rejects
+# every --mount type except cache.
 # =============================================================================
 FROM ubuntu:24.04
 
@@ -18,12 +20,10 @@ ARG WITH_CLAUDE=0
 ENV DEBIAN_FRONTEND=noninteractive \
     OSS_CAD_SUITE_VERSION=${OSS_CAD_SUITE_VERSION}
 
-RUN --mount=type=secret,id=extra_ca,required=false \
-    if [ -f /run/secrets/extra_ca ]; then \
-      mkdir -p /usr/local/share/ca-certificates && \
-      cp /run/secrets/extra_ca /usr/local/share/ca-certificates/extra_ca.crt; \
-    fi && \
-    apt-get update && \
+# optional extra CA certificates (*.crt in docker/extra_ca/; the directory only holds a .gitkeep by default)
+COPY docker/extra_ca/ /usr/local/share/ca-certificates/extra/
+
+RUN apt-get update && \
     apt-get install -y --no-install-recommends \
       ca-certificates curl git make g++ ccache python3 python3-venv python3-dev \
       iverilog libsystemc-dev xz-utils && \
