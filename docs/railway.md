@@ -1,6 +1,6 @@
 # Railway: getting its data back and into the dashboard
 
-The Railway service is a **batch job** (`railway.toml`: nightly cron, restart never). A container
+The Railway service is a **batch job** (`railway.toml`: weekly cron, Sundays 03:17 UTC, restart never). A container
 lives for one run and is thrown away, so before this change everything it measured (`metrics.db`,
 `dashboard.html`) vanished when it exited. This page describes how that data now leaves the
 container, how it is merged into the dashboard, and what was deliberately not done.
@@ -29,7 +29,7 @@ control for free. A Railway Volume would survive restarts but could only be read
 |---|---|---|
 | `CLAUDE_CODE_OAUTH_TOKEN` | the swarm (`docker/entrypoint.sh swarm`) | already agreed; `ANTHROPIC_API_KEY` also works |
 | `GITHUB_TOKEN` | publishing the results | a **fine-grained** personal access token limited to this one repository, permission *Contents: read and write*, nothing else. The job only ever pushes the branch `metrics-data`; a protection rule / ruleset on `main` keeps the token from touching it |
-| `METRICS_FLOWS` (optional) | which flows the nightly run times | default `regress,coverage,systemc,cocotb,uvm,formal,upf-tb` |
+| `METRICS_FLOWS` (optional) | which flows the scheduled run times | default `regress,coverage,systemc,cocotb,uvm,formal,upf-tb` |
 | `PUBLISH_REPO`, `PUBLISH_BRANCH` (optional) | override the target | defaults: this repo, `metrics-data` |
 
 Without `GITHUB_TOKEN` the job still runs; `publish_metrics.sh` prints a notice and the results stay
@@ -46,6 +46,8 @@ the log); `run.json` contains only non-secret facts (time, commit, `RAILWAY_SERV
 - The dashboard headline is the newest **non-Railway** run, because a Railway run has no power /
   other local-only rows; Railway runs appear in their own table and in the run history (Host column).
 - Look at one run without importing: `git show origin/metrics-data:latest/dashboard.html`.
+
+- **The schedule is also a Railway setting.** If the service's own Cron Schedule (Settings -> Cron Schedule) was set separately, change it there too: `railway.toml` did not override the restart policy on this service, so don't assume it overrides the schedule either. Weekly = `17 3 * * 0`.
 
 ## Notes from the first real run (2026-10-03)
 - The first Railway run worked end to end (build, `regress` PASS in ~23 s, push to `metrics-data`, import).
@@ -82,5 +84,5 @@ the log); `run.json` contains only non-secret facts (time, commit, `RAILWAY_SERV
   account token, GraphQL at `backboard.railway.com`) has them. Reading them from a cloud session
   would need `backboard.railway.com` added to the environment's network allow-list and a *read-only*
   token stored as an environment variable (never pasted into a chat). Not set up.
-- A concurrent second writer is handled by a rebase-and-retry, but with one nightly cron job there is
+- A concurrent second writer is handled by a rebase-and-retry, but with one scheduled cron job there is
   only ever one writer; this was not stress-tested.

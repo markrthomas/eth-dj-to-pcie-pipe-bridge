@@ -7,5 +7,5 @@ dockerfilePath = "Dockerfile"
 
 [deploy]
 restartPolicyType = "NEVER"
-# nightly full run (UTC); remove to run only on deploy
-cronSchedule = "17 3 * * *"
+# weekly full run, Sundays 03:17 UTC (owner decision 2026-10-03); remove to run only on deploy
+cronSchedule = "17 3 * * 0"
