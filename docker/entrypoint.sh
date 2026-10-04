@@ -5,7 +5,8 @@
 #   swarm          : run the agent swarm (docker/swarm.sh; needs CLAUDE_CODE_OAUTH_TOKEN or ANTHROPIC_API_KEY)
 #   <cmd...>       : run an arbitrary command inside the image
 set -euo pipefail
-cd /repo
+# the image keeps the repo at /repo; outside the image (a local checkout) use the checkout this script lives in
+if [ -d /repo ]; then cd /repo; else cd "$(dirname "$0")/.."; fi
 
 # Build parallelism.  The DV Makefiles default to `JOBS ?= $(nproc)`, and in a container nproc reports the
 # HOST's cores (dozens) while the memory limit is a few GB: a UVM / Verilator build then runs that many
