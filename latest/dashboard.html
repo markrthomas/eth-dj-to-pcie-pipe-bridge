@@ -23,17 +23,17 @@ td.detail { color:var(--muted); font-size:12px; }
 .note { color:var(--muted); font-size:12px; margin-top:6px; }
 code { font-size:12px; }
 </style></head><body><main><h1>eth-dj &harr; PIPE 7.1 bridge &mdash; DV metrics</h1>
-<div class='meta'>Latest run 15 &middot; 2026-10-04T03:19:20Z &middot; <code>2bc34aa</code> on main &middot; host c00ca2c3e883 &middot; container run</div>
+<div class='meta'>Latest run 15 &middot; 2026-10-11T03:17:51Z &middot; <code>78607d7</code> on main &middot; host 50e931a8cb42 &middot; container run</div>
 <div class='meta'>Tools: iverilog <code>Icarus Verilog version 12.0 (stable) ()</code> &middot; verilator <code>Verilator 5.047 devel rev v5.046-266-g14e2f834e (mod)</code> &middot; yosys <code>Yosys 0.64+40 (git sha1 90b906c4f, clang++ 18.1.8 -fPIC -O3)</code> &middot; sby <code>SBY v0.64</code> &middot; python <code>Python 3.12.3</code> &middot; cocotb <code>1.8.1</code></div>
 <p class='note'><span class='badge k-measured'>measured</span> read from an artifact of this run &nbsp; <span class='badge k-estimated'>estimated</span> computed from design parameters or a pre-synthesis elaboration &nbsp; <span class='badge k-not_attributable'>not attributable</span> no data source; the gap is recorded instead of a number.</p>
 <h2>Flows (wall clock)</h2>
 <div class='wrap'><table><tr><th>Metric</th><th>Value</th><th>Status</th><th>Kind</th><th>Source / detail</th></tr>
-<tr><td><code>make regress</code></td><td class='num'>22.86 s</td><td><span class='s-PASS'>PASS</span></td><td><span class='badge k-measured'>measured</span></td><td class='detail'>wall clock around `make`</td></tr>
-<tr><td><code>make coverage</code></td><td class='num'>8.12 s</td><td><span class='s-PASS'>PASS</span></td><td><span class='badge k-measured'>measured</span></td><td class='detail'>wall clock around `make`</td></tr>
-<tr><td><code>make systemc</code></td><td class='num'>4.53 s</td><td><span class='s-PASS'>PASS</span></td><td><span class='badge k-measured'>measured</span></td><td class='detail'>wall clock around `make`</td></tr>
-<tr><td><code>make cocotb</code></td><td class='num'>12.21 s</td><td><span class='s-PASS'>PASS</span></td><td><span class='badge k-measured'>measured</span></td><td class='detail'>wall clock around `make`</td></tr>
-<tr><td><code>make uvm</code></td><td class='num'>124.81 s</td><td><span class='s-PASS'>PASS</span></td><td><span class='badge k-measured'>measured</span></td><td class='detail'>wall clock around `make`</td></tr>
-<tr><td><code>make formal</code></td><td class='num'>54.83 s</td><td><span class='s-PASS'>PASS</span></td><td><span class='badge k-measured'>measured</span></td><td class='detail'>wall clock around `make`</td></tr>
+<tr><td><code>make regress</code></td><td class='num'>32.91 s</td><td><span class='s-PASS'>PASS</span></td><td><span class='badge k-measured'>measured</span></td><td class='detail'>wall clock around `make`</td></tr>
+<tr><td><code>make coverage</code></td><td class='num'>12.59 s</td><td><span class='s-PASS'>PASS</span></td><td><span class='badge k-measured'>measured</span></td><td class='detail'>wall clock around `make`</td></tr>
+<tr><td><code>make systemc</code></td><td class='num'>7.11 s</td><td><span class='s-PASS'>PASS</span></td><td><span class='badge k-measured'>measured</span></td><td class='detail'>wall clock around `make`</td></tr>
+<tr><td><code>make cocotb</code></td><td class='num'>17.78 s</td><td><span class='s-PASS'>PASS</span></td><td><span class='badge k-measured'>measured</span></td><td class='detail'>wall clock around `make`</td></tr>
+<tr><td><code>make uvm</code></td><td class='num'>171.48 s</td><td><span class='s-PASS'>PASS</span></td><td><span class='badge k-measured'>measured</span></td><td class='detail'>wall clock around `make`</td></tr>
+<tr><td><code>make formal</code></td><td class='num'>71.98 s</td><td><span class='s-PASS'>PASS</span></td><td><span class='badge k-measured'>measured</span></td><td class='detail'>wall clock around `make`</td></tr>
 <tr><td><code>make upf-tb</code></td><td class='num'>0.45 s</td><td><span class='s-PASS'>PASS</span></td><td><span class='badge k-measured'>measured</span></td><td class='detail'>wall clock around `make`</td></tr>
 </table></div>
 <h2>Directed tests (Icarus)</h2>
@@ -82,7 +82,7 @@ code { font-size:12px; }
 </table></div>
 <h2>Resource (pre-synthesis estimate)</h2>
 <div class='wrap'><table><tr><th>Metric</th><th>Value</th><th>Status</th><th>Kind</th><th>Source / detail</th></tr>
-<tr><td><code>flop_bits</code></td><td class='num'>7,501 bits</td><td></td><td><span class='badge k-estimated'>estimated</span></td><td class='detail'>yosys (slang) proc/flatten/opt/memory -nomap, coarse cells<br>sum of $dff/$adff widths after coarse elaboration (16 s); pre-optimisation, no liberty</td></tr>
+<tr><td><code>flop_bits</code></td><td class='num'>7,501 bits</td><td></td><td><span class='badge k-estimated'>estimated</span></td><td class='detail'>yosys (slang) proc/flatten/opt/memory -nomap, coarse cells<br>sum of $dff/$adff widths after coarse elaboration (19 s); pre-optimisation, no liberty</td></tr>
 <tr><td><code>memory_bits</code></td><td class='num'>18,528 bits</td><td></td><td><span class='badge k-estimated'>estimated</span></td><td class='detail'>yosys (slang) proc/flatten/opt/memory -nomap, coarse cells<br>CDC FIFO arrays (2 x 32 entries)</td></tr>
 <tr><td><code>coarse_cells</code></td><td class='num'>2,916 cells</td><td></td><td><span class='badge k-estimated'>estimated</span></td><td class='detail'>yosys (slang) proc/flatten/opt/memory -nomap, coarse cells<br>RTLIL coarse cells (word-level), not gates</td></tr>
 <tr><td><code>area_um2</code></td><td class='num'>&mdash;</td><td></td><td><span class='badge k-not_attributable'>not attributable</span></td><td class='detail'>not in the default flow; mapped area is in the &#x27;power&#x27; section (OSS flow: make -C lp/oss power-oss)</td></tr>
@@ -114,7 +114,7 @@ code { font-size:12px; }
 </table></div>
 <h2>Run history</h2>
 <div class='wrap'><table><tr><th>Run</th><th>UTC</th><th>Host</th><th>Commit</th><th>PASS</th><th>FAIL</th><th>Not run</th><th>Line+branch %</th><th>Note</th></tr>
-<tr><td>15</td><td>2026-10-04T03:19:20Z</td><td>c00ca2c3e883</td><td><code>2bc34aa</code> main</td><td class='num s-PASS'>27</td><td class='num s-FAIL'>0</td><td class='num'>3</td><td class='num'>90</td><td class='detail'>container run</td></tr>
+<tr><td>15</td><td>2026-10-11T03:17:51Z</td><td>50e931a8cb42</td><td><code>78607d7</code> main</td><td class='num s-PASS'>27</td><td class='num s-FAIL'>0</td><td class='num'>3</td><td class='num'>90</td><td class='detail'>container run</td></tr>
 <tr><td>14</td><td>2026-10-03T16:05:26Z</td><td>railway/eth-dj-to-pcie-pipe-bridge</td><td><code>d7fa6ee</code> main</td><td class='num s-PASS'>27</td><td class='num s-FAIL'>0</td><td class='num'>3</td><td class='num'>90</td><td class='detail'>container run | imported from b57a9dd09ea0</td></tr>
 <tr><td>13</td><td>2026-10-03T03:27:09Z</td><td>railway/eth-dj-to-pcie-pipe-bridge</td><td><code>18ed23e</code> main</td><td class='num s-PASS'>8</td><td class='num s-FAIL'>0</td><td class='num'>19</td><td class='num'>&mdash;</td><td class='detail'>container run | imported from e0ed30f05ee6</td></tr>
 <tr><td>12</td><td>2026-10-03T00:30:46Z</td><td>railway/eth-dj-to-pcie-pipe-bridge</td><td><code></code> </td><td class='num s-PASS'>8</td><td class='num s-FAIL'>0</td><td class='num'>19</td><td class='num'>&mdash;</td><td class='detail'>container run | imported from 07b31ba370d7</td></tr>
