@@ -11,6 +11,7 @@
 # =============================================================================
 
 VERILATOR ?= verilator
+SBY       ?= sby
 IVERILOG  ?= iverilog
 
 RTL_DIR := rtl
@@ -69,7 +70,11 @@ coverage:
 
 # SymbiYosys prove + cover (formal/*.sby); needs the pinned OSS CAD Suite on PATH
 formal:
-	$(MAKE) -C formal
+	@if command -v $(SBY) >/dev/null 2>&1; then \
+		$(MAKE) -C formal; \
+	else \
+		echo "[FORMAL] $(SBY) not found; install SymbiYosys (OSS CAD Suite) to run formal"; \
+	fi
 
 vlt:
 	$(MAKE) -C dv/vlt smoke
