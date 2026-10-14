@@ -12,6 +12,17 @@ RTL_SRCS := $(RTL_DIR)/async_fifo.sv $(RTL_DIR)/tx_ingress_gate.sv $(RTL_DIR)/tx
             $(RTL_DIR)/pipe_msgbus.sv $(RTL_DIR)/msgbus_mac_tgt.sv $(RTL_DIR)/fc_ctl.sv $(RTL_DIR)/bridge_ctrl_fsm.sv $(RTL_DIR)/bridge_rf.sv \
             $(RTL_DIR)/eth_dj_pipe7_bridge.sv
 BUILD    := sim_build
+# The RTL / TBs need Icarus >= 12 (CI uses 12.0; Icarus 10/11, e.g. Ubuntu 22.04's apt package, stop with
+# "syntax error / I give up" on the package).  Fail early with a readable message; IVERILOG_MIN_MAJOR=0 skips it.
+IVERILOG_MIN_MAJOR ?= 12
+IV_MAJOR := $(shell $(IVERILOG) -V 2>&1 | sed -n '1s/.*version \([0-9][0-9]*\)\..*/\1/p')
+ifneq ($(filter-out clean,$(MAKECMDGOALS)),)
+ifneq ($(IVERILOG_MIN_MAJOR),0)
+ifeq ($(shell [ "$(or $(IV_MAJOR),0)" -ge $(IVERILOG_MIN_MAJOR) ] && echo ok),)
+$(error iverilog >= $(IVERILOG_MIN_MAJOR) required, found "$(or $(IV_MAJOR),none / not runnable)" ($(shell command -v $(IVERILOG))); use the OSS CAD Suite or build Icarus 12)
+endif
+endif
+endif
 # WAVES=1: add dv/waves/wave_dump.sv as a second top and dump sim_build/<test>.vcd
 WAVES    ?= 0
 # extra iverilog flags (e.g. IVEXTRA=-DPIPE_NLANES_OVERRIDE=4 BUILD=sim_build_x4 for the lane check)
