@@ -1,13 +1,27 @@
 # dv/cocotb — DV env 5: cocotb 1.8.1 + PyUVM + PyVSC functional coverage, on Icarus.
 # smoke: test_scenarios (shared five-scenario set + pm_full + rxovf coverage runs)
 #        -> results.json (crosschecked) and fcov.json (PyVSC coverage).
-# GOTCHAS (docs/AGENT_HANDOFF.md): ICARUS_BIN_DIR=/usr/bin (apt Icarus, not the OSS
-# CAD Suite one, whose Python differs); pyvsc/pyuvm/cocotb in /usr/bin/python3;
-# drive once after RisingEdge, sample at FallingEdge.
+# GOTCHAS (docs/AGENT_HANDOFF.md): the RTL needs Icarus >= 12; pin cocotb's
+# iverilog via ICARUS_BIN_DIR (auto-detected below, override via the environment);
+# pyvsc/pyuvm/cocotb in python3; drive once after RisingEdge, sample at FallingEdge.
 # Requirements: requirements.txt (pip install -r).
 SIM             ?= icarus
 TOPLEVEL_LANG   ?= verilog
-export ICARUS_BIN_DIR ?= /usr/bin
+# Auto-detect a cocotb-capable Icarus (>= 12). Honor an explicit ICARUS_BIN_DIR
+# from the environment; else take the first iverilog whose major version is >= 12
+# among: the one on PATH, ~/.local/bin, /usr/local/bin, /usr/bin (a hardcoded
+# /usr/bin broke when the apt Icarus there was 11 and the good 12 was in ~/.local/bin).
+# Falls back to the on-PATH iverilog's dir so the >=12 check downstream gives a
+# readable error rather than an empty path.
+export ICARUS_BIN_DIR ?= $(shell \
+	best=""; fallback=""; \
+	for d in $$(command -v iverilog 2>/dev/null | xargs -r dirname) "$$HOME/.local/bin" /usr/local/bin /usr/bin; do \
+	  iv="$$d/iverilog"; [ -x "$$iv" ] || continue; \
+	  [ -z "$$fallback" ] && fallback="$$d"; \
+	  maj=$$("$$iv" -V 2>/dev/null | sed -n '1s/.*version \([0-9][0-9]*\)\..*/\1/p'); \
+	  if [ -n "$$maj" ] && [ "$$maj" -ge 12 ] 2>/dev/null; then best="$$d"; break; fi; \
+	done; \
+	echo "$${best:-$${fallback:-/usr/bin}}")
 RTL_DIR         := $(abspath ../../rtl)
 COMMON          := $(abspath ../common)
 VERILOG_SOURCES := $(RTL_DIR)/async_fifo.sv $(RTL_DIR)/tx_ingress_gate.sv $(RTL_DIR)/tx_framer.sv \
