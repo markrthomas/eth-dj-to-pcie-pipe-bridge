@@ -529,7 +529,7 @@ class Harness {
           if (k <= 8) { long long v = ctl_ctrl_val_(g, k <= 6, false); emit(OP_CSR_WR, CSR_CTRL, v); sim.ctrl_wr(v); }
           else if (k == 9) { long long v = g.r(0x7FFFFFFF); emit(OP_CSR_WR, CSR_PAM4CFG, v); sim.pam_wr(v); }
           else if (k == 10) { long long m = g.r(16); emit(OP_CSR_WR, CSR_ERR, m); sim.err_clr(m); }
-          else { int v = sim.ctrl_val(); emit(OP_CSR_WR, CSR_CTRL, v); }
+          else { int v = sim.ctrl_val(); emit(OP_CSR_WR, CSR_CTRL, v); sim.ctrl_wr(v); }
           settled();
           chk_regs(g.r(2) == 0);
           if (g.r(3) == 0) emit(OP_CSR_MONO, CSR_PMCNT);

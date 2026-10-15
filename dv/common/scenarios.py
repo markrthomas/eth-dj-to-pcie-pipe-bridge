@@ -302,8 +302,9 @@ def ctl_plan(seed: int, frames: int, episodes: int):
                     emit(K_CSR_WR, CSR_ERR, m)
                     sim.err_clr(m)
                 else:
-                    v = sim.ctrl_val()
+                    v = sim.ctrl_val()                 # rewrite the held value: a pending P0s request is flagged again (D19.3)
                     emit(K_CSR_WR, CSR_CTRL, v)
+                    sim.ctrl_wr(v)
                 settled()
                 chk_regs(g.r(2) == 0)
                 if g.r(3) == 0:
