@@ -12,7 +12,11 @@
 // ============================================================================
   bit          rr_on = 1'b0;
   int unsigned rr_state = 32'd1;
+  int          rr_rdy_force = -1;   // +rr_rdy=N pins EVERY sink ready% to N (debug knob; also works without +seed)
   int          rr_seed = 0, rr_gap_max = 0, rr_rdy_min = 100, rr_lat = 8, rr_rst_cyc = 16, rr_idle_max = 0;
+
+  int          rr_last_gap = 0;      // last MAC gap % handed out by rr_gap (rr_rdy floors the sink against it at x2/x4)
+  int          rr_x4_margin = 10;    // +rr_margin=N: sink-ready margin (%) above the MAC duty cycle when PIPE_NLANES > 1
 
   function int rr_range(input int lo, input int hi);
     begin
@@ -24,6 +28,8 @@
   function void rr_init();
     int burn;
     begin
+      void'($value$plusargs("rr_margin=%d", rr_x4_margin));
+      if ($value$plusargs("rr_rdy=%d", rr_rdy_force)) $display("RR rr_rdy forced to %0d", rr_rdy_force);
       if ($value$plusargs("seed=%d", rr_seed)) begin
         rr_on       = 1'b1;
         rr_state    = 32'(rr_seed) * 32'd2654435761 + 32'd12345;
@@ -42,13 +48,25 @@
 
   // MAC idle-cycle percentage: base (+ up to rr_gap_max when seeded)
   function int rr_gap(input int base);
-    begin rr_gap = rr_on ? (base + rr_range(0, rr_gap_max)) : base; end
+    begin rr_gap = rr_on ? (base + rr_range(0, rr_gap_max)) : base; rr_last_gap = rr_gap; end
   endfunction
-  // sink tready percentage: base, lowered to a seeded value >= rr_rdy_min
+  // sink tready percentage: base, lowered to a seeded value >= rr_rdy_min.
+  // Stimulus contract at PIPE_NLANES > 1 (D1/D9, rr-dbg-x4): PIPE Rx cannot be back-pressured, and from x2 up the Tx framer
+  // is no longer the bottleneck (it is at x1: single-buffered, 64 bit/pclk < the 256 bit/eth_clk MAC), so a MAC that
+  // streams faster than the sink drains overruns the Rx path and the deframer drops + aborts frames (the documented D9
+  // behaviour, counted in RXCNT0/1).  The seeded sink is therefore never slower than the MAC duty cycle
+  // (100 - last rr_gap) plus rr_x4_margin; it is still lowered to rr_rdy_min where that leaves room.  The RNG draw
+  // count is unchanged, so x1 runs are bit-identical.  +rr_rdy=N overrides everything (debug).
   function int rr_rdy(input int base);
-    int v;
+    int v, lo;
     begin
+      if (rr_rdy_force >= 0) begin rr_rdy = rr_rdy_force; return rr_rdy; end
       v = rr_on ? rr_range(rr_rdy_min, 100) : base;
+      if (rr_on && PIPE_NLANES > 1) begin
+        lo = 100 - rr_last_gap + rr_x4_margin;
+        if (lo > 100) lo = 100;
+        if (v < lo) v = lo;
+      end
       rr_rdy = (v < base) ? v : base;
     end
   endfunction
