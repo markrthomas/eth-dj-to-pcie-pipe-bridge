@@ -19,6 +19,7 @@ module tb_edge;
   import eth_dj_pipe7_pkg::*;
   `include "eth_dj_pat.svh"
   `include "loop_harness.svh"
+  `include "rr_seed.svh"
 
   localparam int NF = 22;
   localparam logic [31:0] CTRL_RST = 32'h14;   // P0, Gen6 (5 << 2), width 0
@@ -68,14 +69,15 @@ module tb_edge;
     nexp = NF;
     for (int i = 0; i < NF; i++) exp_flits += (flen[i] + FLIT_PAYLOAD_B - 1) / FLIT_PAYLOAD_B;
 
+    rr_init(); phyc.lat = rr_lat; phyc.rst_cycles = rr_rst_cyc;
     do_reset();
     wait (dut.ctrl_state == ST_ACTIVE);
     repeat (20) @(posedge eth_clk);
 
     // ---- 1. null tlast beats ------------------------------------------------------------------
     for (int i = 0; i < NF; i++) begin
-      mac.gap_pct    = (i < NF/2) ? 0 : 30;
-      sink.ready_pct = (i < NF/2) ? 100 : 80;
+      mac.gap_pct    = rr_gap((i < NF/2) ? 0 : 30);
+      sink.ready_pct = rr_rdy((i < NF/2) ? 100 : 80);
       mac.null_last  = fnul[i];
       mac.send_frame(i, flen[i]);
       mac.null_last  = 0;
@@ -132,7 +134,7 @@ module tb_edge;
     dut.u_rx_deframer.bad_flits      = 16'hFFFC;
     mac.gap_pct = 0; sink.ready_pct = 4;
     for (int i = 0; i < 80; i++) mac.send_frame(1000 + i, $urandom_range(1500, 60));
-    sink.ready_pct = 100;
+    sink.ready_pct = rr_rdy(100);
     repeat (20000) @(posedge pclk);
     csr_rd(CSR_RXCNT0, d); chk(d[15:0] == 16'hFFFF, "4: dropped_flits saturates at FFFF (did not wrap)");
     csr_rd(CSR_RXCNT1, d); chk(d[31:16] == 16'hFFFF, "4: aborted_frames saturates at FFFF");

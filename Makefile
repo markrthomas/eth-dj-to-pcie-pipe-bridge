@@ -178,6 +178,12 @@ rr-triage:
 rr-replay:
 	python3 dv/random/rr.py replay --jobs $(JOBS)
 
+# random regression on the Icarus TBs (+seed=N): make rr-iv N=300 JOBS=4 [SEED=..]; then make rr-triage RUN=<dir>
+.PHONY: rr-iv
+rr-iv:
+	python3 dv/random/rr_iv.py build
+	python3 dv/random/rr_iv.py run --n $(N) --jobs $(JOBS) $(if $(SEED),--seed-base $(SEED))
+
 # random-regression results -> metrics/metrics.db (category rr, kind measured) + dashboard
 # usage: make rr-metrics RUN=dv/random/runs/<ts>   (runs rr-triage first if triage.json is missing)
 .PHONY: rr-metrics

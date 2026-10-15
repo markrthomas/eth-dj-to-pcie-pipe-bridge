@@ -48,7 +48,7 @@ tx:
 
 loop:
 	@mkdir -p $(BUILD)
-	$(IVERILOG) -g2012 $(IVEXTRA) $(WFLAGS) -I $(RTL_DIR) -I $(COMMON) -o $(BUILD)/loop.vvp tb_loop.sv $(COMMON)/eth_mac_model.sv $(COMMON)/pipe_phy_model.sv $(COMMON)/pipe_phy_ctrl_model.sv $(COMMON)/eth_sink_model.sv $(RTL_SRCS)
+	$(IVERILOG) -g2012 $(IVEXTRA) $(WFLAGS) -I $(RTL_DIR) -I $(COMMON) -I . -o $(BUILD)/loop.vvp tb_loop.sv $(COMMON)/eth_mac_model.sv $(COMMON)/pipe_phy_model.sv $(COMMON)/pipe_phy_ctrl_model.sv $(COMMON)/eth_sink_model.sv $(RTL_SRCS)
 	$(VVP) $(BUILD)/loop.vvp $(WRUN) | tee $(BUILD)/loop.log
 	@grep -q "LOOP PASS" $(BUILD)/loop.log
 
@@ -113,7 +113,7 @@ msgbus:
 # MAC-side message-bus target + M2P arbiter with the master (PIPE 7.1 6.1.4)
 msgbus_mac:
 	@mkdir -p $(BUILD)
-	$(IVERILOG) -g2012 $(IVEXTRA) -I $(RTL_DIR) -o $(BUILD)/msgbus_mac.vvp tb_msgbus_mac.sv $(RTL_DIR)/pipe_msgbus.sv $(RTL_DIR)/msgbus_mac_tgt.sv $(RTL_DIR)/fc_ctl.sv
+	$(IVERILOG) -g2012 $(IVEXTRA) -I $(RTL_DIR) -I . -o $(BUILD)/msgbus_mac.vvp tb_msgbus_mac.sv $(RTL_DIR)/pipe_msgbus.sv $(RTL_DIR)/msgbus_mac_tgt.sv $(RTL_DIR)/fc_ctl.sv
 	$(VVP) $(BUILD)/msgbus_mac.vvp | tee $(BUILD)/msgbus_mac.log
 	@grep -q "MSGBUS-MAC PASS" $(BUILD)/msgbus_mac.log
 
