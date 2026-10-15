@@ -13,13 +13,19 @@
    "state": "running",
    "step": 1,
    "msg": "toolchain ok (iverilog 12, verilator 5.050); building vlt"
+  },
+  {
+   "t": "2026-10-15T22:01:36+00:00",
+   "state": "running",
+   "step": 2,
+   "msg": "root cause: golden (CtlSim/ctl_plan + BFM mirror) omits ctrl_wr for the rewrite-current-CTRL item; DUT correct (ERR[2] per CTRL write, D19.3)"
   }
  ],
  "task": "E1 ERR[2] mismatch rr0004",
  "steps": 5,
- "step": 1,
- "updated": "2026-10-15T22:00:42+00:00",
+ "step": 2,
+ "updated": "2026-10-15T22:01:36+00:00",
  "branch": "swarm/rr-dbg-e1",
- "sha": "12255c5",
+ "sha": "5da06f3",
  "blocker": ""
 }
