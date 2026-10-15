@@ -14,7 +14,7 @@ Then parses real artifacts only:
   dv/vlt/logs/vlt.log           simulated time -> delivered-throughput (measured, sim time)
   dv/vlt/logs/coverage_summary.json, dv/cocotb/fcov.json
   formal/*_prove/status, formal/*_cover/status
-  yosys (pinned OSS CAD Suite, slang) coarse elaboration -> flop/memory bits (estimated)
+  yosys (+slang) coarse elaboration -> flop/memory bits (estimated)
 Anything without a source is stored as kind=not_attributable with value NULL.
 An artifact that is missing is recorded as NOT_RUN — never filled in.
 """
@@ -227,7 +227,7 @@ def resource(r):
         ["yosys", "-q", "-p", "plugin -i slang"], cwd=ROOT, capture_output=True).returncode == 0
     if not has_slang:
         r.add("resource", "generic_cells", kind="not_attributable", status="NOT_RUN",
-              detail="yosys with the slang plugin (pinned OSS CAD Suite) not on PATH")
+              detail="yosys with slang support not on PATH")
         return
     srcs = " ".join(f"rtl/{m}.sv" for m in RTL)
     net = os.path.join(ROOT, "metrics", "_capture", "netlist.json")

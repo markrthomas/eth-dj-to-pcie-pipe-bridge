@@ -303,7 +303,7 @@ No DUT behaviour changes in M4; these are verification-method decisions.
   C++; it is not an independent checker implementation. iverilog, cocotb and UVM
   have their own scoreboards.
 - **UVM runs in CI** (its own job), overriding PLAN §12's "local-only" default: with
-  the pinned OSS CAD Suite (Verilator 5.047) the build + run takes ~2 min. Accellera
+  the from-source Verilator (5.050, in the CI image) the build + run takes ~2 min. Accellera
   `uvm-core` is cloned by `dv/uvm/Makefile` at a pinned commit (not vendored).
   apt Verilator 5.020 cannot compile uvm-core (`PKGNODECL`), so `make uvm` needs the
   pinned suite (or any Verilator >= 5.03x) on PATH.
@@ -328,9 +328,11 @@ No DUT behaviour changes; verification-method decisions only.
 - **Formal = PDR prove + BMC cover**, not BMC-only as PLAN §8 says: `abc pdr` gives
   unbounded proofs in seconds (whole `make formal` ~75 s), so there was no reason to
   settle for a bounded result. Every `.sby` also has a `cover` task.
-- **Formal frontend:** `ctrl.sby` uses the yosys-slang plugin (native Yosys cannot
-  parse module-header package imports). It needs the pinned OSS CAD Suite; apt
-  Yosys cannot run `make formal`. The CI `formal` job now installs the suite.
+- **Formal frontend:** `ctrl.sby` uses the yosys-slang frontend (native Yosys cannot
+  parse module-header package imports). It needs a slang-capable Yosys (built from
+  source in the Dockerfile); apt Yosys cannot run `make formal`. The CI `formal`
+  job runs inside that image. `formal/Makefile` adapts between built-in
+  `read_slang` and the OSS CAD Suite's `plugin -i slang`, and yices vs z3.
 - **Hierarchical references in `ctrl_fv.sv`:** four `h_*` helper invariants read the
   RTL timers (`u_ctrl.tmr_q`, `u_mb.st_q`, `u_mb.tmr_q`). They are proven like any
   other assertion; they only exist so PDR converges (without them the two
@@ -392,9 +394,10 @@ No DUT changes.
   > 10 min. Latency, Fmax, area and per-agent swarm usage are **not_attributable**.
   `metrics.db` / `dashboard.html` are committed with the real bring-up run (run 1,
   recorded on an uncommitted tree — the dirty flag says so).
-- **Docker/Railway:** Ubuntu 24.04; OSS CAD Suite goes **last** on PATH so
-  `python3`/`iverilog` resolve to the venv/apt copies (the suite ships its own
-  python + cocotb 2.x). The entrypoint runs every flow incl. uvm and formal via
+- **Docker/Railway:** Ubuntu 24.04; the toolchain is built from source (Verilator,
+  Yosys+slang, SBY) + apt/pip (Icarus, SystemC, z3/yices, cocotb) — no OSS CAD
+  Suite. The venv goes first on PATH so `python3` resolves to cocotb 1.8.1. The
+  entrypoint runs every flow incl. uvm and formal via
   `make metrics`, then crosscheck + dashboard. Railway: DOCKERFILE builder,
   restart NEVER, nightly cron `17 3 * * *` (UTC) — drop the cron to run on deploy only.
 - **Swarm:** `docker/swarm.sh` runs `claude -p` non-bare with the task file;

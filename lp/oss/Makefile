@@ -7,7 +7,7 @@
 #   make -C lp/oss power-oss   # generic synth (~8 min, ~10 GB RAM, once) -> map -> GLS -> power
 #
 # ESTIMATE ONLY: Nangate45 (45 nm) typical corner, no placement / parasitics / clock tree.
-# Needs the pinned OSS CAD Suite on PATH (yosys + slang, verilator, fst2vcd).  Do NOT set VERILATOR_ROOT.
+# Needs a slang-capable Yosys + Verilator + fst2vcd (apt gtkwave) on PATH.  Do NOT set VERILATOR_ROOT.
 BUILD   := build
 ROOT    := ../..
 YOSYS   ?= yosys

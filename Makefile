@@ -5,9 +5,10 @@
 # `upf`, which prints an "authored, not run" notice (no OSS power-aware
 # simulator; `upf-tb` runs the power-aware TB functionally).  See docs/PLAN.md §8.
 #
-# Toolchain: Verilator + Icarus from the workspace OSS CAD Suite. Do NOT set
-# VERILATOR_ROOT (breaks the UVM-on-Verilator flow — see docs/AGENT_HANDOFF.md).
-# Version pins: ~/proj/dv_env.mk (OSS_CAD_SUITE_VERSION, cocotb==1.8.1).
+# Toolchain: Verilator + Icarus + Yosys(+slang)/SBY/yices, built from source or
+# from apt/pip — NO OSS CAD Suite. The Dockerfile pins the versions and CI runs
+# the jobs in that image. Do NOT set VERILATOR_ROOT (breaks the UVM-on-Verilator
+# flow — see docs/AGENT_HANDOFF.md).
 # =============================================================================
 
 VERILATOR ?= verilator
@@ -30,7 +31,7 @@ help:
 	@echo "  sim        Icarus directed tests: smoke tx loop pm rxovf scen msgbus msgbus_mac link (flow control, 2 bridges) fc nodpr"
 	@echo "  regress    lint + sim  — the fast CI gate"
 	@echo "  coverage   Verilator C++ env with --coverage -> coverage.info (floor 80%)"
-	@echo "  formal     SymbiYosys prove (PDR) + cover on formal/*.sby (OSS CAD Suite)"
+	@echo "  formal     SymbiYosys prove (PDR) + cover on formal/*.sby (Yosys+slang, SBY, yices/z3)"
 	@echo "  iverilog|vlt|uvm|systemc|cocotb   run one DV environment (shared scenarios)"
 	@echo "  crosscheck all five envs agree with dv/common/scenarios.py"
 	@echo "  ci         every step of .github/workflows/ci.yml: regress coverage formal envs crosscheck envs-fc vlt-nodpr"
@@ -45,7 +46,7 @@ help:
 	@echo "  envs-fc    vlt/systemc/uvm/cocotb with link flow control ON (vlt-fc systemc-fc uvm-fc cocotb-fc)"
 	@echo "  stress     vlt env, all scenarios x STRESS_SEEDS (default 20) seeds"
 	@echo "  clean      remove build artifacts"
-	@echo "  note: uvm needs a UVM-capable Verilator (>= 5.03x, e.g. OSS CAD Suite 2026-04-13)"
+	@echo "  note: uvm needs a UVM-capable Verilator (>= 5.03x, e.g. the from-source Verilator in the CI image)"
 
 # ---- real M0 targets --------------------------------------------------------
 lint:
@@ -68,12 +69,12 @@ regress: lint sim
 coverage:
 	$(MAKE) -C dv/vlt coverage
 
-# SymbiYosys prove + cover (formal/*.sby); needs the pinned OSS CAD Suite on PATH
+# SymbiYosys prove + cover (formal/*.sby); needs sby + a slang-capable Yosys + yices/z3 on PATH (see Dockerfile)
 formal:
 	@if command -v $(SBY) >/dev/null 2>&1; then \
 		$(MAKE) -C formal; \
 	else \
-		echo "[FORMAL] $(SBY) not found; install SymbiYosys (OSS CAD Suite) to run formal"; \
+		echo "[FORMAL] $(SBY) not found; install SymbiYosys + a slang-capable Yosys (see Dockerfile) to run formal"; \
 	fi
 
 vlt:

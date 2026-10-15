@@ -50,7 +50,7 @@ are printed by `make coverage` (from `coverage.dat`, not gated). **Not bound:**
 
 ## Formal (formal/)
 
-| ID | Property | Proof | Result (local, OSS CAD Suite 2026-04-13) |
+| ID | Property | Proof | Result (Yosys+slang, SBY, yices) |
 |---|---|---|---|
 | F-CD1 | async_fifo occupancy ≤ DEPTH (`a_fcd1_occupancy`) | async_fifo.sby, PDR, multiclock | PASS |
 | F-CD2 | async_fifo !rempty ⇒ data present (`a_fcd2_no_underrun`) | async_fifo.sby | PASS |

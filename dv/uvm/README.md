@@ -5,9 +5,9 @@ Verilator `--binary --timing` and runs `scen_test`: the shared five-scenario set
 (`dv/common/scenarios.py`) on the PIPE-loopback harness. It writes
 `logs/results.json` and runs `dv/common/crosscheck.py` on it.
 
-- **Verilator version:** needs a UVM-capable Verilator (>= 5.03x). The CI-pinned
-  OSS CAD Suite 2026-04-13 (Verilator 5.047) works. apt Verilator 5.020 fails to
-  compile uvm-core (`PKGNODECL`). Keep `VERILATOR_ROOT` unset.
+- **Verilator version:** needs a UVM-capable Verilator (>= 5.03x). The from-source
+  Verilator in the CI image (5.050) works. apt Verilator 5.020 fails to compile
+  uvm-core (`PKGNODECL`). Keep `VERILATOR_ROOT` unset.
 - **UVM library:** `uvm-core` (Accellera, 2020.3.1 line) is `git clone`d into
   `./uvm-core` at the commit pinned in `UVM_REF` the first time you build
   (git-ignored). Set `UVM_HOME=/path/to/uvm-core/src` to use an existing copy.

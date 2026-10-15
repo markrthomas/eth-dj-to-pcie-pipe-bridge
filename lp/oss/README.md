@@ -9,7 +9,7 @@ make -C lp/oss gls          # Icarus gate-level run of tb_scen, VCD window of 2 
 make -C lp/oss power        # OpenSTA report_power with that activity -> build/power.json                   (~1 min)
 python3 metrics/collect.py --power-into-latest && make dashboard   # put the numbers on the dashboard
 ```
-Needs the pinned OSS CAD Suite on PATH (yosys + slang, verilator, iverilog, fst2vcd). `build/` is git-ignored.
+Needs a slang-capable Yosys + Verilator + Icarus on PATH (e.g. the CI Dockerfile's from-source toolchain) plus `fst2vcd` (apt `gtkwave`). `build/` is git-ignored.
 
 | Stage | Tool | Why this tool |
 |---|---|---|

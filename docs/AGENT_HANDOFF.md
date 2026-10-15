@@ -49,7 +49,7 @@ VCS-NLP / Xcelium / Questa-PA if one is on PATH (command lines UNTESTED), otherw
 design choice in `OPEN_DECISIONS.md` and list RTL behaviour changes under "Behaviour to review" in the PR body, never claim an untested thing
 ran, commit/PR trailers as in the existing history.
 
-**Commands** (pinned OSS CAD Suite 2026-04-13 on `PATH`, `VERILATOR_ROOT` unset): `make regress` (lint x3 configs + all Icarus tests incl. `link`, `fc`, `nodpr`) · `make ci` (every step of `ci.yml`, in one run) ·
+**Commands** (from-source Verilator/Yosys+slang/SBY + apt/pip toolchain, `VERILATOR_ROOT` unset): `make regress` (lint x3 configs + all Icarus tests incl. `link`, `fc`, `nodpr`) · `make ci` (every step of `ci.yml`, in one run) ·
 `make lanes4` · `make -C formal` · `make envs envs-fc crosscheck` · `make coverage` · `make pd-emu` · reset-disabled build (D18 opt-out): `make -C dv/iverilog nodpr`, `make vlt-nodpr`, `make pd-emu-ret` · `make upf-tb` · `make metrics` / `make dashboard` ·
 `make power-oss` (**~30 min, 10–14 GB RAM, network** — `lp/oss/README.md`; then `python3 metrics/collect.py --power-into-latest && make dashboard`).
 
@@ -331,8 +331,8 @@ ran, commit/PR trailers as in the existing history.
    - `~/proj/ucie_rdi_to_pcie6_pipe7` — copy the PIPE 7.1 interface model, the
      `pipe7_pmu`, the message-bus handshakes, and the UPF flow
      (`test/upf/bridge.upf`, `docs/power_intent.md`).
-   - Also `~/proj/DV_STANDARDS.md` (mandatory targets/CI) and `~/proj/dv_env.mk`
-     (version pins: OSS CAD Suite + `cocotb==1.8.1`).
+   - Also `~/proj/DV_STANDARDS.md` (mandatory targets/CI). This repo pins its own
+     DV toolchain in the `Dockerfile` (`cocotb==1.8.1`; no OSS CAD Suite).
 
 2. **Find the next unchecked task** in `PLAN.md` §11 (milestones M0→M8). Work
    top-to-bottom; each milestone has a `make` gate that must go green before the
@@ -343,18 +343,20 @@ ran, commit/PR trailers as in the existing history.
 
 ## Environment gotchas (from workspace memory — heed these)
 
-- **cocotb + Icarus:** set `ICARUS_BIN_DIR=/usr/bin` to avoid the OSS CAD Suite
-  Python mismatch; drive valid/ready exactly once *after* the clock edge to
-  avoid handshake races. (memory `cocotb-apb-slave-timing`,
-  `pyvsc-functional-coverage`)
+- **cocotb + Icarus:** `dv/cocotb/Makefile` auto-detects a `>=12` iverilog (no
+  OSS CAD Suite); drive valid/ready exactly once *after* the clock edge to avoid
+  handshake races. (memory `cocotb-apb-slave-timing`, `pyvsc-functional-coverage`)
 - **PyVSC functional coverage:** install pyvsc into `/usr/bin/python3`.
-- **UVM on Verilator:** needs Verilator >= 5.03x. The pinned OSS CAD Suite
-  2026-04-13 (Verilator 5.047) works; apt Verilator 5.020 fails on uvm-core
+- **UVM on Verilator:** needs Verilator >= 5.03x. The from-source Verilator
+  (5.050) in the CI image works; apt Verilator 5.020 fails on uvm-core
   (`PKGNODECL`). `dv/uvm/Makefile` clones uvm-core at a pinned commit.
   **Keep `VERILATOR_ROOT` unset.**
-- **Formal:** `make formal` needs the pinned suite (yosys-slang plugin; native
-  Yosys rejects module-header package imports). Native Yosys silently turns
-  hierarchical references into free wires — only use them in slang-read harnesses.
+- **Formal:** `make formal` needs a slang-capable Yosys + SBY + yices/z3 (built
+  from source in the Dockerfile; native Yosys rejects module-header package
+  imports, so the slang frontend reads the RTL). `formal/Makefile` adapts between
+  built-in slang (`read_slang`) and the OSS CAD Suite plugin (`plugin -i slang`),
+  and between yices and z3. Native Yosys silently turns hierarchical references
+  into free wires — only use them in slang-read harnesses.
 - **Docker:** `.dockerignore` strips trailing slashes (`dir/*/` excludes files).
   Behind a TLS-intercepting proxy build with `--network host`, proxy build args
   and a `*.crt` in `docker/extra_ca/` (a `--secret` mount is not allowed: Railway's builder rejects it).
