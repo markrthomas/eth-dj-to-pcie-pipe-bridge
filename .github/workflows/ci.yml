@@ -67,6 +67,8 @@ jobs:
         run: make lanes4
       - name: GTKWave sessions vs fresh dumps (static check; no GUI in CI)
         run: make wave-check-all
+      - name: random-regression replay corpus (gates on entries marked fixed)
+        run: make rr-build rr-replay
       - name: dashboard renders from the committed metrics.db
         run: make dashboard
       - uses: actions/upload-artifact@v4

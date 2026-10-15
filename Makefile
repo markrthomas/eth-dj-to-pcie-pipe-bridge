@@ -178,6 +178,15 @@ rr-triage:
 rr-replay:
 	python3 dv/random/rr.py replay --jobs $(JOBS)
 
+# random-regression results -> metrics/metrics.db (category rr, kind measured) + dashboard
+# usage: make rr-metrics RUN=dv/random/runs/<ts>   (runs rr-triage first if triage.json is missing)
+.PHONY: rr-metrics
+rr-metrics:
+	@test -n "$(RUN)" || { echo "usage: make rr-metrics RUN=dv/random/runs/<ts>"; exit 2; }
+	@test -f "$(RUN)/triage.json" || python3 dv/random/rr.py triage $(RUN)
+	python3 metrics/collect.py --rr-run $(RUN)
+	$(MAKE) dashboard
+
 # x4-lane elaboration check (OPEN_DECISIONS D1): Verilator lint + the whole iverilog
 # suite with PIPE_NLANES_OVERRIDE=4 (256b PIPE bus, 8 beats/flit). Not part of `regress`.
 LANES ?= 4
@@ -193,7 +202,7 @@ lanes4:
 
 # Local mirror of .github/workflows/ci.yml (every CI step).  wave-check-all re-runs the Icarus
 # tests with WAVES=1 into dv/iverilog/sim_build, so it comes after crosscheck.
-ci: regress coverage formal envs crosscheck envs-fc vlt-nodpr upf-tb lanes4 wave-check-all pd-emu pd-emu-ret dashboard
+ci: regress coverage formal envs crosscheck envs-fc vlt-nodpr upf-tb lanes4 wave-check-all pd-emu pd-emu-ret rr-replay dashboard
 	@echo "ci: OK"
 
 # Pull the results published by the Railway batch job (docker/publish_metrics.sh -> branch metrics-data)
