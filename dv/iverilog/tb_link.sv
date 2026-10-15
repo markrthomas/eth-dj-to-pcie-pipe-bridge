@@ -86,6 +86,7 @@ endmodule : link_end
 module tb_link;
   import eth_dj_pipe7_pkg::*;
   `include "eth_dj_pat.svh"
+  `include "rr_seed.svh"
 
   localparam int NMAX = 400;
   localparam int KWIN = 8;               // how many ids ahead a received frame may skip (loss phase)
@@ -231,6 +232,9 @@ module tb_link;
   int id0, id1, t0, t1;
   int nlow, nhi;
   initial begin
+    rr_init();
+    endA.phyc.lat = rr_lat; endA.phyc.rst_cycles = rr_rst_cyc;
+    if (rr_on) begin endB.phyc.lat = rr_range(2, 20); endB.phyc.rst_cycles = rr_range(4, 32); end
     for (int i = 0; i < NMAX; i++) begin
       len0[i] = $urandom_range(1500, 1);
       len1[i] = $urandom_range(1500, 1);
@@ -247,6 +251,8 @@ module tb_link;
     wait (endA.dut.ctrl_state == ST_ACTIVE && endB.dut.ctrl_state == ST_ACTIVE);
     repeat (400) @(posedge pclk);
 
+    endA.mac.gap_pct = rr_gap(0); endB.mac.gap_pct = rr_gap(0);
+    endA.sink.ready_pct = rr_rdy(100); endB.sink.ready_pct = rr_rdy(100);
     // ---- P1: bidirectional, fast sinks ----------------------------------------------------------
     fork send_range(0, 0, 40); send_range(1, 0, 40); join
     wait_done(0, 40, 400000, "P1 A->B"); wait_done(1, 40, 400000, "P1 B->A");
@@ -266,7 +272,7 @@ module tb_link;
         chk(stallA > 1000, "P2 A's source was back-pressured while B's sink is stalled");
         check_no_rx_loss("P2 (during stall)");
         chk(endB.sink.frames == good[0] + errf[0], "P2 nothing reached B's sink while stalled");
-        endB.sink.ready_pct = 100;
+        endB.sink.ready_pct = rr_rdy(100);
       end
     join
     wait_done(0, 70, 800000, "P2 A->B");
@@ -278,7 +284,7 @@ module tb_link;
     endA.sink.ready_pct = 10; endB.sink.ready_pct = 10;
     fork send_range(0, 70, 110); send_range(1, 40, 80); join
     wait_done(0, 110, 3000000, "P3 A->B"); wait_done(1, 80, 3000000, "P3 B->A");
-    endA.sink.ready_pct = 100; endB.sink.ready_pct = 100;
+    endA.sink.ready_pct = rr_rdy(100); endB.sink.ready_pct = rr_rdy(100);
     quiesce();
     chk(good[0] == 110 && good[1] == 80 && skipped[0] == 0 && skipped[1] == 0 && errf[0] == 0 && errf[1] == 0,
         "P3 all frames intact with slow sinks");
@@ -298,7 +304,7 @@ module tb_link;
       end
     join
     quiesce();
-    endB.sink.ready_pct = 100;
+    endB.sink.ready_pct = rr_rdy(100);
     repeat (20000) @(posedge pclk);
     chk(kills_done == 5, "P4 all 5 kills were applied");
     chk(corrupt[0] == 0 && corrupt[1] == 0, "P4 no silent corruption: every received frame matches an expected one");
@@ -309,7 +315,7 @@ module tb_link;
 
     // ---- P5: clean traffic afterwards: no credit leaked ---------------------------------------------------------
     id0 = good[0]; id1 = good[1];
-    endB.sink.ready_pct = 100;
+    endB.sink.ready_pct = rr_rdy(100);
     fork send_range(0, 170, 230); send_range(1, 80, 130); join
     wait_done(0, 230, 1500000, "P5 A->B"); wait_done(1, 130, 1500000, "P5 B->A");
     quiesce();

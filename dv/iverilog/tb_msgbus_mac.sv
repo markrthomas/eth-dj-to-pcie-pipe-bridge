@@ -25,6 +25,7 @@
 
 module tb_msgbus_mac;
   import eth_dj_pipe7_pkg::*;
+  `include "rr_seed.svh"
 
   logic clk = 1'b0, rst_n;
   always #1 clk = ~clk;
@@ -92,7 +93,7 @@ module tb_msgbus_mac;
   endtask
   task automatic step(input int n); begin repeat (n) @(posedge clk); end endtask
   task automatic drive(input logic [7:0] b); begin p2m <= b; @(posedge clk); end endtask
-  task automatic idle(input int n); begin p2m <= 8'h00; step(n); end endtask
+  task automatic idle(input int n); begin p2m <= 8'h00; step(n + rr_idle()); end endtask
   task automatic fsm_write();
     begin @(posedge clk); fsm_req <= 1'b1; @(posedge clk); fsm_req <= 1'b0; end
   endtask
@@ -116,7 +117,8 @@ module tb_msgbus_mac;
 
   int n0, w0, r0;
   initial begin
-    rst_n = 1'b0; step(4); rst_n = 1'b1; step(3);
+    rr_init();
+    rst_n = 1'b0; step(4); rst_n = 1'b1; step(3 + rr_idle());
 
     // A: PHY write_committed
     n0 = ntx; w0 = phy_wr_cnt;

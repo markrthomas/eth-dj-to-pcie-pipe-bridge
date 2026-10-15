@@ -11,6 +11,7 @@
 module tb_loop;
   import eth_dj_pipe7_pkg::*;
   `include "eth_dj_pat.svh"
+  `include "rr_seed.svh"
 
   localparam int N_DIRECTED = 15;
   localparam int N_RANDOM   = 100;
@@ -118,6 +119,7 @@ module tb_loop;
 
   initial begin
     #0;
+    rr_init(); phyc.lat = rr_lat; phyc.rst_cycles = rr_rst_cyc;
     for (int i = 0; i < N; i++) begin
       exp_len[i] = (i < N_DIRECTED) ? dl[i] : $urandom_range(2000, 1);
       exp_flits += (exp_len[i] + FLIT_PAYLOAD_B - 1) / FLIT_PAYLOAD_B;
@@ -129,8 +131,8 @@ module tb_loop;
     repeat (20) @(posedge eth_clk);
 
     for (int i = 0; i < N; i++) begin
-      mac.gap_pct = (i < N/2) ? 0 : 40;
-      sink.ready_pct = (i < N/2) ? 100 : 90;
+      mac.gap_pct = rr_gap((i < N/2) ? 0 : 40);
+      sink.ready_pct = rr_rdy((i < N/2) ? 100 : 90);
       mac.send_frame(i, exp_len[i]);
     end
 
