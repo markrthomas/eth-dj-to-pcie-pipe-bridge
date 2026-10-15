@@ -1,6 +1,6 @@
 {
  "worker": "rr-envelope",
- "state": "running",
+ "state": "done",
  "history": [
   {
    "t": "2026-10-15T18:33:09+00:00",
@@ -25,14 +25,20 @@
    "state": "running",
    "step": 3,
    "msg": "result jobs=1500 fails=6 clusters=1"
+  },
+  {
+   "t": "2026-10-15T19:01:40+00:00",
+   "state": "done",
+   "step": 5,
+   "msg": "envelope done; findings dv/random/findings/2026-10-15-envelope.md; make vlt/regress pass, full 5-env crosscheck not run (uvm/systemc/cocotb absent)"
   }
  ],
  "task": "stimulus contract A/B/C",
  "steps": 5,
- "step": 3,
+ "step": 5,
  "updated": "2026-10-15T19:01:40+00:00",
  "branch": "swarm/rr-envelope",
- "sha": "44d0da1",
+ "sha": "d4b54ad",
  "blocker": "",
  "results": {
   "jobs": 1500,
