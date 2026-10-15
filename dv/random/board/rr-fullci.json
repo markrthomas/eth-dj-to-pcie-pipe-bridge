@@ -19,13 +19,25 @@
    "state": "running",
    "step": 2,
    "msg": "update"
+  },
+  {
+   "t": "2026-10-15T22:29:39+00:00",
+   "state": "running",
+   "step": 2,
+   "msg": "result jobs=None fails=None clusters=None"
   }
  ],
  "task": "full make ci",
  "steps": 5,
  "step": 2,
- "updated": "2026-10-15T22:10:59+00:00",
+ "updated": "2026-10-15T22:29:39+00:00",
  "branch": "swarm/rr-fullci",
- "sha": "73cee3e",
- "blocker": ""
+ "sha": "41527ad",
+ "blocker": "",
+ "results": {
+  "jobs": null,
+  "fails": null,
+  "clusters": null,
+  "note": ""
+ }
 }
