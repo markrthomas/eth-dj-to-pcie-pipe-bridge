@@ -37,6 +37,12 @@
    "state": "running",
    "step": 3,
    "msg": "result jobs=200 fails=63 clusters=5"
+  },
+  {
+   "t": "2026-10-15T17:52:38+00:00",
+   "state": "running",
+   "step": 3,
+   "msg": "result jobs=200 fails=57 clusters=4"
   }
  ],
  "task": "B3 random control traffic",
@@ -44,12 +50,12 @@
  "step": 3,
  "updated": "2026-10-15T17:52:38+00:00",
  "branch": "swarm/rr-b3",
- "sha": "fc5435f",
+ "sha": "2472847",
  "blocker": "",
  "results": {
   "jobs": 200,
-  "fails": 63,
-  "clusters": 5,
+  "fails": 57,
+  "clusters": 4,
   "note": ""
  }
 }
