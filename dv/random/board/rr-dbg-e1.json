@@ -1,0 +1,18 @@
+{
+ "worker": "rr-dbg-e1",
+ "state": "running",
+ "history": [
+  {
+   "t": "2026-10-15T21:54:57+00:00",
+   "state": "running",
+   "step": 0,
+   "msg": "started"
+  }
+ ],
+ "task": "E1 ERR[2] mismatch rr0004",
+ "steps": 5,
+ "step": 0,
+ "updated": "2026-10-15T21:54:57+00:00",
+ "branch": "swarm/rr-dbg-e1",
+ "sha": "ea71c77"
+}
