@@ -1,0 +1,18 @@
+{
+ "worker": "rr-fullci",
+ "state": "running",
+ "history": [
+  {
+   "t": "2026-10-15T21:55:41+00:00",
+   "state": "running",
+   "step": 0,
+   "msg": "started"
+  }
+ ],
+ "task": "full make ci",
+ "steps": 5,
+ "step": 0,
+ "updated": "2026-10-15T21:55:41+00:00",
+ "branch": "swarm/rr-fullci",
+ "sha": "c3a29b9"
+}
