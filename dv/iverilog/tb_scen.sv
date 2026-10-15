@@ -92,6 +92,8 @@ module tb_scen;
       wait_rx(nfr);
       repeat (200) @(posedge pclk);
       running = 1'b0;
+      $display("RXCNT %-11s dropped=%0d lock_err=%0d bad=%0d aborted=%0d", scen_name(sc), dut.rx_dropped_flits,
+               dut.rx_lock_errors, dut.rx_bad_flits, dut.rx_aborted_frames);
       csr_rd(CSR_PMCNT, d);
       errors += phy.errors + phyc.errors + sink.errors - base_err;
       tot_err += errors;

@@ -166,13 +166,33 @@ def cmd_fixed(a):
     save(c)
 
 
+def replay_one(e, out):
+    """Run one corpus entry.  Verilator entries (config vlt*) go through run_job; Icarus entries carry
+    "iv": {"tb": "loop|scen|edge|link|msgbus_mac", "lanes": 1|4, "extra": ["+plusarg", ...]} and run the
+    seedable vvp image via rr_iv.run_job (built on demand with rr_iv's own recipe)."""
+    if "iv" not in e:
+        return run_job({"id": e["id"], "config": e["config"], "seed": e["seed"], "args": e["args"]}, out, 600)
+    import rr_iv  # noqa: E402  (imports rr; imported lazily to avoid a cycle)
+    iv = e["iv"]
+    job = {"id": e["id"], "config": e["config"], "tb": iv["tb"], "lanes": iv["lanes"], "seed": e["seed"],
+           "args": e["args"], "extra": iv.get("extra", [])}
+    if not os.path.exists(rr_iv.vvp_path(iv["tb"], iv["lanes"])):
+        rr_iv.build_one(iv["tb"], iv["lanes"])
+    return rr_iv.run_job(job, out, 600)
+
+
 def cmd_replay(a):
     c = corpus()
     out = os.path.join(HERE, "runs", "replay")
     os.makedirs(out, exist_ok=True)
+    # Icarus images are built serially up front (parallel make runs of the same image would race)
+    for e in c:
+        if "iv" in e:
+            import rr_iv
+            if not os.path.exists(rr_iv.vvp_path(e["iv"]["tb"], e["iv"]["lanes"])):
+                rr_iv.build_one(e["iv"]["tb"], e["iv"]["lanes"])
     with cf.ThreadPoolExecutor(a.jobs) as ex:
-        rs = list(ex.map(lambda e: (e, run_job({"id": e["id"], "config": e["config"], "seed": e["seed"],
-                                                "args": e["args"]}, out, 600)), c))
+        rs = list(ex.map(lambda e: (e, replay_one(e, out)), c))
     bad = 0
     for e, r in rs:
         gate = e["status"] == "fixed" and r["status"] != "PASS"

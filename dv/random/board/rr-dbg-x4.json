@@ -1,0 +1,43 @@
+{
+ "worker": "rr-dbg-x4",
+ "state": "done",
+ "history": [
+  {
+   "t": "2026-10-15T18:33:17+00:00",
+   "state": "running",
+   "step": 0,
+   "msg": "started"
+  },
+  {
+   "t": "2026-10-15T18:36:59+00:00",
+   "state": "running",
+   "step": 1,
+   "msg": "reproduced D (loop seeds 1,3,293688134: dropped>0 aborted>0), E (scen 190720952), F (link 909855594 kills=4)"
+  },
+  {
+   "t": "2026-10-15T18:45:12+00:00",
+   "state": "running",
+   "step": 2,
+   "msg": "D: 62/62 loop + 62/62 scen seeds PASS at rr_rdy=100, RXCNT all 0 -> TB envelope (not DUT). F: kill-timing proven (5th kill requested after all 170 frames sent), fixed with flit-spaced kills. Validating x4 sink floor."
+  },
+  {
+   "t": "2026-10-15T19:27:37+00:00",
+   "state": "running",
+   "step": 4,
+   "msg": "600/600 x4 seeds pass with floor; corpus rr0001-3 fixed (replay PASS); running make regress/lanes4"
+  },
+  {
+   "t": "2026-10-15T19:29:37+00:00",
+   "state": "done",
+   "step": 5,
+   "msg": "D/E = TB envelope (x4 sink floor, 600/600 seeds pass; baseline loop 68/100 fail), F = kill timing (flit-spaced). No RTL change. corpus rr0001-3 fixed. make regress OK, make lanes4 OK; formal not run (no DUT change). Open: silent loss of dropped-sof frame (D20)."
+  }
+ ],
+ "task": "x4 clusters D/E/F",
+ "steps": 5,
+ "step": 5,
+ "updated": "2026-10-15T19:29:37+00:00",
+ "branch": "swarm/rr-dbg-x4",
+ "sha": "7db26f9",
+ "blocker": ""
+}

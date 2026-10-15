@@ -52,6 +52,13 @@ def vvp_path(tb, lanes):
     return os.path.join(IV, b, TBS[tb][1])
 
 
+def build_one(tb, lanes):
+    """Build the single image `tb` at `lanes` (used by rr.py replay for corpus entries)."""
+    extra = f"-DPIPE_NLANES_OVERRIDE={lanes}" if lanes != 1 else ""
+    subprocess.run(["make", "-C", IV, f"BUILD={BUILDS[lanes]}", f"IVEXTRA={extra}", TBS[tb][0]], check=True,
+                   stdout=subprocess.DEVNULL)
+
+
 def cmd_build(_):
     for lanes, b in BUILDS.items():
         extra = f"-DPIPE_NLANES_OVERRIDE={lanes}" if lanes != 1 else ""
@@ -74,7 +81,7 @@ def run_job(job, outdir, timeout):
     rec = {k: job[k] for k in ("id", "config", "seed", "args")}
     if not os.path.exists(binp):
         return dict(rec, status="BUILD_MISSING", signature="BUILD_MISSING", dir=d)
-    cmd = ["vvp", binp, f"+seed={job['seed']}"]
+    cmd = ["vvp", binp, f"+seed={job['seed']}"] + list(job.get("extra", []))
     if tb == "scen":
         cmd.append("+results=" + os.path.join(d, "results.json"))
     timed_out, rc, text = False, 0, ""

@@ -143,6 +143,8 @@ module tb_loop;
     join_any
     repeat (200) @(posedge pclk);
 
+    $display("RXCNT0 dropped=%0d lock_err=%0d RXCNT1 bad=%0d aborted=%0d (end of run)", dut.rx_dropped_flits,
+             dut.rx_lock_errors, dut.rx_bad_flits, dut.rx_aborted_frames);
     if (checked != N)                 begin $display("FAIL: %0d/%0d frames received", checked, N); errors++; end
     if (phy.flits != exp_flits)       begin $display("FAIL: %0d flits, expected %0d", phy.flits, exp_flits); errors++; end
     if (phy.frames != N)              begin $display("FAIL: PHY saw %0d frames, expected %0d", phy.frames, N); errors++; end

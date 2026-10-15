@@ -108,6 +108,8 @@ module tb_link;
     if (start_kill) begin kill_left <= FLIT_BEATS - 1; kills_done <= kills_done + 1; end
     else if (kill_left != 0) kill_left <= kill_left - 1;
   end
+  int  a2b_flits = 0;                 // start_block flits A sent (kill-timing diagnostics, P4)
+  always @(posedge pclk) if (a_tx_valid && a_tx_sb) a2b_flits <= a2b_flits + 1;
   wire [PIPE_BUS_W-1:0] b_rx_data  = masking ? '0 : a_tx_data;
   wire                  b_rx_valid = masking ? 1'b0 : a_tx_valid;
   wire                  b_rx_sb    = masking ? 1'b0 : a_tx_sb;
@@ -230,6 +232,8 @@ module tb_link;
   endtask
 
   int id0, id1, t0, t1;
+  time p4_t;
+  int  p4_f0;
   int nlow, nhi;
   initial begin
     rr_init();
@@ -295,11 +299,19 @@ module tb_link;
     fork
       send_range(0, 110, 170);
       begin
+        // Kills are spaced in FLITS sent, not in pclk: a fixed pclk schedule (600 + 300k) was sized for x1; at x4 the
+        // whole 60-frame burst can finish before the 5th kill and there is no flit left to kill (rr-dbg-x4, cluster F).
+        // 10 + 20k flits is far inside the burst (~190 flits expected) and leaves >= 20 flits between kills.
+        p4_f0 = a2b_flits;
         for (int k = 0; k < 5; k++) begin
-          repeat (600 + 300 * k) @(posedge pclk);
+          t0 = 0;
+          while (a2b_flits - p4_f0 < 10 + 20 * k && t0 < 400000) begin @(posedge pclk); t0++; end
           kill_req = kill_req + 1;
+          p4_t = $time;
           t0 = 0;
           while (kills_done != kill_req && t0 < 20000) begin @(posedge pclk); t0++; end
+          $display("       P4 kill %0d: requested @%0t, %s after %0d pclk (A->B flits sent so far %0d, A frames accepted by sink side %0d)",
+                   k + 1, p4_t, (kills_done == kill_req) ? "applied" : "NOT applied (no flit left)", t0, a2b_flits, nid[0]);
         end
       end
     join
