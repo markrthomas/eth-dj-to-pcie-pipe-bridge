@@ -1,1 +1,17 @@
-[]
+[
+ {
+  "id": "rr0001",
+  "config": "vlt",
+  "seed": 1,
+  "args": {
+   "rand_seed": 463099881,
+   "rand_frames": 4,
+   "rand_maxlen": 64,
+   "rand_ctl": 4
+  },
+  "signature": "ERROR [rand]: CSR read-back mismatch (csr[0c] ERR: got 4 want 0)",
+  "status": "open",
+  "note": "2026-10-15 envelope batches: 6/1500 jobs, all rand_ctl>0, any config, any sink/mac_gap (default knobs reproduce); unclassified, not debugged (dv/random/findings/2026-10-15-envelope.md cluster E1). Passes with rand_ctl=0.",
+  "fixed_by": ""
+ }
+]

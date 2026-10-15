@@ -79,6 +79,16 @@ it with the golden plan (a mismatch = the two generators drifted). Items (frames
 `python3 dv/common/scenarios.py --rand SEED [FRAMES [MAXLEN [E]]]` prints the plan. TB change: the PHY model holds a write_ack back while a
 PHY-initiated transaction is being driven (it used to overwrite a byte).
 
+## Stimulus envelope (what `rr.py` may generate)
+A random job must lie inside the DUT contract, or its failure says nothing about the DUT (findings 2026-10-15 A-C):
+- **Non-flow-control builds (`vlt`, `vlt-nodpr`)**: no Rx backpressure, D9 = drop + abort, and the fixed scenarios treat any abort as an error.
+  `sink_pct` is drawn from (100, 90, 70). Measured: >= 50 never fails (20 seeds x mac_gap 0..90), 45 fails ~10 %, <= 40 fails; margin 20 points.
+- **`vlt-fc`**: lossless; `sink_pct` 100/90/50/20/5 and `mac_gap` up to 90 are fine (rxovf and `rand` wait for their frames; `bridge_bfm.h`).
+- `mac_gap` 0/5/10/30/60/90 for all configs. `rand_frames` x `rand_maxlen` need no cap: the rand wait times out only 400000 pclk after the last received frame.
+- `rr.py run --legacy-knobs` draws the old sink set for every config (out of contract: reproduces A-C). `rr.py` asserts `in_envelope()` for every generated job.
+- Overload (D9 contract under deliberate overload) is covered by the fixed `rxovf` scenario (sink forced to 4 %, flagged-or-exact frames, at least one abort required in non-FC builds).
+  A randomised overload class is backlog (needs a `+overload` scenario that reuses the rxovf checker; the fixed-scenario checks must stay).
+
 ## Backlog (the manager hands these to agents)
 - B1 DONE `dv/vlt/sim_main.cpp`: parse `+mac_gap`, `+sink_pct`.
 - B2 DONE in vlt (other four envs still to mirror): add a `rand` scenario: lengths from `lcg_lengths(seed, n, max_len)`, random pm/rate op
