@@ -81,6 +81,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && update-ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
+# yices2 (prebuilt static binary) — the SMT solver the formal `cover` tasks use.
+# It is far more memory-efficient than z3 for these bit-vector BMC problems; apt
+# z3 OOMs / stalls on a CI runner's RAM for the deeper covers. formal/Makefile
+# prefers yices when present (COVER_SOLVER), matching the original .sby engines.
+ARG YICES_VERSION=2.6.5
+RUN curl -fsSL "https://github.com/SRI-CSL/yices2/releases/download/Yices-${YICES_VERSION}/yices-${YICES_VERSION}-x86_64-pc-linux-gnu-static-gmp.tar.gz" \
+      | tar -xz -C /opt \
+    && ln -s /opt/yices-${YICES_VERSION}/bin/* /usr/local/bin/
+
 # built-from-source toolchain
 COPY --from=builder /opt/verilator /opt/verilator
 COPY --from=builder /opt/yosys     /opt/yosys
