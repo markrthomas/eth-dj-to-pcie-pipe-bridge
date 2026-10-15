@@ -25,19 +25,25 @@
    "state": "running",
    "step": 2,
    "msg": "result jobs=300 fails=98 clusters=0"
+  },
+  {
+   "t": "2026-10-15T17:40:10+00:00",
+   "state": "running",
+   "step": 2,
+   "msg": "result jobs=300 fails=98 clusters=5"
   }
  ],
  "task": "large random batches",
  "steps": 5,
  "step": 2,
- "updated": "2026-10-15T17:40:04+00:00",
+ "updated": "2026-10-15T17:40:10+00:00",
  "branch": "swarm/rr-batch",
- "sha": "d605c1d",
+ "sha": "4c30859",
  "blocker": "",
  "results": {
   "jobs": 300,
   "fails": 98,
-  "clusters": 0,
+  "clusters": 5,
   "note": ""
  }
 }
