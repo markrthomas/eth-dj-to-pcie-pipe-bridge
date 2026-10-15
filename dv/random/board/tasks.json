@@ -18,5 +18,10 @@
   "task": "stimulus contract A/B/C",
   "branch": "swarm/rr-envelope",
   "assigned": "2026-10-15T18:31:05+00:00"
+ },
+ "rr-dbg-e1": {
+  "task": "E1 ERR[2] mismatch rr0004",
+  "branch": "swarm/rr-dbg-e1",
+  "assigned": "2026-10-15T21:55:21+00:00"
  }
 }
