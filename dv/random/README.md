@@ -56,11 +56,34 @@ top-level `"rand": {seed, frames, maxlen}` and `crosscheck.py` checks it automat
 `+rand_seed` results.json is bit-identical to before. The args are recorded per job, so corpus entries replay them.
 `python3 dv/common/scenarios.py --rand SEED [K [L]]` prints a plan + expected values.
 
+### B3 control-plane traffic (`+rand_ctl=E`, E = 0..16 episodes, rr.py draws 0/1/2/4/8)
+Every episode (1-3 items) is drawn from one LCG stream (`seed ^ 0xC71A5EED`); plan = `scenarios.ctl_plan()`,
+mirrored in `bridge_bfm.h gen_ctl_plan_()`; results.json `rand` carries `ctl` and the plan hash and `crosscheck.py` compares
+it with the golden plan (a mismatch = the two generators drifted). Items (frames keep flowing around them):
+- **settled CSR writes** (30 %): legal and illegal CTRL values (rate > Gen6 / width 3 -> whole write ignored + ERR[3],
+  P0s -> ERR[2], junk in bits 31:7), PAM4CFG, ERR W1C, in any order incl. rate/width requested while in P1/P2.
+  Each is followed by `SETTLE` (expected PIPE pins, busy = 0, PMCNT == golden op count, stable) and exact CTRL / ERR / PAM4CFG read-back.
+  PMCNT is predicted by `scenarios.CtlSim` (mirror of bridge_ctrl_fsm priority: rate > width > cfg > power-down).
+- **P-state storm** (15 %): 3-8 back-to-back CTRL/PAM4/ERR writes, then a recovery write (P0, Gen6). Path-dependent op count -> PMCNT is
+  checked against `[direct path, direct + 6*(writes+1)]` (`pmcnt` / `pmcnt_max` in the golden) until the next reset.
+- **PHY-initiated MAC register access** (25 %): `OP_PHY_WR/RD` over the msgbus incl. atomic uncommitted groups (buffer overflow at 8),
+  reserved, vendor, RX2/TX2 windows; the golden register file is `CtlSim.phy_wr/phy_rd` (= `msgbus_mac_tgt`).
+  10 % of the episodes issue them right after a PAM4CFG write (racing the bridge's own msgbus write).
+- **ignored writes** (10 %): RO / unmapped CSR addresses, read-back must not change, unmapped reads 0.
+- **mid-traffic DUT reset** (10 %, max 3): 6-24 pclk, sometimes right after an unsettled CTRL write. Frames the Ethernet sink has not yet
+  received are re-sent, so frames/bytes/crc stay exact; flits can only grow (`flits_max = flits * (1 + resets)`); PMCNT restarts at the link-up 2.
+- **invariants** (only with `rand_ctl > 0`): legal PIPE pin sequencing (one of powerdown/rate/width per change, P0<->P1<->P2 only,
+  no P0s / reserved rate / width on the pins, rate/width only in P0, no change before the previous PhyStatus), PMCNT/RXCNT never decrease
+  within a reset epoch (RXCNT is cleared by P1/P2, D18), no hang (`settle: no convergence` / `scenario op timeout`), frame content.
+  Verilator is 2-state: "no X" is not checkable here (Icarus/UVM own that).
+`python3 dv/common/scenarios.py --rand SEED [FRAMES [MAXLEN [E]]]` prints the plan. TB change: the PHY model holds a write_ack back while a
+PHY-initiated transaction is being driven (it used to overwrite a byte).
+
 ## Backlog (the manager hands these to agents)
 - B1 DONE `dv/vlt/sim_main.cpp`: parse `+mac_gap`, `+sink_pct`.
 - B2 DONE in vlt (other four envs still to mirror): add a `rand` scenario: lengths from `lcg_lengths(seed, n, max_len)`, random pm/rate op
   interleaving; extend `dv/common/scenarios.py` golden model (`expected_rand(seed)`) and
   `crosscheck.py`, keep the five fixed scenarios unchanged; mirror in the other four envs only after vlt is stable.
-- B3 random CSR/msgbus traffic (PHY-initiated reads/writes, mid-traffic resets, P-state storms).
+- B3 DONE in vlt: random CSR/msgbus traffic (PHY-initiated reads/writes, mid-traffic resets, P-state storms) = `+rand_ctl`, see above.
 - B4 x4-lane (`PIPE_NLANES_OVERRIDE=4`) random configs; iverilog `tb_scen` seed plusarg.
 - B5 random runs feed `metrics/` (pass rate, unique clusters, time-to-fix) and the dashboard.

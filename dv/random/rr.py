@@ -44,6 +44,7 @@ KNOBS = {"mac_gap": (0, 5, 10, 30, 60, 90), "sink_pct": (100, 90, 50, 20, 5)}
 # 'rand' scenario knobs (+rand_seed picks the scenario; seed is drawn per job and recorded in the corpus)
 RAND_FRAMES = (4, 12, 24, 48, 96)
 RAND_MAXLEN = (64, 300, 2000, 9000)
+RAND_CTL = (0, 1, 2, 4, 8)          # B3: control-plane episodes in the rand scenario (0 = old behaviour)
 
 
 def make_job(i, rng, seed_base):
@@ -52,6 +53,7 @@ def make_job(i, rng, seed_base):
     args["rand_seed"] = rng.randrange(1, 2**31)
     args["rand_frames"] = rng.choice(RAND_FRAMES)
     args["rand_maxlen"] = rng.choice(RAND_MAXLEN)
+    args["rand_ctl"] = rng.choice(RAND_CTL)          # drawn last: earlier draws (and old corpus entries) are unchanged
     return {"id": f"j{i:05d}", "config": cfg, "seed": seed_base + i, "args": args}
 
 

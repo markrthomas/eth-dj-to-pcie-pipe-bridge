@@ -63,13 +63,28 @@ def main() -> int:
             print(f"{sc:<12} {fld:<7} {str(exp[sc][fld]):>10} " + " ".join(row))
     for n in sorted(rands):          # optional rand section: golden = scenarios.expected_rand(seed, frames, maxlen)
         r = rands[n]
-        rexp = scenarios.expected_rand(int(r["seed"]), int(r["frames"]), int(r["maxlen"]))
-        print(f"rand (env {n}, seed={r['seed']} frames={r['frames']} maxlen={r['maxlen']})")
+        ctl = int(r.get("ctl", 0))
+        rexp = scenarios.expected_rand(int(r["seed"]), int(r["frames"]), int(r["maxlen"]), ctl)
+        print(f"rand (env {n}, seed={r['seed']} frames={r['frames']} maxlen={r['maxlen']} ctl={ctl})")
         for fld in FIELDS:
             v = envs[n].get("rand", {}).get(fld, "-")
-            ok = str(v) == str(rexp[fld])
+            hi = rexp.get(fld + "_max")           # B3: not exactly predictable -> [expected, fld_max]
+            if hi is not None:
+                try:
+                    ok = int(rexp[fld]) <= int(v) <= int(hi)
+                except ValueError:
+                    ok = False
+                want = f"{rexp[fld]}..{hi}"
+            else:
+                ok = str(v) == str(rexp[fld])
+                want = str(rexp[fld])
             bad += not ok
-            print(f"{'rand':<12} {fld:<7} {str(rexp[fld]):>10} {str(v) + ('' if ok else '*'):>10}")
+            print(f"{'rand':<12} {fld:<7} {want:>10} {str(v) + ('' if ok else '*'):>10}")
+        if ctl > 0:                                # the harness' control plan must equal the golden plan
+            v = r.get("plan", "-")
+            ok = str(v) == rexp["plan"]
+            bad += not ok
+            print(f"{'rand':<12} {'plan':<7} {rexp['plan']:>10} {str(v) + ('' if ok else '*'):>10}")
     if bad:
         print(f"CROSSCHECK FAIL: {bad} mismatch(es) (* = differs from golden)")
         return 1
