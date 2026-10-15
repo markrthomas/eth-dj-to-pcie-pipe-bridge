@@ -165,6 +165,19 @@ wave-check-all:
 stress:
 	$(MAKE) -C dv/vlt stress STRESS_SEEDS=$(or $(STRESS_SEEDS),20)
 
+# random regression + triage + replay corpus (dv/random/README.md)
+N ?= 30
+JOBS ?= 4
+.PHONY: rr-build rr rr-triage rr-replay
+rr-build:
+	python3 dv/random/rr.py build
+rr:
+	python3 dv/random/rr.py run --n $(N) --jobs $(JOBS) $(if $(SEED),--seed-base $(SEED))
+rr-triage:
+	python3 dv/random/rr.py triage $(RUN)
+rr-replay:
+	python3 dv/random/rr.py replay --jobs $(JOBS)
+
 # x4-lane elaboration check (OPEN_DECISIONS D1): Verilator lint + the whole iverilog
 # suite with PIPE_NLANES_OVERRIDE=4 (256b PIPE bus, 8 beats/flit). Not part of `regress`.
 LANES ?= 4
