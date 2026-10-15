@@ -18,3 +18,6 @@ Input: a cluster (repro command, run dir, triage notes). Steps:
      do NOT edit rtl/: describe it and stop.
 5. Report: root cause, files changed (`git diff --stat`), before/after repro output, regress result.
 Never claim something ran that did not; say "not run" and why. Never `pkill -f` a pattern in your own command line.
+
+Status board: report with `python3 dv/random/board.py start|update|result|done|fail <your-name> ...` at start,
+every milestone, every batch and the end, then `git push` (see dv/random/README.md). The manager only sees what is on the board.

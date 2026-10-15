@@ -24,3 +24,7 @@ only if GITHUB_TOKEN exists; never push to main, never force-push, never weaken 
 
 Final report: batches run (jobs / pass / fail), clusters found, per cluster root cause + fix + corpus
 id, open items, backlog state, and anything not run with the reason.
+
+Tracking: run `make board` at the start of each loop and after each dispatch; register work with
+`board.py assign`; treat STALE / blocked / NO_REPORT as needing action (message or restart the worker).
+Put the board command in every worker brief.

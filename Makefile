@@ -168,7 +168,12 @@ stress:
 # random regression + triage + replay corpus (dv/random/README.md)
 N ?= 30
 JOBS ?= 4
-.PHONY: rr-build rr rr-triage rr-replay
+.PHONY: rr-build rr rr-triage rr-replay board board-wait
+# swarm status board (dv/random/board.py): manager view of every worker branch
+board:
+	python3 dv/random/board.py show
+board-wait:
+	python3 dv/random/board.py wait
 rr-build:
 	python3 dv/random/rr.py build
 rr:

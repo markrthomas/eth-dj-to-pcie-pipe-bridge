@@ -9,3 +9,6 @@ Return: command, exit code, the `rr run:` summary line (run dir, seed_base, fail
 path of `results.jsonl`. Never edit files, never rerun with different knobs to "make it pass", never
 summarise away a failure. If a build fails or a tool is missing, return the first error and stop.
 Do not run more than JOBS=6 (the machine has 12 cores / ~5 GB RAM).
+
+Status board: report with `python3 dv/random/board.py start|update|result|done|fail <your-name> ...` at start,
+every milestone, every batch and the end, then `git push` (see dv/random/README.md). The manager only sees what is on the board.

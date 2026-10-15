@@ -20,6 +20,22 @@ rr-runner (haiku)  ->  rr-triage (sonnet)  ->  rr-debugger (opus)  ->  rr-test-a
 (`rr.py promote`), reproduced, root-caused, fixed, then marked `fixed` (`rr.py fixed ID --by PR/commit`)
 so it can never regress silently. `rr-replay` is part of `make ci`.
 
+## Tracking the swarm (status board)
+Cloud workers can only talk through git, so each owns one file on its own branch,
+`dv/random/board/<worker>.json`, written by `dv/random/board.py` (it commits; the worker pushes):
+
+```
+board.py start NAME --task TXT --steps N      # first thing a worker does
+board.py update NAME --step K --msg TXT [--blocker TXT]   # every milestone, then `git push`
+board.py result NAME --jobs J --fails F --clusters C      # after each batch
+board.py done NAME --msg TXT   |   board.py fail NAME --msg WHY
+```
+Manager: `make board` (fetches `origin/swarm/*`, prints state / step / age / branch@sha / results; flags
+`STALE` = running but silent > 30 min, `blocked`, `NO_REPORT`), `make board-wait` (blocks until all are
+done/blocked/stale), `board.py assign NAME --task TXT` registers planned work in `board/tasks.json`
+(committed on the manager branch). States: assigned -> running -> done | blocked.
+Every worker brief must say: "report with board.py at start, each milestone, each batch, and the end, and push."
+
 ## Rules
 - Never weaken a checker, scenario, golden model or SVA to get green. A failure is a DUT bug,
   a TB/model bug, or a harness bug - find out which, with evidence (log, waveform window, minimal repro).
