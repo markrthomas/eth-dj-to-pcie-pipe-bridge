@@ -305,9 +305,9 @@ No DUT behaviour changes in M4; these are verification-method decisions.
 - **UVM runs in CI** (its own job), overriding PLAN §12's "local-only" default: with
   the from-source Verilator (5.050, in the CI image) the build + run takes ~2 min. Accellera
   `uvm-core` is cloned by `dv/uvm/Makefile` at a pinned commit (not vendored).
-  apt Verilator 5.020 cannot compile uvm-core (`PKGNODECL`), so `make uvm` needs the
-  pinned suite (or any Verilator >= 5.03x) on PATH.
-- **cocotb** runs on apt Icarus (`ICARUS_BIN_DIR=/usr/bin`), cocotb 1.8.1, pyuvm
+  apt Verilator 5.020 cannot compile uvm-core (`PKGNODECL`), so `make uvm` needs a
+  Verilator >= 5.03x on PATH (built from source; 5.050 in the CI image).
+- **cocotb** runs on a >= 12 apt Icarus (auto-detected by `dv/cocotb/Makefile`), cocotb 1.8.1, pyuvm
   5.0.0, pyvsc. PyVSC functional coverage is exported to `dv/cocotb/fcov.json` and
   reported, **not gated** (no floor was specified).
 
