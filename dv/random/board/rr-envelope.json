@@ -13,13 +13,19 @@
    "state": "running",
    "step": 1,
    "msg": "branch created; waiting for cloud-toolchain.sh (Verilator source build in progress)"
+  },
+  {
+   "t": "2026-10-15T18:56:08+00:00",
+   "state": "running",
+   "step": 3,
+   "msg": "A/B/C reproduced; runner knobs config-aware, bfm waits fixed; starting >=5 in-envelope batches"
   }
  ],
  "task": "stimulus contract A/B/C",
  "steps": 5,
- "step": 1,
- "updated": "2026-10-15T18:33:09+00:00",
+ "step": 3,
+ "updated": "2026-10-15T18:56:08+00:00",
  "branch": "swarm/rr-envelope",
- "sha": "be06c5f",
+ "sha": "6728b48",
  "blocker": ""
 }
