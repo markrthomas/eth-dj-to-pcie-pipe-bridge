@@ -41,12 +41,18 @@ BINS = {
 WEIGHTS = {"vlt": 5, "vlt-fc": 3, "vlt-nodpr": 2}
 # plusargs the harness understands (seed) or is expected to (added by the harness-dev agent, see README)
 KNOBS = {"mac_gap": (0, 5, 10, 30, 60, 90), "sink_pct": (100, 90, 50, 20, 5)}
+# 'rand' scenario knobs (+rand_seed picks the scenario; seed is drawn per job and recorded in the corpus)
+RAND_FRAMES = (4, 12, 24, 48, 96)
+RAND_MAXLEN = (64, 300, 2000, 9000)
 
 
 def make_job(i, rng, seed_base):
     cfg = rng.choices(list(WEIGHTS), weights=list(WEIGHTS.values()))[0]
-    return {"id": f"j{i:05d}", "config": cfg, "seed": seed_base + i,
-            "args": {k: rng.choice(v) for k, v in KNOBS.items()}}
+    args = {k: rng.choice(v) for k, v in KNOBS.items()}
+    args["rand_seed"] = rng.randrange(1, 2**31)
+    args["rand_frames"] = rng.choice(RAND_FRAMES)
+    args["rand_maxlen"] = rng.choice(RAND_MAXLEN)
+    return {"id": f"j{i:05d}", "config": cfg, "seed": seed_base + i, "args": args}
 
 
 def signature(text, rc, timed_out):
@@ -118,7 +124,7 @@ def cmd_triage(a):
             clusters.setdefault((r["config"], r["signature"]), []).append(r)
     tri = []
     for n, ((cfgn, sig), rs) in enumerate(sorted(clusters.items())):
-        rs.sort(key=lambda r: (sum(r["args"].values()), r["seed"]))
+        rs.sort(key=lambda r: (r["args"].get("rand_frames", 0) * r["args"].get("rand_maxlen", 0), r["seed"]))
         tri.append({"cluster": f"c{n}", "config": cfgn, "signature": sig, "count": len(rs),
                     "repro": {k: rs[0][k] for k in ("config", "seed", "args", "dir")},
                     "seeds": [r["seed"] for r in rs][:20]})

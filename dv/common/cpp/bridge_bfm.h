@@ -6,6 +6,8 @@
 // eth_edge()/pclk_edge(), and applies the returned EthIn/PipeIn after the edge
 // (i.e. testbench drives behave like nonblocking assignments).
 //
+// Optional 8th scenario "rand" (enable_rand(): +rand_seed/+rand_frames/+rand_maxlen in sim_main.cpp)
+// mirrors scenarios.rand_plan() and is appended last; without it the harness is unchanged.
 // The five cross-check scenarios mirror dv/common/scenarios.py exactly; two extra
 // coverage-only scenarios (pm_full, rxovf) exercise the rest of the control plane
 // and the Rx overload policy and are not part of the cross-check.
@@ -108,6 +110,25 @@ class Harness {
   explicit Harness(uint32_t seed = 12345) : rng_(seed) {}
 
   // ---- configuration
+  // Enable the "rand" scenario (mirror of scenarios.rand_plan(): same LCG, same stream xor constants).
+  void enable_rand(uint32_t seed, int frames, int maxlen) {
+    rand_on = true; rand_seed = seed; rand_frames = frames < 1 ? 1 : frames; rand_maxlen = maxlen < 1 ? 1 : maxlen;
+    static const int corners[] = {1, 239, 240, 241, 480};
+    std::vector<int> base = lcg_lengths_(rand_seed, rand_frames, rand_maxlen);
+    std::vector<int> sel = lcg_lengths_(rand_seed ^ 0x2545F491u, rand_frames, 100);
+    rand_lens_.clear();
+    for (int i = 0; i < rand_frames; i++) {
+      int len = base[i];
+      if (sel[i] <= 30) { len = corners[sel[i] % 5]; if (len > rand_maxlen) len = rand_maxlen; }
+      rand_lens_.push_back(len);
+    }
+    rand_ctrl_ = rand_frames >= 2 ? lcg_lengths_(rand_seed ^ 0x1E3779B9u, 1, 3)[0] - 1 : 0;   // 0 none, 1 pm_cycle, 2 rate_change
+    rand_split_ = rand_frames >= 2 ? lcg_lengths_(rand_seed ^ 0x7F4A7C15u, 1, rand_frames - 1)[0] : rand_frames;
+  }
+  bool rand_on = false;
+  uint32_t rand_seed = 0;
+  int rand_frames = 0, rand_maxlen = 0;
+
   int mac_gap_pct = 10;
   int sink_ready_pct = 90;
   bool verbose = false;
@@ -214,15 +235,24 @@ class Harness {
   unsigned last_cl_ = 0;
  private:
   // ---- scenario definition (mirror of dv/common/scenarios.py) ---------------
-  static constexpr int N_SCEN = 7;   // 5 cross-check + pm_full + rxovf
+  int n_scen_() const { return rand_on ? 8 : 7; }   // 5 cross-check + pm_full + rxovf (+ rand)
   static const char* scen_name_(int s) {
     static const char* n[] = {"single", "corners", "random", "pm_cycle", "rate_change",
-                              "pm_full", "rxovf"};
+                              "pm_full", "rxovf", "rand"};
     return n[s];
   }
-  static int scen_nframes_(int s) {
+  int scen_nframes_(int s) const {
     static const int n[] = {1, 11, 40, 16, 16, 16, 60};
-    return n[s];
+    return s == 7 ? rand_frames : n[s];
+  }
+  static std::vector<int> lcg_lengths_(uint32_t seed, int n, int max_len) {   // scenarios.lcg_lengths
+    uint64_t x = seed & 0x7FFFFFFF;
+    std::vector<int> out;
+    for (int i = 0; i < n; i++) {
+      x = (1103515245ull * x + 12345ull) & 0x7FFFFFFF;
+      out.push_back(1 + int((x >> 8) % uint64_t(max_len)));
+    }
+    return out;
   }
   static int scen_len_(int s, int i) {
     static const int corners[] = {1, 31, 32, 33, 239, 240, 241, 480, 481, 1500, 9000};
@@ -235,7 +265,7 @@ class Harness {
     if (s == 6 && len < 60) len += 60;
     return len;
   }
-  int len_of_(int id) const { return scen_len_(scen_, id); }
+  int len_of_(int id) const { return scen_ == 7 ? rand_lens_[id] : scen_len_(scen_, id); }
 
   // ---- sink / scoreboard ------------------------------------------------------
   void sink_beat_(const EthOut& o) {
@@ -342,6 +372,17 @@ class Harness {
     };
     if (scen_ <= 2) {
       ops_.push_back({OP_SEND, 0, n, 0});
+    } else if (scen_ == 7) {                  // rand: none / pm_cycle / rate_change split at rand_split_
+      if (rand_ctrl_ == 0) {
+        ops_.push_back({OP_SEND, 0, n, 0});
+      } else {
+        int h = rand_split_;
+        ops_.push_back({OP_SEND, 0, h, 0});
+        ops_.push_back({OP_WAIT_RX, h, 0, 0});
+        if (rand_ctrl_ == 1) { set(PWR_P1, RATE_GEN6, 0); ops_.push_back({OP_IDLE, 200, 0, 0}); set(PWR_P0, RATE_GEN6, 0); }
+        else                 { set(PWR_P0, RATE_GEN5, 0); ops_.push_back({OP_IDLE, 200, 0, 0}); set(PWR_P0, RATE_GEN6, 0); }
+        ops_.push_back({OP_SEND, h, n, 0});
+      }
     } else if (scen_ == 3 || scen_ == 4) {
       ops_.push_back({OP_SEND, 0, n / 2, 0});
       ops_.push_back({OP_WAIT_RX, n / 2, 0, 0});
@@ -417,7 +458,7 @@ class Harness {
     switch (phase_) {
       case P_RESET:
         if (rst_hold_ == 0) {
-          res_ = ScenResult(); res_.name = scen_name_(scen_); res_.crosscheck = scen_ < 5;
+          res_ = ScenResult(); res_.name = scen_name_(scen_); res_.crosscheck = scen_ < 5 || scen_ == 7;
           crc_ = 0xFFFFFFFFu; flits_base_ = flits_; rx_next_ = 0; fbuf_.clear(); err_base_ = total_errors;
           mb_writes_ = 0; mute_status_ = false; sink_ready_pct = sink_ready_default_;
           rst_n_ = false;
@@ -451,7 +492,7 @@ class Harness {
             printf("SCEN %-11s frames=%d bytes=%ld flits=%d crc32=%08x pmcnt=%u errors=%d%s\n",
                    res_.name.c_str(), res_.frames, res_.bytes, res_.flits, res_.crc, res_.pmcnt,
                    res_.errors, res_.crosscheck ? "" : "  (coverage-only)");
-          if (++scen_ >= N_SCEN) { phase_ = P_DONE; done = true; }
+          if (++scen_ >= n_scen_()) { phase_ = P_DONE; done = true; }
           else phase_ = P_RESET;
         }
         break;
@@ -538,6 +579,8 @@ class Harness {
   int rst_hold_ = 0, tmo_ = 0, err_base_ = 0;
   uint32_t csr_rdata_ = 0;
   std::vector<Op> ops_;
+  std::vector<int> rand_lens_;
+  int rand_ctrl_ = 0, rand_split_ = 0;
   size_t op_i_ = 0;
   int op_t_ = 0;
   ScenResult res_;
@@ -558,7 +601,10 @@ class Harness {
               first ? "" : ", ", r.name.c_str(), r.frames, r.bytes, r.flits, r.crc, r.pmcnt, r.errors);
       first = false;
     }
-    fprintf(f, "}}\n");
+    fprintf(f, "}");
+    if (rand_on)
+      fprintf(f, ", \"rand\": {\"seed\": %u, \"frames\": %d, \"maxlen\": %d}", rand_seed, rand_frames, rand_maxlen);
+    fprintf(f, "}\n");
     fclose(f);
     return true;
   }

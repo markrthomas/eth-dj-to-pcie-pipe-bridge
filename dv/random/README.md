@@ -30,13 +30,19 @@ so it can never regress silently. `rr-replay` is part of `make ci`.
 - Open corpus entries are reported, not gating, until fixed.
 
 ## Current stimulus knobs
-The runner randomises config (`vlt`, `vlt-fc`, `vlt-nodpr`), `+seed` (drives MAC gaps and sink
-backpressure today) and the plusargs `+mac_gap=PCT +sink_pct=PCT`. **The harness does not parse
-`+mac_gap`/`+sink_pct` yet** (Verilator ignores unknown plusargs) - this is backlog item B1.
+The runner randomises config (`vlt`, `vlt-fc`, `vlt-nodpr`), `+seed` (MAC gaps / sink backpressure RNG),
+`+mac_gap=PCT +sink_pct=PCT` (B1, parsed by `dv/vlt/sim_main.cpp`; defaults 10 / 90) and the **`rand`
+scenario** (B2): `+rand_seed=N [+rand_frames=K] [+rand_maxlen=L]` appends an 8th scenario after the
+seven fixed ones. Plan = `scenarios.rand_plan()` (~30 % corner lengths 1/239/240/241/480, rest
+`lcg_lengths`; one of none/pm_cycle/rate_change split at a seeded frame), mirrored in
+`bridge_bfm.h enable_rand()`; golden = `scenarios.expected_rand()`. `results.json` then carries a
+top-level `"rand": {seed, frames, maxlen}` and `crosscheck.py` checks it automatically. Without
+`+rand_seed` results.json is bit-identical to before. The args are recorded per job, so corpus entries replay them.
+`python3 dv/common/scenarios.py --rand SEED [K [L]]` prints a plan + expected values.
 
 ## Backlog (the manager hands these to agents)
-- B1 `dv/vlt/sim_main.cpp`: parse `+mac_gap`, `+sink_pct`.
-- B2 add a `rand` scenario: lengths from `lcg_lengths(seed, n, max_len)`, random pm/rate op
+- B1 DONE `dv/vlt/sim_main.cpp`: parse `+mac_gap`, `+sink_pct`.
+- B2 DONE in vlt (other four envs still to mirror): add a `rand` scenario: lengths from `lcg_lengths(seed, n, max_len)`, random pm/rate op
   interleaving; extend `dv/common/scenarios.py` golden model (`expected_rand(seed)`) and
   `crosscheck.py`, keep the five fixed scenarios unchanged; mirror in the other four envs only after vlt is stable.
 - B3 random CSR/msgbus traffic (PHY-initiated reads/writes, mid-traffic resets, P-state storms).
