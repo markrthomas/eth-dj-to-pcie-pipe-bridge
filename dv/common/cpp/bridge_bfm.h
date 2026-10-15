@@ -699,7 +699,7 @@ class Harness {
           res_ = ScenResult(); res_.name = scen_name_(scen_); res_.crosscheck = scen_ < 5 || scen_ == 7;
           crc_ = 0xFFFFFFFFu; flits_base_ = flits_; rx_next_ = 0; fbuf_.clear(); err_base_ = total_errors;
           mb_writes_ = 0; mute_status_ = false; sink_ready_pct = sink_ready_default_;
-          sent_hi_ = 0; mono_valid_[0] = mono_valid_[1] = mono_valid_[2] = false;
+          sent_hi_ = 0; wr_last_ = -1; mono_valid_[0] = mono_valid_[1] = mono_valid_[2] = false;
           rst_n_ = false;
         }
         if (++rst_hold_ >= 10) { rst_n_ = true; rst_hold_ = 0; phase_ = P_WAIT_UP; tmo_ = 0; }
@@ -746,7 +746,10 @@ class Harness {
         for (int i = int(op.a); i < int(op.b); i++) mac_q_.push_back(i);
         if (op.b > sent_hi_) sent_hi_ = int(op.b);
         return true;
-      case OP_WAIT_RX: return res_.frames >= op.a;
+      case OP_WAIT_RX:
+        // B3: one long wait (no split point) at a low sink_pct is slow, not hung -> the timeout counts from the last received frame
+        if (scen_ == 7 && rand_ctl > 0 && res_.frames != wr_last_) { wr_last_ = res_.frames; op_t_ = 1; }
+        return res_.frames >= op.a;
       case OP_SETTLE: {                            // a,b,c = pd/rate/width, d..e = PMCNT range; waits for stable
         if (op_t_ == 0) { st_have_ = pm_have_ = false; st_stable_ = 0; pm_last_ = -1; mono_valid_[1] = mono_valid_[2] = false; }
         if (pipe_in_.csr_addr == CSR_STATUS) { st_val_ = csr_rdata_; st_have_ = true; }
@@ -870,6 +873,7 @@ class Harness {
   std::vector<Op> ops_;
   std::vector<int> rand_lens_;
   int rand_ctrl_ = 0, rand_split_ = 0;
+  int wr_last_ = -1;                               // OP_WAIT_RX progress (frames received at the last change)
   int sent_hi_ = 0;                                // highest frame id enqueued so far + 1 (re-sent after a mid-traffic reset)
   bool st_have_ = false, pm_have_ = false;         // OP_SETTLE sampling state
   int st_stable_ = 0, pm_last_ = -1;
