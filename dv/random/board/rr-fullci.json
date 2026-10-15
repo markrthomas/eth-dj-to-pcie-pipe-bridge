@@ -1,6 +1,6 @@
 {
  "worker": "rr-fullci",
- "state": "running",
+ "state": "done",
  "history": [
   {
    "t": "2026-10-15T21:55:41+00:00",
@@ -31,14 +31,20 @@
    "state": "running",
    "step": 2,
    "msg": "result jobs=None fails=None clusters=None"
+  },
+  {
+   "t": "2026-10-15T23:16:10+00:00",
+   "state": "done",
+   "step": 5,
+   "msg": "full make ci OK (10m, JOBS=4, real run); rr-replay 0 gating fails (rr0004 open FAIL non-gating); rr N=300 0 fail; rr-iv 2x300 0 fail; no fixes needed"
   }
  ],
  "task": "full make ci",
  "steps": 5,
- "step": 2,
- "updated": "2026-10-15T22:48:24+00:00",
+ "step": 5,
+ "updated": "2026-10-15T23:16:10+00:00",
  "branch": "swarm/rr-fullci",
- "sha": "8a06fef",
+ "sha": "a66bca2",
  "blocker": "",
  "results": {
   "jobs": null,
