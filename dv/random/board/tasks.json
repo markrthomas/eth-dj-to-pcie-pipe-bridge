@@ -23,5 +23,10 @@
   "task": "E1 ERR[2] mismatch rr0004",
   "branch": "swarm/rr-dbg-e1",
   "assigned": "2026-10-15T21:55:21+00:00"
+ },
+ "rr-fullci": {
+  "task": "full make ci on merged branch",
+  "branch": "swarm/rr-fullci",
+  "assigned": "2026-10-15T21:55:22+00:00"
  }
 }
