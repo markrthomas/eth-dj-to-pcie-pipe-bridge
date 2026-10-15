@@ -1,0 +1,7 @@
+{
+ "rr-harness": {
+  "task": "B1/B2 harness stimulus (dv/vlt, dv/common)",
+  "branch": "swarm/rr-harness",
+  "assigned": "2026-10-15T17:15:54+00:00"
+ }
+}
