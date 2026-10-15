@@ -170,7 +170,7 @@ scenario contract, how to run, debug and extend them).
 ```bash
 make regress     # lint + Icarus directed tests + shared scenarios — the fast CI gate
 make coverage    # Verilator env + SVA -> coverage.info (floor 80% line+branch)
-make formal      # SymbiYosys prove + cover (needs the pinned OSS CAD Suite)
+make formal      # SymbiYosys prove + cover (needs Yosys+slang, SBY, yices/z3)
 make ci          # every CI step: regress, coverage, formal, all envs (+ flow control), crosscheck, lanes4, waves, pd-emu
 make stress      # all scenarios x 20 seeds on Verilator
 make wave-loop   # run a test with a VCD dump, check + open dv/waves/loop.gtkw
@@ -178,10 +178,11 @@ make metrics     # run + time the flows -> metrics/metrics.db; make dashboard re
 make upf         # UPF TB on VCS-NLP / Xcelium / Questa-PA if on PATH, else a missing-tool notice and exit 0
 ```
 
-Tools: the OSS CAD Suite pinned in CI (`2026-04-13`: Verilator 5.047, Icarus,
-Yosys+slang, SBY) is needed for `uvm` and `formal`; apt Icarus/Verilator 5.020
-run everything else. cocotb env: `pip install -r dv/cocotb/requirements.txt`.
-Or use the container: `docker build -t bridge-ci . && docker run --rm bridge-ci`.
+Tools (no OSS CAD Suite): Verilator (>= 5.03x, for `uvm`) and Yosys+slang / SBY /
+yices (for `formal`) are built from source; Icarus 12 and SystemC come from apt;
+cocotb/pyuvm/pyvsc from pip (`pip install -r dv/cocotb/requirements.txt`). The
+`Dockerfile` assembles all of it — CI runs the jobs inside that image, and you
+can too: `docker build -t bridge-ci . && docker run --rm bridge-ci`.
 
 ## Layout
 
@@ -194,5 +195,6 @@ intent), `metrics/` (dashboard), `docker/` + `.claude/agents/` (agent swarm),
 ## Workspace conventions
 
 This repo lives under `~/proj` and inherits `~/proj/CLAUDE.md` and
-`~/proj/DV_STANDARDS.md`. Tool versions are pinned in `~/proj/dv_env.mk`
-(`OSS_CAD_SUITE_VERSION`, `cocotb==1.8.1`).
+`~/proj/DV_STANDARDS.md`. The DV toolchain versions are pinned in the `Dockerfile`
+(Verilator / Yosys / SBY / yices refs, `cocotb==1.8.1`); this repo no longer
+depends on the workspace OSS CAD Suite pin.

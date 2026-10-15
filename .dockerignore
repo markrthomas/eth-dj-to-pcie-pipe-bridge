@@ -7,7 +7,6 @@ dv/uvm/uvm-core
 formal/*_prove
 formal/*_cover
 metrics/_capture
-oss-cad-suite
 coverage.info
 *.vcd
 *.fst

@@ -33,8 +33,7 @@ MODULE          := test_bridge
 COMPILE_ARGS    += -g2012 -I $(RTL_DIR)
 export PYTHONPATH := $(abspath .):$(COMMON):$(PYTHONPATH)
 # cocotb's Makefile.sim calls `cocotb-config`; make sure it is the one that belongs
-# to this python3's cocotb 1.8.1, not the OSS CAD Suite's (cocotb 2.x) if that is
-# first on PATH.
+# to this python3's cocotb 1.8.1, not some other cocotb that may be first on PATH.
 COCOTB_SCRIPTS := $(shell python3 -c "import cocotb,os,sys,shutil;print(os.path.dirname(shutil.which('cocotb-config',path=os.path.dirname(sys.executable)+os.pathsep+os.environ['PATH'])))")
 export PATH := $(COCOTB_SCRIPTS):$(PATH)
 

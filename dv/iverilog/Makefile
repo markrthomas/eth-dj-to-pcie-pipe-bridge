@@ -19,7 +19,7 @@ IV_MAJOR := $(shell $(IVERILOG) -V 2>&1 | sed -n '1s/.*version \([0-9][0-9]*\)\.
 ifneq ($(filter-out clean,$(MAKECMDGOALS)),)
 ifneq ($(IVERILOG_MIN_MAJOR),0)
 ifeq ($(shell [ "$(or $(IV_MAJOR),0)" -ge $(IVERILOG_MIN_MAJOR) ] && echo ok),)
-$(error iverilog >= $(IVERILOG_MIN_MAJOR) required, found "$(or $(IV_MAJOR),none / not runnable)" ($(shell command -v $(IVERILOG))); use the OSS CAD Suite or build Icarus 12)
+$(error iverilog >= $(IVERILOG_MIN_MAJOR) required, found "$(or $(IV_MAJOR),none / not runnable)" ($(shell command -v $(IVERILOG))); install Icarus 12 (apt iverilog on Ubuntu 24.04, or build from source))
 endif
 endif
 endif

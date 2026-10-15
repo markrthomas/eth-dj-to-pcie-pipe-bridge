@@ -10,9 +10,11 @@
 | `ingress_gate.sby` | `tx_ingress_gate` | no accept while full, started frame finishes, no new frame once stopped, `stopped` only between frames |
 | `ctrl.sby` | `bridge_ctrl_fsm` + `pipe_msgbus` + `tx_egress` | Tx only in P0/ACTIVE/DRAIN, flit framing, pins change only in their change state, PhyStatus/msgbus bounds, one msgbus op outstanding |
 
-Tooling: the pinned OSS CAD Suite (`OSS_CAD_SUITE_VERSION`, see the root
-Makefile / CI). `ctrl.sby` uses the yosys-slang frontend (`plugin -i slang`), which
-apt Yosys does not ship. `ctrl_fv.sv` also contains four `h_*` helper
+Tooling (no OSS CAD Suite): SBY + a slang-capable Yosys + yices/z3, built from
+source in the `Dockerfile`. `ctrl.sby` uses the yosys-slang frontend; upstream
+Yosys has it built in (`read_slang`), while the OSS CAD Suite shipped it as a
+loadable plugin (`plugin -i slang`) — `formal/Makefile` adapts to either. apt
+Yosys does not ship it. `ctrl_fv.sv` also contains four `h_*` helper
 invariants that read RTL timers through hierarchical references (slang resolves
 them); they are proven like the other assertions and exist so PDR converges in
 seconds instead of searching the 1024-cycle timeout space.

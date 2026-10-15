@@ -28,8 +28,9 @@ reinvent — port and adapt.**
 | **`eth_axi4s_to_pcie_pipe_bypass`** | Prior art for the **Ethernet-AXI4-Stream → PCIe PIPE** direction (bypass/passthrough variant). Reference for the ingress packet interface shape. |
 | **`~/proj/DV_STANDARDS.md`** | The mandatory Makefile targets, CI job layout, coverage/formal standards, and directory-layout standard every repo in this workspace must follow. |
 
-**Tool version pins** come from `~/proj/dv_env.mk`: `OSS_CAD_SUITE_VERSION`
-(currently `2026-04-13`) and `cocotb==1.8.1`. CI and Docker must pin the same.
+**Tool version pins** live in the `Dockerfile` (Verilator / Yosys+slang / SBY /
+yices refs and `cocotb==1.8.1`), built from source or apt/pip — **no OSS CAD
+Suite**. CI builds that image and runs the jobs inside it.
 
 ---
 
@@ -192,7 +193,7 @@ docker/                      Dockerfile helpers, swarm.sh, entrypoint.sh, swarm-
 docs/                        PLAN.md (this), AGENT_HANDOFF.md, verification_plan.md, power_intent.md
 railway.toml                 Railway config-as-code (batch job runs `make ci`)
 Makefile                     root targets (§8)
-Dockerfile                   pinned OSS CAD Suite + cocotb image
+Dockerfile                   from-source Verilator/Yosys+slang/SBY + apt/pip image
 ```
 
 ---
@@ -206,7 +207,7 @@ All five drive the **same DUT** and reuse the shared BFMs/checkers in
 |---|---|---|---|---|
 | 1 | `dv/iverilog/` | Icarus Verilog | Directed SystemVerilog TB | Fast, dependency-light golden directed tests; first bring-up. |
 | 2 | `dv/vlt/` | Verilator (C++) | `sim_main.cpp` harness | Fast regression + the **coverage** vehicle (`--coverage` → `coverage.info`). |
-| 3 | `dv/uvm/` | Verilator + Accellera UVM | UVM (agents/seq/scoreboard) | UVM on Verilator >= 5.03x (pinned OSS CAD Suite 5.047; apt 5.020 cannot compile uvm-core). uvm-core cloned at a pinned commit by the Makefile; **keep `VERILATOR_ROOT` unset**. Runs in CI (~2 min, D12). |
+| 3 | `dv/uvm/` | Verilator + Accellera UVM | UVM (agents/seq/scoreboard) | UVM on Verilator >= 5.03x (from-source 5.050 in the CI image; apt 5.020 cannot compile uvm-core). uvm-core cloned at a pinned commit by the Makefile; **keep `VERILATOR_ROOT` unset**. Runs in CI (~2 min, D12). |
 | 4 | `dv/systemc/` | Verilator → SystemC | `sc_main.cpp` + verilated SystemC model | Transaction-level/system co-sim; reference model cross-check. |
 | 5 | `dv/cocotb/` | cocotb + **PyUVM** | Python UVM (Icarus or Verilator) | Rich constrained-random + **functional coverage** (PyVSC per memory `[[pyvsc-functional-coverage]]`). Watch the cocotb handshake-race + `ICARUS_BIN_DIR=/usr/bin` gotchas in `[[cocotb-apb-slave-timing]]`. |
 
@@ -307,8 +308,9 @@ Dashboard sections: throughput/latency (perf), line+functional coverage,
 resource (gate/Fmax estimates), and per-(agent×model) if the swarm ran.
 
 ### GitHub Actions CI (`.github/workflows/ci.yml`)
-Jobs per `DV_STANDARDS.md`, all `ubuntu-latest`, OSS CAD Suite pinned to
-`OSS_CAD_SUITE_VERSION`, `cocotb==1.8.1`:
+Jobs per `DV_STANDARDS.md`, all `ubuntu-latest`, running inside the from-source
+toolchain image (Dockerfile `tools` target, built once per toolchain change and
+pushed to GHCR) — no OSS CAD Suite; `cocotb==1.8.1`:
 - `regress` — `make regress` (blocks merge).
 - `coverage` — `make coverage`, upload `coverage.info` (needs: regress).
 - `formal` — `make formal` (needs: regress).
@@ -389,7 +391,7 @@ IDs are what `AGENT_HANDOFF.md` points at.
   `--assert`); cocotb runs on Icarus, which has no concurrent SVA (D13).
 - [x] **T5.2** `formal/*.sby` for CDC/credit/message-bus safety; PDR prove + cover
   (`async_fifo`, `ingress_gate`, `ctrl` = ctrl FSM + msgbus + tx_egress).
-- [x] **T5.3** `ASSERTIONS.md`. **Gate: `make formal`** — GREEN locally (pinned OSS CAD Suite).
+- [x] **T5.3** `ASSERTIONS.md`. **Gate: `make formal`** — GREEN (Yosys+slang, SBY, yices).
 
 ### M6 — Low power (UPF)
 - [x] **T6.1** `lp/bridge.upf` + `pipe7_pmu` + `tb_pipe7_upf_power` +

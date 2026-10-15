@@ -1,8 +1,8 @@
 # dv/uvm — DV env 3: Accellera UVM (uvm-core 2020.3.1) on Verilator --timing.
 # smoke: build + run scen_test (shared five-scenario set) -> logs/results.json,
 #        then crosscheck.  First build compiles UVM itself (~2-5 min).
-# Needs a UVM-capable Verilator (>= 5.03x; the pinned OSS CAD Suite 2026-04-13
-# ships 5.047).  apt Verilator 5.020 cannot build UVM.  Keep VERILATOR_ROOT unset.
+# Needs a UVM-capable Verilator (>= 5.03x; the CI image builds 5.050 from source).
+# apt Verilator 5.020 cannot build UVM.  Keep VERILATOR_ROOT unset.
 # UVM_HOME: path to uvm-core/src; if unset, uvm-core is cloned at UVM_REF into
 # ./uvm-core (git-ignored).
 VERILATOR ?= verilator

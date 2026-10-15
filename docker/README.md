@@ -1,8 +1,9 @@
 # docker — container image & agent swarm
 
-- `../Dockerfile` — Ubuntu 24.04 + pinned OSS CAD Suite 2026-04-13 (last on PATH)
-  + apt Icarus/SystemC + venv with cocotb 1.8.1/pyuvm/pyvsc. `--build-arg
-  WITH_CLAUDE=1` also installs the Claude Code CLI for the swarm.
+- `../Dockerfile` — Ubuntu 24.04, multi-stage: builds Verilator + Yosys+slang +
+  SBY from source, plus apt Icarus/SystemC/z3 + yices + a venv with cocotb
+  1.8.1/pyuvm/pyvsc (no OSS CAD Suite). `--build-arg WITH_CLAUDE=1` also installs
+  the Claude Code CLI for the swarm.
   Optional: put `*.crt` files in `docker/extra_ca/` before building to trust an extra CA
   (TLS-intercepting proxies). No `RUN --mount=type=secret`: Railway's builder rejects it.
 - `entrypoint.sh` — default: `make metrics` over every flow (incl. uvm, formal),

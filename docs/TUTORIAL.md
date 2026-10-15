@@ -225,7 +225,7 @@ have to agree on the numbers.
 |---|---|---|---|
 | Icarus | `dv/iverilog/` | directed SV, `tb_*.sv` | fast, few dependencies; where the directed corner tests live |
 | Verilator C++ | `dv/vlt/` | `sim_main.cpp` + `bridge_bfm.h` | speed, **line/branch coverage** (`make coverage`, floor 80%), SVA |
-| UVM | `dv/uvm/` | UVM on Verilator | agents, sequences, scoreboard; needs the pinned OSS CAD Suite |
+| UVM | `dv/uvm/` | UVM on Verilator | agents, sequences, scoreboard; needs a UVM-capable Verilator (>= 5.03x) |
 | SystemC | `dv/systemc/` | verilated SystemC | transaction-level co-simulation |
 | cocotb | `dv/cocotb/` | cocotb + PyUVM, `fcov.py` | constrained random and functional coverage |
 
