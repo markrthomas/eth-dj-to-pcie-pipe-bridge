@@ -62,12 +62,13 @@
     begin
       if (rr_rdy_force >= 0) begin rr_rdy = rr_rdy_force; return rr_rdy; end
       v = rr_on ? rr_range(rr_rdy_min, 100) : base;
-      if (rr_on && PIPE_NLANES > 1) begin
+      v = (v < base) ? v : base;
+      if (rr_on && PIPE_NLANES > 1) begin      // the floor beats the TB's base value (scen: base 90 < MAC duty + margin)
         lo = 100 - rr_last_gap + rr_x4_margin;
         if (lo > 100) lo = 100;
         if (v < lo) v = lo;
       end
-      rr_rdy = (v < base) ? v : base;
+      rr_rdy = v;
     end
   endfunction
   // extra idle cycles (message-bus TB)
