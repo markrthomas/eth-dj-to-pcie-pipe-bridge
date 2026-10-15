@@ -687,6 +687,9 @@ class Harness {
       ops_.push_back({OP_IDLE, 20000, 0, 0});
     }
     if (scen_ != 6) ops_.push_back({OP_WAIT_RX, n, 0, 0});
+    // rxovf with credit flow control is lossless but only as fast as the (slow, mac_gap-throttled) source and the 4 % sink:
+    // wait for the frames instead of relying on the fixed idle windows (the frames-received check at P_FINISH is unchanged)
+    if (scen_ == 6 && FLOW_CTRL) ops_.push_back({OP_WAIT_RX, n, 0, 0});
     ops_.push_back({OP_IDLE, 200, 0, 0});
   }
 
@@ -747,8 +750,8 @@ class Harness {
         if (op.b > sent_hi_) sent_hi_ = int(op.b);
         return true;
       case OP_WAIT_RX:
-        // B3: one long wait (no split point) at a low sink_pct is slow, not hung -> the timeout counts from the last received frame
-        if (scen_ == 7 && rand_ctl > 0 && res_.frames != wr_last_) { wr_last_ = res_.frames; op_t_ = 1; }
+        // one long wait (no split point) at a low sink_pct is slow, not hung -> the timeout counts from the last received frame
+        if (scen_ == 7 && res_.frames != wr_last_) { wr_last_ = res_.frames; op_t_ = 1; }
         return res_.frames >= op.a;
       case OP_SETTLE: {                            // a,b,c = pd/rate/width, d..e = PMCNT range; waits for stable
         if (op_t_ == 0) { st_have_ = pm_have_ = false; st_stable_ = 0; pm_last_ = -1; mono_valid_[1] = mono_valid_[2] = false; }

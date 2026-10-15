@@ -2,7 +2,7 @@
 """Random-regression runner, triage and replay corpus (dv/random/README.md).
 
     rr.py build                         build the Verilator binaries (default, fc, nodpr)
-    rr.py run [--n N] [--jobs J] [--seed-base S] [--out DIR] [--timeout SEC]
+    rr.py run [--n N] [--jobs J] [--seed-base S] [--out DIR] [--timeout SEC] [--legacy-knobs]
                                         run N random (config, seed) jobs, write DIR/results.jsonl
     rr.py triage DIR                    parse DIR/results.jsonl -> DIR/triage.json (failures clustered
                                         by normalised signature) and print a summary
@@ -39,21 +39,36 @@ BINS = {
     "vlt-nodpr": os.path.join(VLT, "obj_dir_nodpr", "V" + TOP),
 }
 WEIGHTS = {"vlt": 5, "vlt-fc": 3, "vlt-nodpr": 2}
-# plusargs the harness understands (seed) or is expected to (added by the harness-dev agent, see README)
-KNOBS = {"mac_gap": (0, 5, 10, 30, 60, 90), "sink_pct": (100, 90, 50, 20, 5)}
+# plusargs the harness understands.  The knob sets are config-aware (stimulus envelope, dv/random/README.md):
+#  * mac_gap: any of these is inside the contract for every config (vlt-fc rxovf waits for its frames, see bridge_bfm.h).
+#  * sink_pct: the non-flow-control builds have no Rx backpressure (D9: overflow drops flits and aborts the frame), and the
+#    fixed scenarios treat any abort as an error.  Swept (20 seeds x mac_gap 0..90, 2026-10-15): >=50 never fails, 45 fails
+#    in ~10 % of jobs, <=40 fails always -> non-FC draws stay >=70 (20 points of margin).  vlt-fc is lossless at any sink_pct.
+MAC_GAP = (0, 5, 10, 30, 60, 90)
+SINK_PCT = {"vlt": (100, 90, 70), "vlt-nodpr": (100, 90, 70), "vlt-fc": (100, 90, 50, 20, 5)}
+SINK_PCT_LEGACY = (100, 90, 50, 20, 5)       # pre-envelope set for every config (--legacy-knobs): reproduces findings A-C
 # 'rand' scenario knobs (+rand_seed picks the scenario; seed is drawn per job and recorded in the corpus)
 RAND_FRAMES = (4, 12, 24, 48, 96)
 RAND_MAXLEN = (64, 300, 2000, 9000)
 RAND_CTL = (0, 1, 2, 4, 8)          # B3: control-plane episodes in the rand scenario (0 = old behaviour)
+# Scenario op budget: one op may take 400000 pclk (bridge_bfm.h); the rand wait counts from the last received frame, so only
+# the time per frame matters: <=9000 B at sink 5 % is ~6k eth cycles, far inside the budget.  No cap on rand_frames*rand_maxlen.
+SINK_MIN_NONFC = 50                  # measured all-pass floor; make_job asserts generated non-FC jobs stay above it
 
 
-def make_job(i, rng, seed_base):
+def in_envelope(cfg, args):
+    """True if (config, plusargs) is inside the DUT stimulus contract (see README 'Stimulus envelope')."""
+    return args.get("mac_gap", 10) in MAC_GAP and (cfg == "vlt-fc" or args.get("sink_pct", 90) >= SINK_MIN_NONFC)
+
+
+def make_job(i, rng, seed_base, legacy=False):
     cfg = rng.choices(list(WEIGHTS), weights=list(WEIGHTS.values()))[0]
-    args = {k: rng.choice(v) for k, v in KNOBS.items()}
+    args = {"mac_gap": rng.choice(MAC_GAP), "sink_pct": rng.choice(SINK_PCT_LEGACY if legacy else SINK_PCT[cfg])}
     args["rand_seed"] = rng.randrange(1, 2**31)
     args["rand_frames"] = rng.choice(RAND_FRAMES)
     args["rand_maxlen"] = rng.choice(RAND_MAXLEN)
     args["rand_ctl"] = rng.choice(RAND_CTL)          # drawn last: earlier draws (and old corpus entries) are unchanged
+    assert legacy or in_envelope(cfg, args), (cfg, args)
     return {"id": f"j{i:05d}", "config": cfg, "seed": seed_base + i, "args": args}
 
 
@@ -104,7 +119,7 @@ def cmd_run(a):
     os.makedirs(out, exist_ok=True)
     seed_base = a.seed_base if a.seed_base is not None else random.SystemRandom().randrange(1, 2**30)
     rng = random.Random(seed_base)
-    jobs = [make_job(i, rng, seed_base) for i in range(a.n)]
+    jobs = [make_job(i, rng, seed_base, a.legacy_knobs) for i in range(a.n)]
     with cf.ThreadPoolExecutor(a.jobs) as ex, open(os.path.join(out, "results.jsonl"), "w") as f:
         for r in ex.map(lambda j: run_job(j, out, a.timeout), jobs):
             f.write(json.dumps(r) + "\n")
@@ -192,6 +207,8 @@ def main():
     r.add_argument("--seed-base", type=int)
     r.add_argument("--out")
     r.add_argument("--timeout", type=int, default=900)
+    r.add_argument("--legacy-knobs", action="store_true",
+                   help="pre-envelope sink_pct set for every config (out-of-contract; reproduces findings A-C)")
     t = sp.add_parser("triage")
     t.add_argument("dir")
     p = sp.add_parser("promote")
