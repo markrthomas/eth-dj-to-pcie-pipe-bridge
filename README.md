@@ -182,7 +182,8 @@ Tools (no OSS CAD Suite): Verilator (>= 5.03x, for `uvm`) and Yosys+slang / SBY 
 yices (for `formal`) are built from source; Icarus 12 and SystemC come from apt;
 cocotb/pyuvm/pyvsc from pip (`pip install -r dv/cocotb/requirements.txt`). The
 `Dockerfile` assembles all of it — CI runs the jobs inside that image, and you
-can too: `docker build -t bridge-ci . && docker run --rm bridge-ci`.
+can too: `docker build -t bridge-ci . && docker run --rm bridge-ci`. To hand-build
+the tools on a local machine, see [`docs/TOOLCHAIN.md`](docs/TOOLCHAIN.md).
 
 ## Layout
 

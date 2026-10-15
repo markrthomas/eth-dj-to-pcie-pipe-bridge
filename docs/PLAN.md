@@ -209,7 +209,7 @@ All five drive the **same DUT** and reuse the shared BFMs/checkers in
 | 2 | `dv/vlt/` | Verilator (C++) | `sim_main.cpp` harness | Fast regression + the **coverage** vehicle (`--coverage` → `coverage.info`). |
 | 3 | `dv/uvm/` | Verilator + Accellera UVM | UVM (agents/seq/scoreboard) | UVM on Verilator >= 5.03x (from-source 5.050 in the CI image; apt 5.020 cannot compile uvm-core). uvm-core cloned at a pinned commit by the Makefile; **keep `VERILATOR_ROOT` unset**. Runs in CI (~2 min, D12). |
 | 4 | `dv/systemc/` | Verilator → SystemC | `sc_main.cpp` + verilated SystemC model | Transaction-level/system co-sim; reference model cross-check. |
-| 5 | `dv/cocotb/` | cocotb + **PyUVM** | Python UVM (Icarus or Verilator) | Rich constrained-random + **functional coverage** (PyVSC per memory `[[pyvsc-functional-coverage]]`). Watch the cocotb handshake-race + `ICARUS_BIN_DIR=/usr/bin` gotchas in `[[cocotb-apb-slave-timing]]`. |
+| 5 | `dv/cocotb/` | cocotb + **PyUVM** | Python UVM (Icarus or Verilator) | Rich constrained-random + **functional coverage** (PyVSC per memory `[[pyvsc-functional-coverage]]`). Watch the cocotb handshake-race gotcha; `dv/cocotb/Makefile` auto-detects a >= 12 Icarus (no hardcoded `ICARUS_BIN_DIR`). |
 
 **Cross-check contract:** all five must agree on a common directed scenario set
 (write-a-frame / read-a-frame / random-frames / power-cycle P0→P1→P0 /
@@ -311,17 +311,23 @@ resource (gate/Fmax estimates), and per-(agent×model) if the swarm ran.
 Jobs per `DV_STANDARDS.md`, all `ubuntu-latest`, running inside the from-source
 toolchain image (Dockerfile `tools` target, built once per toolchain change and
 pushed to GHCR) — no OSS CAD Suite; `cocotb==1.8.1`:
-- `regress` — `make regress` (blocks merge).
-- `coverage` — `make coverage`, upload `coverage.info` (needs: regress).
-- `formal` — `make formal` (needs: regress).
-- (optional) `cocotb`, `systemc` env smokes.
+- `build-image` — builds the Dockerfile `tools` target and pushes it to GHCR
+  (tag = hash of the Dockerfile + requirements; reused on a cache hit).
+- `regress` — lint + the Icarus directed suite + shared scenarios (+ `upf-tb`,
+  `lanes4`, `wave-check-all`, `dashboard`); blocks the rest.
+- `coverage` — `make coverage` (+ `vlt-fc`, `vlt-nodpr`); uploads `coverage.info`.
+- `systemc`, `uvm`, `cocotb` — each DV env (+ its `-fc` flow-control variant);
+  cocotb also runs `pd-emu` / `pd-emu-ret`.
+- `formal` — SymbiYosys prove + cover.
+- `crosscheck` — all five envs agree with the golden model (pure-Python runner).
 
 ### Railway (larger runs) — `railway.toml`
 Config-as-code batch job (not a web service): `builder = DOCKERFILE`,
-`restartPolicyType = "NEVER"`, no `startCommand` (image ENTRYPOINT runs
-`make ci`), optional `cronSchedule` for a scheduled (currently weekly) full run. Use for long
-stress/random regressions that exceed the GitHub runner budget. Port
-`axi-on-ucie-to-mem/railway.toml` + `Dockerfile` + `docker/entrypoint.sh`.
+`restartPolicyType = "NEVER"`, no `startCommand` (the image ENTRYPOINT,
+`docker/entrypoint.sh`, runs `make metrics` + `crosscheck` + `dashboard` and
+publishes the results to the `metrics-data` branch), weekly `cronSchedule`. Use
+for long runs that exceed the GitHub runner budget. See `docs/railway.md` for the
+data-publishing flow and the service variables.
 
 Results leave the (ephemeral) container through `docker/publish_metrics.sh` (branch `metrics-data`) and
 re-enter the dashboard with `make railway-import` - see `docs/railway.md`.
@@ -420,7 +426,7 @@ IDs are what `AGENT_HANDOFF.md` points at.
 | # | Criterion | Status |
 |---|---|---|
 | 1 | `make regress` green locally + CI | Met |
-| 2 | `make ci` green; line coverage ≥ 80% | Met locally (pinned suite); CI runs the same jobs split up. Line+branch 90.0% (2026-10-02, after D19; 92.5% before it, 95.7% before the MAC register file, D17) |
+| 2 | `make ci` green; line coverage ≥ 80% | Met (CI runs the same jobs split up, in the from-source toolchain image). Line+branch 90.0% (2026-10-02, after D19; 92.5% before it, 95.7% before the MAC register file, D17) |
 | 3 | Five envs build + pass smoke | Met (all five in CI; crosscheck job) |
 | 4 | SVA bound + passing in Verilator and cocotb flows; formal proves flow-control safety | SVA in vlt/systemc/uvm, **not cocotb** (Icarus, D13); formal proofs pass |
 | 5 | UPF authored + documented; `make upf` stub | Authored + documented; **never run** (commercial-tool runs out of scope); `upf-tb` / `pd-emu` are the OSS checks |

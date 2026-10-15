@@ -5,6 +5,22 @@ If a session ended, this is where you pick up. Read this, then
 
 ## Current state — 2026-10-01 (read this first; the log below is history)
 
+> **2026-10-15 update — the DV toolchain no longer uses the OSS CAD Suite.**
+> After a WSL rebuild wiped `~/oss-cad-suite`, the toolchain was rebuilt from
+> source / apt / pip and the OSS CAD Suite was dropped entirely (PRs #51, #52).
+> - **Tools:** Verilator 5.050 + Yosys (native slang) + SBY built from source;
+>   Icarus 12 + SystemC + z3 from apt; **yices2** prebuilt (the formal `cover`
+>   solver — apt z3 OOMs on CI runners); cocotb/pyuvm/pyvsc from pip. Build
+>   recipe: [`TOOLCHAIN.md`](TOOLCHAIN.md); the pinned definition is the `Dockerfile`.
+> - **CI** now builds that toolchain into a GHCR image (`build-image` job, cached
+>   by a hash of the Dockerfile + requirements) and runs every DV job inside it
+>   via `container:`. All 8 jobs green.
+> - **`dv/cocotb/Makefile`** auto-detects a ≥12 Icarus (no hardcoded `/usr/bin`).
+>   **`formal/Makefile`** adapts between built-in `read_slang` and the OSS CAD
+>   Suite's `plugin -i slang`, and between yices and z3.
+> The dated entries below (and their "pinned OSS CAD Suite" mentions) are history
+> from before this change.
+
 **`main` carries everything; all PRs through #30 are merged, none are open, and `main` is the only
 remote branch** (the 24 merged `claude/*` branches were deleted by the owner on 2026-10-01 — the cloud
 git proxy answers branch deletion with HTTP 403, so a session cannot do it; list leftovers for the

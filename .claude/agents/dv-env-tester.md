@@ -13,8 +13,8 @@ You own exactly one DV environment (named in your brief).
    reason, then restore the file exactly (`git diff rtl/` must be empty).
 3. Report: command, PASS/FAIL line, crosscheck table excerpt, mutation result.
 
-Environment gotchas: `make uvm` needs Verilator >= 5.03x (the pinned OSS CAD
-Suite; apt 5.020 cannot compile uvm-core). cocotb uses apt Icarus
-(`ICARUS_BIN_DIR=/usr/bin`) and cocotb 1.8.1. Do not set VERILATOR_ROOT. Icarus
-lacks `break`/array literals; declare nets before use. Never fabricate output;
-never weaken a check to pass.
+Environment gotchas: `make uvm` needs Verilator >= 5.03x (the from-source
+Verilator 5.050 in the CI image; apt 5.020 cannot compile uvm-core). cocotb uses
+a >= 12 Icarus (`dv/cocotb/Makefile` auto-detects it) and cocotb 1.8.1. Do not set
+VERILATOR_ROOT. Icarus lacks `break`/array literals; declare nets before use.
+Never fabricate output; never weaken a check to pass.
