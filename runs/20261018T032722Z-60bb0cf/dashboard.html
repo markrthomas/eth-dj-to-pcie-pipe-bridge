@@ -1,0 +1,137 @@
+<!doctype html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Bridge DV Metrics</title><style>
+:root { --bg:#ffffff; --fg:#1d2127; --muted:#5b6470; --line:#dfe3e8; --card:#f6f8fa;
+        --ok:#1a7f37; --bad:#cf222e; --na:#6e7781; --meas:#0969da; --est:#9a6700; }
+@media (prefers-color-scheme: dark) {
+  :root { --bg:#0d1117; --fg:#e6edf3; --muted:#8d96a0; --line:#30363d; --card:#161b22;
+          --ok:#3fb950; --bad:#f85149; --na:#8d96a0; --meas:#58a6ff; --est:#d29922; } }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--bg); color:var(--fg);
+       font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
+main { max-width:1100px; margin:0 auto; padding:24px 16px 48px; }
+h1 { font-size:22px; margin:0 0 4px; } h2 { font-size:16px; margin:28px 0 8px; }
+.meta { color:var(--muted); margin-bottom:8px; }
+.wrap { overflow-x:auto; }
+table { border-collapse:collapse; width:100%; background:var(--card); border:1px solid var(--line); }
+th,td { text-align:left; padding:6px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+th { font-weight:600; color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.03em; }
+td.num { text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; }
+td.detail { color:var(--muted); font-size:12px; }
+.badge { display:inline-block; padding:1px 7px; border-radius:10px; font-size:11px; border:1px solid currentColor; white-space:nowrap; }
+.k-measured { color:var(--meas); } .k-estimated { color:var(--est); } .k-not_attributable { color:var(--na); }
+.s-PASS { color:var(--ok); font-weight:600; } .s-FAIL { color:var(--bad); font-weight:600; }
+.s-NOT_RUN, .s-SKIP { color:var(--na); }
+.note { color:var(--muted); font-size:12px; margin-top:6px; }
+code { font-size:12px; }
+</style></head><body><main><h1>eth-dj &harr; PIPE 7.1 bridge &mdash; DV metrics</h1>
+<div class='meta'>Latest run 15 &middot; 2026-10-18T03:20:19Z &middot; <code>60bb0cf</code> on main &middot; host c657754144c1 &middot; container run</div>
+<div class='meta'>Tools: iverilog <code>Icarus Verilog version 12.0 (stable) ()</code> &middot; verilator <code>Verilator 5.050 2026-07-01 rev v5.050</code> &middot; yosys <code>Yosys 0.70+33 (git sha1 47595d984, Release, GNU /usr/bin/c++ 13.3.0)</code> &middot; sby <code>SBY</code> &middot; python <code>Python 3.12.3</code> &middot; cocotb <code>1.8.1</code></div>
+<p class='note'><span class='badge k-measured'>measured</span> read from an artifact of this run &nbsp; <span class='badge k-estimated'>estimated</span> computed from design parameters or a pre-synthesis elaboration &nbsp; <span class='badge k-not_attributable'>not attributable</span> no data source; the gap is recorded instead of a number.</p>
+<h2>Flows (wall clock)</h2>
+<div class='wrap'><table><tr><th>Metric</th><th>Value</th><th>Status</th><th>Kind</th><th>Source / detail</th></tr>
+<tr><td><code>make regress</code></td><td class='num'>46.07 s</td><td><span class='s-PASS'>PASS</span></td><td><span class='badge k-measured'>measured</span></td><td class='detail'>wall clock around `make`</td></tr>
+<tr><td><code>make coverage</code></td><td class='num'>19.49 s</td><td><span class='s-PASS'>PASS</span></td><td><span class='badge k-measured'>measured</span></td><td class='detail'>wall clock around `make`</td></tr>
+<tr><td><code>make systemc</code></td><td class='num'>10.37 s</td><td><span class='s-PASS'>PASS</span></td><td><span class='badge k-measured'>measured</span></td><td class='detail'>wall clock around `make`</td></tr>
+<tr><td><code>make cocotb</code></td><td class='num'>26.25 s</td><td><span class='s-PASS'>PASS</span></td><td><span class='badge k-measured'>measured</span></td><td class='detail'>wall clock around `make`</td></tr>
+<tr><td><code>make uvm</code></td><td class='num'>218.27 s</td><td><span class='s-PASS'>PASS</span></td><td><span class='badge k-measured'>measured</span></td><td class='detail'>wall clock around `make`</td></tr>
+<tr><td><code>make formal</code></td><td class='num'>101.58 s</td><td><span class='s-PASS'>PASS</span></td><td><span class='badge k-measured'>measured</span></td><td class='detail'>wall clock around `make`</td></tr>
+<tr><td><code>make upf-tb</code></td><td class='num'>0.58 s</td><td><span class='s-PASS'>PASS</span></td><td><span class='badge k-measured'>measured</span></td><td class='detail'>wall clock around `make`</td></tr>
+</table></div>
+<h2>Directed tests (Icarus)</h2>
+<div class='wrap'><table><tr><th>Metric</th><th>Value</th><th>Status</th><th>Kind</th><th>Source / detail</th></tr>
+<tr><td><code>smoke</code></td><td class='num'>&mdash;</td><td><span class='s-PASS'>PASS</span></td><td><span class='badge k-measured'>measured</span></td><td class='detail'>dv/iverilog/sim_build/smoke.log</td></tr>
+<tr><td><code>tx</code></td><td class='num'>115 frames</td><td><span class='s-PASS'>PASS</span></td><td><span class='badge k-measured'>measured</span></td><td class='detail'>dv/iverilog/sim_build/tx.log<br>flits=531</td></tr>
+<tr><td><code>loop</code></td><td class='num'>115 frames</td><td><span class='s-PASS'>PASS</span></td><td><span class='badge k-measured'>measured</span></td><td class='detail'>dv/iverilog/sim_build/loop.log<br>flits=531</td></tr>
+<tr><td><code>pm</code></td><td class='num'>158 frames</td><td><span class='s-PASS'>PASS</span></td><td><span class='badge k-measured'>measured</span></td><td class='detail'>dv/iverilog/sim_build/pm.log<br>flits=516</td></tr>
+<tr><td><code>rxovf</code></td><td class='num'>110 frames</td><td><span class='s-PASS'>PASS</span></td><td><span class='badge k-measured'>measured</span></td><td class='detail'>dv/iverilog/sim_build/rxovf.log</td></tr>
+<tr><td><code>scen</code></td><td class='num'>&mdash;</td><td><span class='s-PASS'>PASS</span></td><td><span class='badge k-measured'>measured</span></td><td class='detail'>dv/iverilog/sim_build/scen.log</td></tr>
+<tr><td><code>upf-tb</code></td><td class='num'>36 frames</td><td><span class='s-PASS'>PASS</span></td><td><span class='badge k-measured'>measured</span></td><td class='detail'>lp/sim_build/upf_tb.log</td></tr>
+</table></div>
+<h2>Shared scenario set: env vs golden model</h2>
+<div class='wrap'><table><tr><th>Metric</th><th>Value</th><th>Status</th><th>Kind</th><th>Source / detail</th></tr>
+<tr><td><code>iverilog</code></td><td class='num'>5 scenarios</td><td><span class='s-PASS'>PASS</span></td><td><span class='badge k-measured'>measured</span></td><td class='detail'>dv/iverilog/sim_build/results.json<br>84352 bytes delivered; matches golden model</td></tr>
+<tr><td><code>vlt</code></td><td class='num'>5 scenarios</td><td><span class='s-PASS'>PASS</span></td><td><span class='badge k-measured'>measured</span></td><td class='detail'>dv/vlt/logs/results.json<br>84352 bytes delivered; matches golden model</td></tr>
+<tr><td><code>systemc</code></td><td class='num'>5 scenarios</td><td><span class='s-PASS'>PASS</span></td><td><span class='badge k-measured'>measured</span></td><td class='detail'>dv/systemc/logs/results.json<br>84352 bytes delivered; matches golden model</td></tr>
+<tr><td><code>uvm</code></td><td class='num'>5 scenarios</td><td><span class='s-PASS'>PASS</span></td><td><span class='badge k-measured'>measured</span></td><td class='detail'>dv/uvm/logs/results.json<br>84352 bytes delivered; matches golden model</td></tr>
+<tr><td><code>cocotb</code></td><td class='num'>5 scenarios</td><td><span class='s-PASS'>PASS</span></td><td><span class='badge k-measured'>measured</span></td><td class='detail'>dv/cocotb/results.json<br>84352 bytes delivered; matches golden model</td></tr>
+</table></div>
+<h2>Coverage</h2>
+<div class='wrap'><table><tr><th>Metric</th><th>Value</th><th>Status</th><th>Kind</th><th>Source / detail</th></tr>
+<tr><td><code>line_branch_rtl</code></td><td class='num'>90 %</td><td></td><td><span class='badge k-measured'>measured</span></td><td class='detail'>dv/vlt/logs/coverage_summary.json<br>297/330 Verilator line+branch points in rtl/ (floor 80%)</td></tr>
+<tr><td><code>toggle_rtl</code></td><td class='num'>75.48 %</td><td></td><td><span class='badge k-measured'>measured</span></td><td class='detail'>dv/vlt/logs/coverage_summary.json<br>5907/7826 (not gated)</td></tr>
+<tr><td><code>sva_covers_hit</code></td><td class='num'>11 of 12</td><td></td><td><span class='badge k-measured'>measured</span></td><td class='detail'>dv/vlt/logs/coverage_summary.json<br>unhit: c_b2b_flits</td></tr>
+<tr><td><code>functional_pyvsc</code></td><td class='num'>100 %</td><td></td><td><span class='badge k-measured'>measured</span></td><td class='detail'>dv/cocotb/fcov.json<br>mean of coverpoint coverage over FrameCg, CtrlCg, CdcCg</td></tr>
+</table></div>
+<h2>Formal (SymbiYosys)</h2>
+<div class='wrap'><table><tr><th>Metric</th><th>Value</th><th>Status</th><th>Kind</th><th>Source / detail</th></tr>
+<tr><td><code>_async_fifo.prove</code></td><td class='num'>&mdash;</td><td><span class='s-PASS'>PASS</span></td><td><span class='badge k-measured'>measured</span></td><td class='detail'>formal/_async_fifo_prove/status</td></tr>
+<tr><td><code>_async_fifo.cover</code></td><td class='num'>&mdash;</td><td><span class='s-PASS'>PASS</span></td><td><span class='badge k-measured'>measured</span></td><td class='detail'>formal/_async_fifo_cover/status</td></tr>
+<tr><td><code>_ctrl.prove</code></td><td class='num'>&mdash;</td><td><span class='s-PASS'>PASS</span></td><td><span class='badge k-measured'>measured</span></td><td class='detail'>formal/_ctrl_prove/status</td></tr>
+<tr><td><code>_ctrl.cover</code></td><td class='num'>&mdash;</td><td><span class='s-PASS'>PASS</span></td><td><span class='badge k-measured'>measured</span></td><td class='detail'>formal/_ctrl_cover/status</td></tr>
+<tr><td><code>_fc.prove</code></td><td class='num'>&mdash;</td><td><span class='s-PASS'>PASS</span></td><td><span class='badge k-measured'>measured</span></td><td class='detail'>formal/_fc_prove/status</td></tr>
+<tr><td><code>_fc.cover</code></td><td class='num'>&mdash;</td><td><span class='s-PASS'>PASS</span></td><td><span class='badge k-measured'>measured</span></td><td class='detail'>formal/_fc_cover/status</td></tr>
+<tr><td><code>_ingress_gate.prove</code></td><td class='num'>&mdash;</td><td><span class='s-PASS'>PASS</span></td><td><span class='badge k-measured'>measured</span></td><td class='detail'>formal/_ingress_gate_prove/status</td></tr>
+<tr><td><code>_ingress_gate.cover</code></td><td class='num'>&mdash;</td><td><span class='s-PASS'>PASS</span></td><td><span class='badge k-measured'>measured</span></td><td class='detail'>formal/_ingress_gate_cover/status</td></tr>
+<tr><td><code>async_fifo.prove</code></td><td class='num'>&mdash;</td><td><span class='s-NOT_RUN'>NOT_RUN</span></td><td><span class='badge k-not_attributable'>not attributable</span></td><td class='detail'>formal/async_fifo_prove/status<br>make formal not run</td></tr>
+<tr><td><code>async_fifo.cover</code></td><td class='num'>&mdash;</td><td><span class='s-NOT_RUN'>NOT_RUN</span></td><td><span class='badge k-not_attributable'>not attributable</span></td><td class='detail'>formal/async_fifo_cover/status<br>make formal not run</td></tr>
+<tr><td><code>ctrl.prove</code></td><td class='num'>&mdash;</td><td><span class='s-NOT_RUN'>NOT_RUN</span></td><td><span class='badge k-not_attributable'>not attributable</span></td><td class='detail'>formal/ctrl_prove/status<br>make formal not run</td></tr>
+<tr><td><code>ctrl.cover</code></td><td class='num'>&mdash;</td><td><span class='s-NOT_RUN'>NOT_RUN</span></td><td><span class='badge k-not_attributable'>not attributable</span></td><td class='detail'>formal/ctrl_cover/status<br>make formal not run</td></tr>
+<tr><td><code>fc.prove</code></td><td class='num'>&mdash;</td><td><span class='s-NOT_RUN'>NOT_RUN</span></td><td><span class='badge k-not_attributable'>not attributable</span></td><td class='detail'>formal/fc_prove/status<br>make formal not run</td></tr>
+<tr><td><code>fc.cover</code></td><td class='num'>&mdash;</td><td><span class='s-NOT_RUN'>NOT_RUN</span></td><td><span class='badge k-not_attributable'>not attributable</span></td><td class='detail'>formal/fc_cover/status<br>make formal not run</td></tr>
+<tr><td><code>ingress_gate.prove</code></td><td class='num'>&mdash;</td><td><span class='s-NOT_RUN'>NOT_RUN</span></td><td><span class='badge k-not_attributable'>not attributable</span></td><td class='detail'>formal/ingress_gate_prove/status<br>make formal not run</td></tr>
+<tr><td><code>ingress_gate.cover</code></td><td class='num'>&mdash;</td><td><span class='s-NOT_RUN'>NOT_RUN</span></td><td><span class='badge k-not_attributable'>not attributable</span></td><td class='detail'>formal/ingress_gate_cover/status<br>make formal not run</td></tr>
+</table></div>
+<h2>Performance</h2>
+<div class='wrap'><table><tr><th>Metric</th><th>Value</th><th>Status</th><th>Kind</th><th>Source / detail</th></tr>
+<tr><td><code>delivered_eth_throughput_vlt_run</code></td><td class='num'>3.303 Gb/s</td><td></td><td><span class='badge k-measured'>measured</span></td><td class='detail'>dv/vlt/logs/vlt.log + results.json<br>84352 B over 204.3 us of simulated time (eth_clk 200 MHz, pclk 500 MHz), including resets, control ops, idle and the coverage-only scenarios: a whole-run average, not a peak</td></tr>
+<tr><td><code>pipe_tx_raw_bw_bound</code></td><td class='num'>32 Gb/s</td><td></td><td><span class='badge k-estimated'>estimated</span></td><td class='detail'>eth_dj_pipe7_pkg.sv<br>PIPE_BUS_W=64 x 500 MHz (DV clock), x1 lane; ignores the single-buffered framer and flit overhead</td></tr>
+<tr><td><code>flit_payload_efficiency</code></td><td class='num'>0.938 ratio</td><td></td><td><span class='badge k-estimated'>estimated</span></td><td class='detail'>eth_dj_pipe7_pkg.sv<br>FLIT_PAYLOAD_B / FLIT_BYTES</td></tr>
+<tr><td><code>latency_eth_to_eth</code></td><td class='num'>&mdash;</td><td></td><td><span class='badge k-not_attributable'>not attributable</span></td><td class='detail'>no latency monitor in any env yet</td></tr>
+<tr><td><code>fmax</code></td><td class='num'>&mdash;</td><td></td><td><span class='badge k-not_attributable'>not attributable</span></td><td class='detail'>no timing library / STA in this flow</td></tr>
+</table></div>
+<h2>Resource (pre-synthesis estimate)</h2>
+<div class='wrap'><table><tr><th>Metric</th><th>Value</th><th>Status</th><th>Kind</th><th>Source / detail</th></tr>
+<tr><td><code>generic_cells</code></td><td class='num'>&mdash;</td><td><span class='s-NOT_RUN'>NOT_RUN</span></td><td><span class='badge k-not_attributable'>not attributable</span></td><td class='detail'>yosys with slang support not on PATH</td></tr>
+</table></div>
+<h2>Power &amp; area (Nangate45 liberty, OSS flow — estimate)</h2>
+<div class='wrap'><table><tr><th>Metric</th><th>Value</th><th>Status</th><th>Kind</th><th>Source / detail</th></tr>
+<tr><td><code>area_um2</code></td><td class='num'>&mdash;</td><td><span class='s-NOT_RUN'>NOT_RUN</span></td><td><span class='badge k-not_attributable'>not attributable</span></td><td class='detail'>lp/oss/build<br>no stat.txt: run `make -C lp/oss power-oss` (needs network + ~10 GB RAM, ~30 min)</td></tr>
+<tr><td><code>total_mW</code></td><td class='num'>&mdash;</td><td><span class='s-NOT_RUN'>NOT_RUN</span></td><td><span class='badge k-not_attributable'>not attributable</span></td><td class='detail'>lp/oss/build<br>no power.json: run `make -C lp/oss power-oss` (needs network + ~10 GB RAM, ~30 min)</td></tr>
+</table></div>
+<h2>Agent swarm (agent x model)</h2>
+<div class='wrap'><table><tr><th>Metric</th><th>Value</th><th>Status</th><th>Kind</th><th>Source / detail</th></tr>
+<tr><td><code>agent_x_model</code></td><td class='num'>&mdash;</td><td><span class='s-NOT_RUN'>NOT_RUN</span></td><td><span class='badge k-not_attributable'>not attributable</span></td><td class='detail'>no swarm run recorded (docker/last-run-metrics.json absent)</td></tr>
+</table></div>
+<h2>Railway runs (nightly batch job)</h2>
+<div class='wrap'><table><tr><th>Run</th><th>UTC</th><th>Service</th><th>Commit</th><th>Flows PASS</th><th>Flows FAIL</th><th>Flow wall time</th></tr>
+<tr><td>14</td><td>2026-10-03T16:05:26Z</td><td>eth-dj-to-pcie-pipe-bridge</td><td><code>d7fa6ee</code></td><td class='num s-PASS'>7</td><td class='num s-FAIL'>0</td><td class='num'>229.76 s</td></tr>
+<tr><td>13</td><td>2026-10-03T03:27:09Z</td><td>eth-dj-to-pcie-pipe-bridge</td><td><code>18ed23e</code></td><td class='num s-PASS'>1</td><td class='num s-FAIL'>0</td><td class='num'>25.99 s</td></tr>
+<tr><td>12</td><td>2026-10-03T00:30:46Z</td><td>eth-dj-to-pcie-pipe-bridge</td><td><code></code></td><td class='num s-PASS'>1</td><td class='num s-FAIL'>0</td><td class='num'>23.81 s</td></tr>
+<tr><td>11</td><td>2026-10-03T00:30:05Z</td><td>eth-dj-to-pcie-pipe-bridge</td><td><code></code></td><td class='num s-PASS'>1</td><td class='num s-FAIL'>0</td><td class='num'>24.17 s</td></tr>
+<tr><td>10</td><td>2026-10-03T00:29:26Z</td><td>eth-dj-to-pcie-pipe-bridge</td><td><code></code></td><td class='num s-PASS'>1</td><td class='num s-FAIL'>0</td><td class='num'>22.34 s</td></tr>
+<tr><td>9</td><td>2026-10-03T00:28:47Z</td><td>eth-dj-to-pcie-pipe-bridge</td><td><code></code></td><td class='num s-PASS'>1</td><td class='num s-FAIL'>0</td><td class='num'>22.48 s</td></tr>
+<tr><td>8</td><td>2026-10-03T00:28:08Z</td><td>eth-dj-to-pcie-pipe-bridge</td><td><code></code></td><td class='num s-PASS'>1</td><td class='num s-FAIL'>0</td><td class='num'>22.45 s</td></tr>
+<tr><td>7</td><td>2026-10-03T00:27:28Z</td><td>eth-dj-to-pcie-pipe-bridge</td><td><code></code></td><td class='num s-PASS'>1</td><td class='num s-FAIL'>0</td><td class='num'>23.29 s</td></tr>
+<tr><td>6</td><td>2026-10-03T00:26:48Z</td><td>eth-dj-to-pcie-pipe-bridge</td><td><code></code></td><td class='num s-PASS'>1</td><td class='num s-FAIL'>0</td><td class='num'>23.14 s</td></tr>
+<tr><td>5</td><td>2026-10-03T00:26:08Z</td><td>eth-dj-to-pcie-pipe-bridge</td><td><code></code></td><td class='num s-PASS'>1</td><td class='num s-FAIL'>0</td><td class='num'>22.46 s</td></tr>
+<tr><td>4</td><td>2026-10-03T00:25:30Z</td><td>eth-dj-to-pcie-pipe-bridge</td><td><code></code></td><td class='num s-PASS'>1</td><td class='num s-FAIL'>0</td><td class='num'>22.27 s</td></tr>
+<tr><td>3</td><td>2026-10-03T00:24:49Z</td><td>eth-dj-to-pcie-pipe-bridge</td><td><code></code></td><td class='num s-PASS'>1</td><td class='num s-FAIL'>0</td><td class='num'>23.61 s</td></tr>
+<tr><td>2</td><td>2026-10-03T00:24:09Z</td><td>eth-dj-to-pcie-pipe-bridge</td><td><code></code></td><td class='num s-PASS'>1</td><td class='num s-FAIL'>0</td><td class='num'>23.06 s</td></tr>
+</table></div>
+<h2>Run history</h2>
+<div class='wrap'><table><tr><th>Run</th><th>UTC</th><th>Host</th><th>Commit</th><th>PASS</th><th>FAIL</th><th>Not run</th><th>Line+branch %</th><th>Note</th></tr>
+<tr><td>15</td><td>2026-10-18T03:20:19Z</td><td>c657754144c1</td><td><code>60bb0cf</code> main</td><td class='num s-PASS'>27</td><td class='num s-FAIL'>0</td><td class='num'>12</td><td class='num'>90</td><td class='detail'>container run</td></tr>
+<tr><td>14</td><td>2026-10-03T16:05:26Z</td><td>railway/eth-dj-to-pcie-pipe-bridge</td><td><code>d7fa6ee</code> main</td><td class='num s-PASS'>27</td><td class='num s-FAIL'>0</td><td class='num'>3</td><td class='num'>90</td><td class='detail'>container run | imported from b57a9dd09ea0</td></tr>
+<tr><td>13</td><td>2026-10-03T03:27:09Z</td><td>railway/eth-dj-to-pcie-pipe-bridge</td><td><code>18ed23e</code> main</td><td class='num s-PASS'>8</td><td class='num s-FAIL'>0</td><td class='num'>19</td><td class='num'>&mdash;</td><td class='detail'>container run | imported from e0ed30f05ee6</td></tr>
+<tr><td>12</td><td>2026-10-03T00:30:46Z</td><td>railway/eth-dj-to-pcie-pipe-bridge</td><td><code></code> </td><td class='num s-PASS'>8</td><td class='num s-FAIL'>0</td><td class='num'>19</td><td class='num'>&mdash;</td><td class='detail'>container run | imported from 07b31ba370d7</td></tr>
+<tr><td>11</td><td>2026-10-03T00:30:05Z</td><td>railway/eth-dj-to-pcie-pipe-bridge</td><td><code></code> </td><td class='num s-PASS'>8</td><td class='num s-FAIL'>0</td><td class='num'>19</td><td class='num'>&mdash;</td><td class='detail'>container run | imported from 07b31ba370d7</td></tr>
+<tr><td>10</td><td>2026-10-03T00:29:26Z</td><td>railway/eth-dj-to-pcie-pipe-bridge</td><td><code></code> </td><td class='num s-PASS'>8</td><td class='num s-FAIL'>0</td><td class='num'>19</td><td class='num'>&mdash;</td><td class='detail'>container run | imported from 07b31ba370d7</td></tr>
+<tr><td>9</td><td>2026-10-03T00:28:47Z</td><td>railway/eth-dj-to-pcie-pipe-bridge</td><td><code></code> </td><td class='num s-PASS'>8</td><td class='num s-FAIL'>0</td><td class='num'>19</td><td class='num'>&mdash;</td><td class='detail'>container run | imported from 07b31ba370d7</td></tr>
+<tr><td>8</td><td>2026-10-03T00:28:08Z</td><td>railway/eth-dj-to-pcie-pipe-bridge</td><td><code></code> </td><td class='num s-PASS'>8</td><td class='num s-FAIL'>0</td><td class='num'>19</td><td class='num'>&mdash;</td><td class='detail'>container run | imported from 07b31ba370d7</td></tr>
+<tr><td>7</td><td>2026-10-03T00:27:28Z</td><td>railway/eth-dj-to-pcie-pipe-bridge</td><td><code></code> </td><td class='num s-PASS'>8</td><td class='num s-FAIL'>0</td><td class='num'>19</td><td class='num'>&mdash;</td><td class='detail'>container run | imported from 07b31ba370d7</td></tr>
+<tr><td>6</td><td>2026-10-03T00:26:48Z</td><td>railway/eth-dj-to-pcie-pipe-bridge</td><td><code></code> </td><td class='num s-PASS'>8</td><td class='num s-FAIL'>0</td><td class='num'>19</td><td class='num'>&mdash;</td><td class='detail'>container run | imported from 07b31ba370d7</td></tr>
+<tr><td>5</td><td>2026-10-03T00:26:08Z</td><td>railway/eth-dj-to-pcie-pipe-bridge</td><td><code></code> </td><td class='num s-PASS'>8</td><td class='num s-FAIL'>0</td><td class='num'>19</td><td class='num'>&mdash;</td><td class='detail'>container run | imported from 07b31ba370d7</td></tr>
+<tr><td>4</td><td>2026-10-03T00:25:30Z</td><td>railway/eth-dj-to-pcie-pipe-bridge</td><td><code></code> </td><td class='num s-PASS'>8</td><td class='num s-FAIL'>0</td><td class='num'>19</td><td class='num'>&mdash;</td><td class='detail'>container run | imported from 07b31ba370d7</td></tr>
+<tr><td>3</td><td>2026-10-03T00:24:49Z</td><td>railway/eth-dj-to-pcie-pipe-bridge</td><td><code></code> </td><td class='num s-PASS'>8</td><td class='num s-FAIL'>0</td><td class='num'>19</td><td class='num'>&mdash;</td><td class='detail'>container run | imported from 07b31ba370d7</td></tr>
+<tr><td>2</td><td>2026-10-03T00:24:09Z</td><td>railway/eth-dj-to-pcie-pipe-bridge</td><td><code></code> </td><td class='num s-PASS'>8</td><td class='num s-FAIL'>0</td><td class='num'>19</td><td class='num'>&mdash;</td><td class='detail'>container run | imported from 07b31ba370d7</td></tr>
+<tr><td>1</td><td>2026-09-29T22:16:33Z</td><td>vm</td><td><code>0895762</code> claude/m7-infra (dirty)</td><td class='num s-PASS'>25</td><td class='num s-FAIL'>0</td><td class='num'>1</td><td class='num'>95.7</td><td class='detail'>M7 bring-up run: pinned OSS CAD Suite 2026-04-13 on PATH (cocotb on apt Icarus)</td></tr>
+</table></div></main></body></html>
