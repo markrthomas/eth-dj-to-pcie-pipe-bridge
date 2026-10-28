@@ -45,6 +45,7 @@ help:
 	@echo "  dashboard  render metrics/metrics.db -> metrics/dashboard.html"
 	@echo "  envs-fc    vlt/systemc/uvm/cocotb with link flow control ON (vlt-fc systemc-fc uvm-fc cocotb-fc)"
 	@echo "  stress     vlt env, all scenarios x STRESS_SEEDS (default 20) seeds"
+	@echo "  tools      verify toolchain + install missing (TOOLS_HEAVY=1 builds src Verilator); tools-check = verify only"
 	@echo "  clean      remove build artifacts"
 	@echo "  note: uvm needs a UVM-capable Verilator (>= 5.03x, e.g. the from-source Verilator in the CI image)"
 
@@ -204,3 +205,11 @@ clean:
 	rm -f dv/cocotb/results.xml dv/cocotb/results.json dv/cocotb/fcov.json dv/uvm/build.log dv/uvm/build_fc.log dv/cocotb/results_fc.xml dv/cocotb/results_fc.json dv/cocotb/fcov_fc.json
 	find . -name '__pycache__' -type d -prune -exec rm -rf {} + 2>/dev/null || true
 	@echo "clean: OK"
+
+# Toolchain audit/bootstrap (DV_STANDARDS.md "Toolchain standard") — ADDITIVE,
+# never part of regress/ci. tools-check exits non-zero iff a CORE tool is absent.
+.PHONY: tools tools-check
+tools:
+	bash tools/check_tools.sh $(if $(TOOLS_HEAVY),--heavy)
+tools-check:
+	bash tools/check_tools.sh --check
