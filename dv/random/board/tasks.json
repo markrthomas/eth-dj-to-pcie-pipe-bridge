@@ -2,7 +2,8 @@
  "rr-harness": {
   "task": "B1/B2 harness stimulus (dv/vlt, dv/common)",
   "branch": "swarm/rr-harness",
-  "assigned": "2026-10-15T17:15:54+00:00"
+  "assigned": "2026-10-15T17:15:54+00:00",
+  "retired": true
  },
  "rr-iverilog": {
   "task": "B4 seeded Icarus + x4 (dv/iverilog)",
