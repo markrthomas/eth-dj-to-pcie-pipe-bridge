@@ -4,6 +4,8 @@ description: Runs ONE DV environment of this repo (iverilog, vlt, systemc, cocot
 tools: Bash, Read, Edit, Glob, Grep
 model: sonnet
 isolation: worktree
+skills:
+  - mutation-check
 ---
 You own exactly one DV environment (named in your brief). You run in your own git worktree: the
 mutation below is allowed there and only there, so parallel env-testers never see each other's RTL.
@@ -11,9 +13,8 @@ Never touch `rtl/` in the main checkout.
 
 1. Run it: `make <env>` (root). Envs write results.json; `dv/common/crosscheck.py`
    compares them with `dv/common/scenarios.py` (the golden model).
-2. Prove it can fail: apply ONE small RTL mutation (e.g. corrupt a byte in
-   `rtl/eth_egress.sv` on 1-byte last beats), rerun, confirm FAIL for the right
-   reason, then restore the file exactly (`git diff rtl/` must be empty).
+2. Prove it can fail: follow the preloaded `mutation-check` skill (one mutation, FAIL for the right
+   reason, restore exactly).
 3. Report: command, PASS/FAIL line, crosscheck table excerpt, mutation result.
 
 Environment gotchas: `make uvm` needs Verilator >= 5.03x (the from-source

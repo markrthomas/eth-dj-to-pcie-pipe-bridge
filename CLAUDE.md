@@ -22,6 +22,8 @@
 - Verilator sim binaries abort unless `logs/` exists in the cwd. Icarus: declare before use, no `break`, no array literals.
 - Never `pkill -f <pattern>` from a shell whose own command line contains the pattern.
 - UVM obj_dir is ~750 MB; a full disk truncates `Vtb_uvm_top__ALL.a` — delete the partial obj_dir.
+- Heavy targets (`make uvm`, `make vlt`, `make rr-build`, `make formal`, `make ci`) run one at a time machine-wide, in the background:
+  `flock -w 1800 /tmp/bridge-heavy.lock make <target>` (~5 GB RAM; every worktree gets its own ~750 MB UVM obj_dir, delete it when done).
 - Random knobs: non-flow-control builds need `sink_pct >= 50` (D9/D20); the runner already stays inside this.
 
 ## Token budget (all agents)

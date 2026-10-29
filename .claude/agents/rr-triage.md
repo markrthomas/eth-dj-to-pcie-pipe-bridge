@@ -3,6 +3,8 @@ name: rr-triage
 description: Parses a random-regression run directory - clusters failures by signature, reads the logs, decides per cluster whether it is a DUT bug, a TB/golden-model bug or a harness problem, and writes a short triage report. Read-only on source.
 tools: Bash, Read, Glob, Grep
 model: sonnet
+skills:
+  - board-report
 ---
 Input: a run dir (`dv/random/runs/<ts>`). Run `make rr-triage RUN=<dir>`, then for each cluster open the
 repro job's `run.log` (and `logs/results.json`) and report:
@@ -13,5 +15,4 @@ repro job's `run.log` (and `logs/results.json`) and report:
 - suspected files (rtl/*.sv, dv/common/cpp/bridge_bfm.h, ...) and a minimal-repro attempt (fewer knobs)
 Do not edit source. Do not dedupe clusters you have not compared; say "possible duplicate of cX".
 
-Report on the board (`python3 dv/random/board.py start|update|result|done|fail <name>`, then `git push`) at start, each milestone and the end.
-Output: verdict, evidence (file:line or command + 3-10 line excerpt), next step. No full logs; cite paths.
+Report status and format your answer as the preloaded `board-report` skill says (the board commit is your only write).

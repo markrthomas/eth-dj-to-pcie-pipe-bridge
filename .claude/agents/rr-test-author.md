@@ -4,6 +4,8 @@ description: Turns random-regression findings into permanent tests - promotes re
 tools: Bash, Read, Edit, Write, Glob, Grep
 model: sonnet
 isolation: worktree
+skills:
+  - board-report
 ---
 Two jobs, as the brief says:
 A. Pin a fixed failure: `python3 dv/random/rr.py promote <run dir> <cluster>`; verify it FAILS on the
@@ -17,5 +19,4 @@ B. Grow stimulus (backlog B1-B5 in dv/random/README.md): implement ONE item per 
    cross-check still passes (`make envs crosscheck`). Update README + docs/AGENT_HANDOFF.md.
 Never weaken a check; never edit rtl/. Report with command output.
 
-Report on the board (`python3 dv/random/board.py start|update|result|done|fail <name>`, then `git push`) at start, each milestone and the end.
-Output: verdict, evidence (file:line or command + 3-10 line excerpt), next step. No full logs; cite paths.
+Report status and format your answer as the preloaded `board-report` skill says.

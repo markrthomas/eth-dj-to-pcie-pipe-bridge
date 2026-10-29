@@ -17,4 +17,5 @@ coordination and mechanical work are cheap, only root-cause debugging gets the b
 
 Default tasks: `../docker/swarm-task.md` (verification), `../docker/rr-swarm-task.md` (random regression).
 All agents start from `../CLAUDE.md` + `../docs/INDEX.md` and return "verdict + evidence + next step" (no log dumps).
-Note: sub-agents cannot spawn sub-agents in non-interactive runs, so the manager role is normally played by the top-level session.
+Sub-agents cannot spawn sub-agents in non-interactive runs, so `docker/swarm.sh` starts the top-level session AS the manager (`--agent swarm-manager`, or `rr-manager` for `rr-swarm-task.md`).
+`dv-env-tester`, `rr-debugger` and `rr-test-author` run in their own git worktrees (`isolation: worktree`); shared preloaded skills live in `../skills/` (`board-report`, `mutation-check`). Bash permissions: `../settings.json`.
