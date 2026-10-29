@@ -30,7 +30,7 @@ board.py update NAME --step K --msg TXT [--blocker TXT]   # every milestone, the
 board.py result NAME --jobs J --fails F --clusters C      # after each batch
 board.py done NAME --msg TXT   |   board.py fail NAME --msg WHY
 ```
-Manager: `make board` (fetches `origin/swarm/*`, prints state / step / age / branch@sha / results; flags
+Manager: `make board` / `board.py show --brief --active` (1 line per live worker; `board.py retire NAME` hides finished ones) (fetches `origin/swarm/*`, prints state / step / age / branch@sha / results; flags
 `STALE` = running but silent > 30 min, `blocked`, `NO_REPORT`), `make board-wait` (blocks until all are
 done/blocked/stale), `board.py assign NAME --task TXT` registers planned work in `board/tasks.json`
 (committed on the manager branch). States: assigned -> running -> done | blocked.

@@ -13,7 +13,8 @@ Worker side (run at every milestone, then `git push`; the command commits for yo
     board.py fail    NAME --msg "why it stopped"                    (state=blocked)
 
 Manager side:
-    board.py show [--stale-min 30] [--json]   fetch + table of every worker (state, step, age, SHA, results)
+    board.py show [--stale-min 30] [--brief] [--active] [--json]   fetch + table of workers; --brief = 1 line each, --active hides done/retired
+    board.py retire NAME                      hide a finished/legacy worker from --active
     board.py assign NAME --task TXT [--branch swarm/NAME]   register planned work in board/tasks.json
     board.py wait [--timeout-min 60] [--every 120]   block until every assigned worker is done/blocked
 
@@ -143,8 +144,29 @@ def table(stale_min):
     return rows
 
 
+def cmd_retire(a):
+    t = json.load(open(TASKS))
+    t[a.name]["retired"] = True
+    json.dump(t, open(TASKS, "w"), indent=1)
+    open(TASKS, "a").write("\n")
+    git("add", os.path.relpath(TASKS, ROOT))
+    git("commit", "-q", "-m", f"board: retire {a.name}")
+    print(f"retired {a.name} (hidden from --active)")
+    return 0
+
+
 def cmd_show(a):
     rows = table(a.stale_min)
+    tasks = json.load(open(TASKS)) if os.path.exists(TASKS) else {}
+    if a.active:   # live workers only: not done, not retired
+        rows = [r for r in rows if r["state"] != "done" and not tasks.get(r["worker"], {}).get("retired")]
+    if a.brief:    # one short line per worker (cheapest for polling)
+        for r in rows:
+            last = (r.get("last") or r["task"])[:80]
+            print(f"{r['worker']} {r['state']} {r.get('step', '-')} {r['age_min']}m {last}")
+        if not rows:
+            print("board: no active workers")
+        return 0
     if a.json:
         print(json.dumps(rows, indent=1))
         return 0
@@ -191,6 +213,10 @@ def main():
     s = sp.add_parser("show")
     s.add_argument("--stale-min", type=int, default=30)
     s.add_argument("--json", action="store_true")
+    s.add_argument("--brief", action="store_true", help="one short line per worker")
+    s.add_argument("--active", action="store_true", help="hide done / retired workers")
+    rt = sp.add_parser("retire")
+    rt.add_argument("name")
     w = sp.add_parser("wait")
     w.add_argument("--timeout-min", type=int, default=60)
     w.add_argument("--every", type=int, default=120)
@@ -202,7 +228,7 @@ def main():
     a = ap.parse_args()
     if a.cmd in ("start", "update", "result", "done", "fail"):
         return cmd_worker(a)
-    return {"show": cmd_show, "wait": cmd_wait, "assign": cmd_assign}[a.cmd](a)
+    return {"show": cmd_show, "wait": cmd_wait, "assign": cmd_assign, "retire": cmd_retire}[a.cmd](a)
 
 
 if __name__ == "__main__":

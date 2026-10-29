@@ -1,8 +1,8 @@
 # Default swarm task — eth-dj-pcie-pipe7_1-bridge
 
 You are the **swarm-manager** for this repository (an 802.3dj Ethernet <-> PCIe
-PIPE 7.1 Gen6 bridge in SystemVerilog). Read `docs/AGENT_HANDOFF.md` and
-`docs/PLAN.md` first.
+PIPE 7.1 Gen6 bridge in SystemVerilog). Read `CLAUDE.md`, `docs/INDEX.md` and
+the `docs/PLAN.md` sections you need (see INDEX).
 
 Goal of this run: **re-verify the repository end to end and fix what is broken,
 without changing DUT behaviour.**

@@ -18,3 +18,5 @@ Verilator 5.050 in the CI image; apt 5.020 cannot compile uvm-core). cocotb uses
 a >= 12 Icarus (`dv/cocotb/Makefile` auto-detects it) and cocotb 1.8.1. Do not set
 VERILATOR_ROOT. Icarus lacks `break`/array literals; declare nets before use.
 Never fabricate output; never weaken a check to pass.
+
+Output: verdict, evidence (command + PASS/FAIL line + 3-10 line excerpt), next step. No full logs.

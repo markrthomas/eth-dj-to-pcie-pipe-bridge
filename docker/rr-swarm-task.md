@@ -1,6 +1,6 @@
 # Random-regression swarm task — eth-dj-pcie-pipe7_1-bridge
 
-You are the **rr-manager**. Read `docs/AGENT_HANDOFF.md`, `dv/random/README.md` and `dv/random/corpus.json`.
+You are the **rr-manager**. Read `CLAUDE.md`, `docs/INDEX.md`, `dv/random/README.md`, `dv/random/corpus.json`.
 
 Goal of this run: **find, fix and pin failures with random regressions.**
 

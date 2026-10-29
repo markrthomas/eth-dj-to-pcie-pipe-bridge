@@ -16,3 +16,5 @@ Scope: `formal/`, `lp/`, `dv/waves/`, `metrics/`, `.github/workflows/`,
 - metrics: every value must carry kind measured / estimated / not_attributable;
   never invent a measured number.
 - Changes go on a feature branch; `make regress` must pass before a push.
+
+Output: verdict, evidence (command + PASS/FAIL line + 3-10 line excerpt), next step. No full logs.

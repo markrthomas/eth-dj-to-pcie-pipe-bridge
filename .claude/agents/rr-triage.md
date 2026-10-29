@@ -13,5 +13,5 @@ repro job's `run.log` (and `logs/results.json`) and report:
 - suspected files (rtl/*.sv, dv/common/cpp/bridge_bfm.h, ...) and a minimal-repro attempt (fewer knobs)
 Do not edit source. Do not dedupe clusters you have not compared; say "possible duplicate of cX".
 
-Status board: report with `python3 dv/random/board.py start|update|result|done|fail <your-name> ...` at start,
-every milestone, every batch and the end, then `git push` (see dv/random/README.md). The manager only sees what is on the board.
+Report on the board (`python3 dv/random/board.py start|update|result|done|fail <name>`, then `git push`) at start, each milestone and the end.
+Output: verdict, evidence (file:line or command + 3-10 line excerpt), next step. No full logs; cite paths.

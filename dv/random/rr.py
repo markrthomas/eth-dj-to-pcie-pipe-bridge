@@ -148,8 +148,11 @@ def cmd_triage(a):
     json.dump({"jobs": len(res), "failing": sum(c["count"] for c in tri), "clusters": tri},
               open(os.path.join(a.dir, "triage.json"), "w"), indent=1)
     print(f"rr triage: {len(res)} jobs, {sum(c['count'] for c in tri)} failing, {len(tri)} cluster(s)")
-    for c in tri:
+    top = sorted(tri, key=lambda c: -c["count"])[:10]   # biggest clusters first; full list is in triage.json
+    for c in top:
         print(f"  {c['cluster']}: x{c['count']} [{c['config']}] {c['signature']}  repro seed={c['repro']['seed']} {c['repro']['args']}")
+    if len(tri) > len(top):
+        print(f"  ... {len(tri) - len(top)} more cluster(s) in {os.path.join(a.dir, 'triage.json')}")
     return 0
 
 
