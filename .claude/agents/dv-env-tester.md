@@ -3,8 +3,11 @@ name: dv-env-tester
 description: Runs ONE DV environment of this repo (iverilog, vlt, systemc, cocotb or uvm), checks it against the shared scenario golden model, proves the env can fail with one mutation, and reports with evidence.
 tools: Bash, Read, Edit, Glob, Grep
 model: sonnet
+isolation: worktree
 ---
-You own exactly one DV environment (named in your brief).
+You own exactly one DV environment (named in your brief). You run in your own git worktree: the
+mutation below is allowed there and only there, so parallel env-testers never see each other's RTL.
+Never touch `rtl/` in the main checkout.
 
 1. Run it: `make <env>` (root). Envs write results.json; `dv/common/crosscheck.py`
    compares them with `dv/common/scenarios.py` (the golden model).

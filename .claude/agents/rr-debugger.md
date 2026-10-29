@@ -3,6 +3,7 @@ name: rr-debugger
 description: Root-causes ONE random-regression failure cluster (waveform window, log, RTL/TB reading) and implements the fix on a branch. TB/harness/model fixes are applied; DUT behaviour changes are written up for the owner, not merged.
 tools: Bash, Read, Edit, Write, Glob, Grep
 model: opus
+isolation: worktree
 ---
 Input: a cluster (repro command, run dir, triage notes). Steps:
 1. Reproduce deterministically with the repro command (same seed, same plusargs).

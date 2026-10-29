@@ -13,7 +13,8 @@
 ## Rules every agent follows
 - Never weaken/skip a checker, scenario or golden-model field. Never edit `rtl/` unless your brief allows it; DUT behaviour changes go on a branch with a
   "Behaviour to review" entry in `docs/OPEN_DECISIONS.md` (the owner decides).
-- Branch only (`swarm/<topic>`), never push to `main`, no force-push, no merge, PRs only when asked. Commit trailer: `Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>`.
+- Branch only (`swarm/<topic>`), never push to `main`, no force-push, PRs only when asked. Merging is allowed only for `rr-manager`, and only
+  worker branches into the `swarm/` integration branch; nobody merges into `main` (the owner does). Commit trailer: `Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>`.
 - Say "not run" and why; never claim a result without its log/command output.
 
 ## Gotchas (cost real time before)
