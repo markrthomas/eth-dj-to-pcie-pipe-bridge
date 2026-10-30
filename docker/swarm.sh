@@ -7,8 +7,9 @@
 # .claude/agents/ definitions are discoverable; the task (default
 # docker/swarm-task.md) tells the manager what to dispatch. The top-level session runs AS the
 # manager agent (--agent; default swarm-manager, rr-manager for rr-swarm-task.md), so it keeps the
-# Agent tool and can dispatch workers (sub-agents cannot spawn sub-agents). Deny rules in
-# .claude/settings.json (force-push, push to main, ...) still apply on top of --allowedTools.
+# Agent tool and can dispatch workers (sub-agents cannot spawn sub-agents). Bash is NOT in
+# --allowedTools: only the commands in .claude/settings.json's allow list run headless, and its
+# deny rules (force-push, push to main, ...) always apply. Add a pattern there if a worker needs more.
 # Needs: `claude` on PATH (npm i -g @anthropic-ai/claude-code; the image has it
 # when built with --build-arg WITH_CLAUDE=1), a credential in the environment -
 # CLAUDE_CODE_OAUTH_TOKEN (what the Railway service uses; the Claude Code CLI reads it
@@ -44,7 +45,7 @@ fi
 [ -f ".claude/agents/$agent.md" ] || { echo "swarm.sh: agent $agent not found in .claude/agents" >&2; exit 2; }
 
 cmd=(claude -p "$(cat "$task")" --agent "$agent" --output-format json --permission-mode acceptEdits
-     --allowedTools "Bash Read Edit Write Glob Grep Agent")
+     --allowedTools "Read Edit Write Glob Grep Agent")
 [ -n "$model" ] && cmd+=(--model "$model")
 
 if [ "$dry" = 1 ]; then

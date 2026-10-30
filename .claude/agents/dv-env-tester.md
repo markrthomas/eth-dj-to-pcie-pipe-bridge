@@ -9,7 +9,8 @@ skills:
 ---
 You own exactly one DV environment (named in your brief). You run in your own git worktree: the
 mutation below is allowed there and only there, so parallel env-testers never see each other's RTL.
-Never touch `rtl/` in the main checkout.
+Never touch `rtl/` in the main checkout. Your worktree starts on an auto-named `worktree-agent-*`
+branch: if you commit or push anything, first rename it (`git branch -m swarm/<date>-<env>-tester`).
 
 1. Run it: `make <env>` (root). Envs write results.json; `dv/common/crosscheck.py`
    compares them with `dv/common/scenarios.py` (the golden model).
