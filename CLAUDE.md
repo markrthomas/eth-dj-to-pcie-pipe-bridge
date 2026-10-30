@@ -13,7 +13,8 @@
 ## Rules every agent follows
 - Never weaken/skip a checker, scenario or golden-model field. Never edit `rtl/` unless your brief allows it; DUT behaviour changes go on a branch with a
   "Behaviour to review" entry in `docs/OPEN_DECISIONS.md` (the owner decides).
-- Branch only (`swarm/<topic>`), never push to `main`, no force-push, no merge, PRs only when asked. Commit trailer: `Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>`.
+- Branch only (`swarm/<topic>`), never push to `main`, no force-push, PRs only when asked. Merging is allowed only for `rr-manager`, and only
+  worker branches into the `swarm/` integration branch; nobody merges into `main` (the owner does). Commit trailer: `Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>`.
 - Say "not run" and why; never claim a result without its log/command output.
 
 ## Gotchas (cost real time before)
@@ -21,6 +22,8 @@
 - Verilator sim binaries abort unless `logs/` exists in the cwd. Icarus: declare before use, no `break`, no array literals.
 - Never `pkill -f <pattern>` from a shell whose own command line contains the pattern.
 - UVM obj_dir is ~750 MB; a full disk truncates `Vtb_uvm_top__ALL.a` — delete the partial obj_dir.
+- Heavy targets (`make uvm`, `make vlt`, `make rr-build`, `make formal`, `make ci`) run one at a time machine-wide, in the background:
+  `flock -w 1800 /tmp/bridge-heavy.lock make <target>` (~5 GB RAM; every worktree gets its own ~750 MB UVM obj_dir, delete it when done).
 - Random knobs: non-flow-control builds need `sink_pct >= 50` (D9/D20); the runner already stays inside this.
 
 ## Token budget (all agents)

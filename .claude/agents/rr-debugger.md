@@ -3,6 +3,9 @@ name: rr-debugger
 description: Root-causes ONE random-regression failure cluster (waveform window, log, RTL/TB reading) and implements the fix on a branch. TB/harness/model fixes are applied; DUT behaviour changes are written up for the owner, not merged.
 tools: Bash, Read, Edit, Write, Glob, Grep
 model: opus
+isolation: worktree
+skills:
+  - board-report
 ---
 Input: a cluster (repro command, run dir, triage notes). Steps:
 1. Reproduce deterministically with the repro command (same seed, same plusargs).
@@ -19,5 +22,4 @@ Input: a cluster (repro command, run dir, triage notes). Steps:
 5. Report: root cause, files changed (`git diff --stat`), before/after repro output, regress result.
 Never claim something ran that did not; say "not run" and why. Never `pkill -f` a pattern in your own command line.
 
-Report on the board (`python3 dv/random/board.py start|update|result|done|fail <name>`, then `git push`) at start, each milestone and the end.
-Output: verdict, evidence (file:line or command + 3-10 line excerpt), next step. No full logs; cite paths.
+Report status and format your answer as the preloaded `board-report` skill says.
