@@ -24,7 +24,7 @@ permissions:
 
 jobs:
   swarm:
-    uses: markrthomas/dv-swarm-kit/.github/workflows/swarm-run.yml@v1
+    uses: markrthomas/dv-swarm-kit/.github/workflows/swarm-run.yml@v0
     with:
       task: ${{ inputs.task }}
       model: ${{ inputs.model }}
