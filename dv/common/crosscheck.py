@@ -26,6 +26,7 @@ def main() -> int:
 
     exp = scenarios.expected()
     envs = {}
+    rands = {}       # env -> {"seed","frames","maxlen"} (optional 'rand' scenario)
     bad = 0
     for f in args.files:
         if not os.path.exists(f):
@@ -33,6 +34,11 @@ def main() -> int:
         with open(f) as fh:
             d = json.load(fh)
         envs[d["env"]] = d["scenarios"]
+        if "rand" in d:
+            rands[d["env"]] = d["rand"]
+        elif "rand" in d["scenarios"]:
+            print(f"MISSING: env '{d['env']}' reports a rand scenario without its top-level rand parameters")
+            bad += 1
 
     for req in filter(None, args.require.split(",")):
         if req not in envs:
@@ -55,6 +61,30 @@ def main() -> int:
                     bad += 1
                 row.append(f"{str(v) + ('' if ok else '*'):>10}")
             print(f"{sc:<12} {fld:<7} {str(exp[sc][fld]):>10} " + " ".join(row))
+    for n in sorted(rands):          # optional rand section: golden = scenarios.expected_rand(seed, frames, maxlen)
+        r = rands[n]
+        ctl = int(r.get("ctl", 0))
+        rexp = scenarios.expected_rand(int(r["seed"]), int(r["frames"]), int(r["maxlen"]), ctl)
+        print(f"rand (env {n}, seed={r['seed']} frames={r['frames']} maxlen={r['maxlen']} ctl={ctl})")
+        for fld in FIELDS:
+            v = envs[n].get("rand", {}).get(fld, "-")
+            hi = rexp.get(fld + "_max")           # B3: not exactly predictable -> [expected, fld_max]
+            if hi is not None:
+                try:
+                    ok = int(rexp[fld]) <= int(v) <= int(hi)
+                except ValueError:
+                    ok = False
+                want = f"{rexp[fld]}..{hi}"
+            else:
+                ok = str(v) == str(rexp[fld])
+                want = str(rexp[fld])
+            bad += not ok
+            print(f"{'rand':<12} {fld:<7} {want:>10} {str(v) + ('' if ok else '*'):>10}")
+        if ctl > 0:                                # the harness' control plan must equal the golden plan
+            v = r.get("plan", "-")
+            ok = str(v) == rexp["plan"]
+            bad += not ok
+            print(f"{'rand':<12} {'plan':<7} {rexp['plan']:>10} {str(v) + ('' if ok else '*'):>10}")
     if bad:
         print(f"CROSSCHECK FAIL: {bad} mismatch(es) (* = differs from golden)")
         return 1

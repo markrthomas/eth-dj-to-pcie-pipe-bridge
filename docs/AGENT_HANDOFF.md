@@ -338,6 +338,22 @@ ran, commit/PR trailers as in the existing history.
   assembly; remove the M0 lint waivers as signals get consumed.
 - **2026-09-29 (a)** — First-cut plan written (`docs/PLAN.md`).
 
+## Random-regression swarm
+
+Details and backlog (B1-B5): [`dv/random/README.md`](../dv/random/README.md).
+
+- Agents (`.claude/agents/rr-*.md`): rr-manager (opus) dispatches rr-runner (haiku), rr-triage (sonnet),
+  rr-debugger (opus), rr-test-author (sonnet). Task brief: `docker/rr-swarm-task.md`.
+- Run the swarm: `docker/swarm.sh --task docker/rr-swarm-task.md` (`--dry-run` to preview). Weekly Railway
+  recipe (docs only, not deployed): `docs/railway.md`.
+- By hand: `make rr-build`; `make rr N=60 JOBS=6` -> `dv/random/runs/<ts>/results.jsonl`;
+  `make rr-triage RUN=<dir>`; `make rr-replay` (gates on corpus entries marked `fixed`; part of `make ci`
+  and the CI `regress` job); `make rr-metrics RUN=<dir>` (B5: rows of category `rr`, all `measured`, into
+  `metrics/metrics.db` + dashboard).
+- Rules: never weaken a checker, scenario, golden model or SVA to get green; DUT (`rtl/`) behaviour changes
+  are the owner's call (branch + "Behaviour to review" note in `docs/OPEN_DECISIONS.md`, never merged by the
+  swarm); a promoted repro must fail before the fix and pass after; open corpus entries are reported, not gating.
+
 ## How to resume in three steps
 
 1. **Read the two reference repos** (do not reinvent):

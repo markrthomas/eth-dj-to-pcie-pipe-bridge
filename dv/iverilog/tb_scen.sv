@@ -11,6 +11,7 @@ module tb_scen;
   `include "eth_dj_pat.svh"
   `include "scenarios.svh"
   `include "loop_harness.svh"
+  `include "rr_seed.svh"
 
   int          rx_frames, rx_bytes, errors, tot_err, nfr, base_flits, base_err, fd, sc;
   string       rpath;
@@ -57,12 +58,13 @@ module tb_scen;
   endtask
 
   initial begin
+    rr_init(); phyc.lat = rr_lat; phyc.rst_cycles = rr_rst_cyc;
     if (!$value$plusargs("results=%s", rpath)) rpath = "sim_build/results.json";
     fd = $fopen(rpath, "w");
     $fwrite(fd, "{\"env\": \"iverilog\", \"scenarios\": {");
     tot_err = 0;
-    mac.gap_pct    = 10;
-    sink.ready_pct = 90;
+    mac.gap_pct    = rr_gap(10);
+    sink.ready_pct = rr_rdy(90);
     for (sc = 0; sc < SCEN_N; sc++) begin
       rx_frames = 0; rx_bytes = 0; errors = 0; crc = 32'hFFFF_FFFF;
       nfr = scen_nframes(sc);
@@ -90,6 +92,8 @@ module tb_scen;
       wait_rx(nfr);
       repeat (200) @(posedge pclk);
       running = 1'b0;
+      $display("RXCNT %-11s dropped=%0d lock_err=%0d bad=%0d aborted=%0d", scen_name(sc), dut.rx_dropped_flits,
+               dut.rx_lock_errors, dut.rx_bad_flits, dut.rx_aborted_frames);
       csr_rd(CSR_PMCNT, d);
       errors += phy.errors + phyc.errors + sink.errors - base_err;
       tot_err += errors;

@@ -2,6 +2,7 @@
 """Collect one run's metrics into metrics/metrics.db (schema.sql).
 
   collect.py [--run FLOW,...] [--note TEXT] [--db PATH]
+  collect.py --rr-run DIR [--db PATH]         add random-regression rows (category rr) to the latest run
   collect.py --import-dir DIR [--db PATH]     merge Railway runs (runs/*/ from the metrics-data branch)
 
 --run  runs the listed root make targets first, each timed with a wall clock
@@ -343,6 +344,46 @@ def swarm(r):
               detail="no swarm run recorded (docker/last-run-metrics.json absent)")
 
 
+def rr_ingest(r, run_dir, corpus_path):
+    """Random-regression results (dv/random/runs/<ts>/results.jsonl + triage.json, dv/random/corpus.json)
+    -> category 'rr'.  Every number is counted from those files (kind=measured); a missing file is NOT_RUN."""
+    path = os.path.join(run_dir, "results.jsonl")
+    src = rel(path)
+    if not os.path.exists(path):
+        r.add("rr", "jobs", kind="not_attributable", status="NOT_RUN", detail=f"{src} not found")
+        return
+    jobs = [json.loads(l) for l in open(path) if l.strip()]
+    n = len(jobs)
+    npass = sum(1 for j in jobs if j.get("status") == "PASS")
+    r.add("rr", "jobs", n, "jobs", "measured", None, src, "run " + os.path.basename(os.path.normpath(run_dir)))
+    r.add("rr", "jobs_pass", npass, "jobs", "measured", None, src)
+    r.add("rr", "jobs_fail", n - npass, "jobs", "measured", "FAIL" if n - npass else "PASS", src)
+    if n:
+        r.add("rr", "pass_rate", 100.0 * npass / n, "%", "measured", None, src)
+    for cfg in sorted({j.get("config") for j in jobs}):
+        cj = [j for j in jobs if j.get("config") == cfg]
+        cp = sum(1 for j in cj if j.get("status") == "PASS")
+        r.add("rr", f"config.{cfg}.jobs", len(cj), "jobs", "measured", None, src)
+        r.add("rr", f"config.{cfg}.pass_rate", 100.0 * cp / len(cj), "%", "measured",
+              "PASS" if cp == len(cj) else "FAIL", src, f"{cp}/{len(cj)} jobs PASS")
+    tp = os.path.join(os.path.dirname(path), "triage.json")
+    if os.path.exists(tp):
+        tri = json.load(open(tp))
+        r.add("rr", "unique_failure_clusters", len(tri.get("clusters", [])), "clusters", "measured", None,
+              rel(tp), f"{tri.get('failing', 0)} failing job(s) clustered by normalised signature")
+    else:
+        r.add("rr", "unique_failure_clusters", kind="not_attributable", status="NOT_RUN",
+              detail="triage.json absent: run `make rr-triage RUN=<dir>`")
+    if os.path.exists(corpus_path):
+        c = json.load(open(corpus_path))
+        cs = rel(corpus_path)
+        r.add("rr", "corpus_entries", len(c), "entries", "measured", None, cs)
+        for st in ("open", "fixed"):
+            r.add("rr", f"corpus_{st}", sum(1 for e in c if e.get("status") == st), "entries", "measured", None, cs)
+    else:
+        r.add("rr", "corpus_entries", kind="not_attributable", status="NOT_RUN", detail="corpus.json absent")
+
+
 def import_runs(con, src_db, host):
     """Merge the runs of another metrics.db into `con` (new run ids, rows copied verbatim, so the
     kind / status of every value is preserved).  A run already present (same ts_utc + git_sha) is
@@ -392,6 +433,9 @@ def main():
     ap.add_argument("--note", default="")
     ap.add_argument("--db", default=DB)
     ap.add_argument("--import-dir", default="", help="merge the runs of DIR/runs/*/metrics.db (host railway/<service>)")
+    ap.add_argument("--rr-run", default="", metavar="DIR",
+                    help="only (re)write the 'rr' rows of the latest run from a random-regression run dir "
+                         "(DIR/results.jsonl, DIR/triage.json, dv/random/corpus.json); `make rr-metrics RUN=DIR`")
     ap.add_argument("--power-into-latest", action="store_true",
                     help="only (re)write the 'power' rows of the latest run from lp/oss/build (the OSS power flow is "
                          "~30 min / ~10 GB, so it is not part of `make metrics`)")
@@ -401,6 +445,17 @@ def main():
     if a.import_dir:
         n, rows = import_dir(con, a.import_dir)
         print(f"collect: imported {n} run(s), {rows} metric rows from {a.import_dir}")
+        return 0
+    if a.rr_run:
+        row = con.execute("SELECT MAX(run_id) FROM runs WHERE host IS NULL OR host NOT LIKE 'railway/%'").fetchone()
+        if not row or row[0] is None:
+            print("collect: no local run in the database to attach rr rows to")
+            return 1
+        con.execute("DELETE FROM metrics WHERE run_id=? AND category='rr'", (row[0],))
+        r = Run(con, row[0])
+        rr_ingest(r, a.rr_run, os.path.join(ROOT, "dv", "random", "corpus.json"))
+        con.commit()
+        print(f"collect: run {row[0]}: {r.n} rr rows written -> {os.path.relpath(a.db, ROOT)}")
         return 0
     if a.power_into_latest:
         row = con.execute("SELECT MAX(run_id) FROM runs").fetchone()

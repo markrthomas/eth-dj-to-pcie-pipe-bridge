@@ -14,6 +14,10 @@
   notice only). `make railway-import` merges them into the dashboard. See `../docs/railway.md`.
 - `swarm.sh` / `swarm-task.md` — non-interactive Claude Code run with the
   `.claude/agents/` definitions (`--dry-run` prints the command).
+- `rr-swarm-task.md` — rr-manager brief for the random-regression swarm:
+  `docker/swarm.sh --task docker/rr-swarm-task.md` (`--dry-run` prints the command). Weekly Railway job
+  recipe (docs only, not deployed): `../docs/railway.md` "Weekly random-regression job". Results ->
+  metrics: `make rr-metrics RUN=dv/random/runs/<ts>`.
 - `../railway.toml` — Railway batch job (DOCKERFILE builder, restart NEVER,
   weekly cron (Sundays 03:17 UTC), no startCommand).
 

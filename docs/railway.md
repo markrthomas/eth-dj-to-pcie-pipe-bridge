@@ -75,6 +75,31 @@ the log); `run.json` contains only non-secret facts (time, commit, `RAILWAY_SERV
   visible); set the Railway variable `JOBS` to override. UVM already runs on every GitHub CI build, so
   `METRICS_FLOWS` can also simply leave it out on a small plan.
 
+## Weekly random-regression job (documented, not deployed)
+
+A second scheduled job can run the random-regression swarm (`dv/random/README.md`) instead of the
+metrics flows. Nothing here is deployed or has run on Railway; it is the recipe only.
+
+- Same image (build with `--build-arg WITH_CLAUDE=1`), a **separate Railway service** (so the nightly
+  metrics job and this one keep independent schedules and restart policies; restart policy Never).
+- Start command: `docker/entrypoint.sh swarm --task docker/rr-swarm-task.md` (the entrypoint passes its
+  arguments on to `swarm.sh`; the task file is the rr-manager brief). Equivalent inside the container:
+
+  ```
+  docker/swarm.sh --task docker/rr-swarm-task.md
+  ```
+
+  `--dry-run` prints the command without running it.
+- Cron, e.g. Sundays 04:17 UTC (`17 4 * * 0`), an hour after the metrics job. Needs
+  `CLAUDE_CODE_OAUTH_TOKEN` (or `ANTHROPIC_API_KEY`); `GITHUB_TOKEN` as above if the results are published.
+- Afterwards, on any checkout that has the run directory:
+  `make rr-metrics RUN=dv/random/runs/<ts>` writes the `rr` rows (jobs, pass rate, per-config pass rate,
+  unique failure clusters, corpus open/fixed; all `measured`) into `metrics/metrics.db` and re-renders the
+  dashboard. `dv/random/runs/` is git-ignored, so a Railway run's directory is not on `metrics-data`
+  unless `publish_metrics.sh` is extended to copy it; that extension is not done.
+- Rules: the swarm never pushes to `main`, never merges, and DUT changes only go on a branch with a
+  "Behaviour to review" note (`dv/random/README.md`).
+
 ## Not done / not tested
 
 - **Nothing here has run on Railway.** The publish script and the importer were tested against a local

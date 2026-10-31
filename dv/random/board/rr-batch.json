@@ -1,0 +1,85 @@
+{
+ "worker": "rr-batch",
+ "state": "done",
+ "history": [
+  {
+   "t": "2026-10-15T17:28:38+00:00",
+   "state": "running",
+   "step": 0,
+   "msg": "started"
+  },
+  {
+   "t": "2026-10-15T17:36:20+00:00",
+   "state": "running",
+   "step": 1,
+   "msg": "toolchain built: Verilator 5.050, Icarus 12.0"
+  },
+  {
+   "t": "2026-10-15T17:38:36+00:00",
+   "state": "running",
+   "step": 2,
+   "msg": "rr-build ok; vlt+iverilog crosscheck and make regress pass (full 5-env crosscheck not run: uvm/systemc/cocotb not built)"
+  },
+  {
+   "t": "2026-10-15T17:40:04+00:00",
+   "state": "running",
+   "step": 2,
+   "msg": "result jobs=300 fails=98 clusters=0"
+  },
+  {
+   "t": "2026-10-15T17:40:10+00:00",
+   "state": "running",
+   "step": 2,
+   "msg": "result jobs=300 fails=98 clusters=5"
+  },
+  {
+   "t": "2026-10-15T17:40:10+00:00",
+   "state": "running",
+   "step": 3,
+   "msg": "batch1 seed1000: 300 jobs 98 fails 5 clusters; analysing"
+  },
+  {
+   "t": "2026-10-15T17:48:26+00:00",
+   "state": "running",
+   "step": 3,
+   "msg": "result jobs=1500 fails=443 clusters=25"
+  },
+  {
+   "t": "2026-10-15T17:48:26+00:00",
+   "state": "running",
+   "step": 3,
+   "msg": "5 vlt batches done (1500 jobs, 443 fails, all in 3 stimulus-envelope classes); starting Icarus batches"
+  },
+  {
+   "t": "2026-10-15T17:59:22+00:00",
+   "state": "running",
+   "step": 4,
+   "msg": "Icarus batch1 seed6000: 300 jobs 27 fails 4 clusters (all x4 lanes) - investigating"
+  },
+  {
+   "t": "2026-10-15T18:15:47+00:00",
+   "state": "running",
+   "step": 4,
+   "msg": "result jobs=2100 fails=492 clusters=6"
+  },
+  {
+   "t": "2026-10-15T18:15:47+00:00",
+   "state": "done",
+   "step": 5,
+   "msg": "7 batches, 2100 jobs, 492 fails, 6 clusters (A-F), none confirmed DUT; findings in dv/random/findings/2026-10-15.md"
+  }
+ ],
+ "task": "large random batches",
+ "steps": 5,
+ "step": 5,
+ "updated": "2026-10-15T18:15:47+00:00",
+ "branch": "swarm/rr-batch",
+ "sha": "7c82be0",
+ "blocker": "",
+ "results": {
+  "jobs": 2100,
+  "fails": 492,
+  "clusters": 6,
+  "note": ""
+ }
+}

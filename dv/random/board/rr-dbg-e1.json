@@ -1,0 +1,55 @@
+{
+ "worker": "rr-dbg-e1",
+ "state": "done",
+ "history": [
+  {
+   "t": "2026-10-15T21:54:57+00:00",
+   "state": "running",
+   "step": 0,
+   "msg": "started"
+  },
+  {
+   "t": "2026-10-15T22:00:42+00:00",
+   "state": "running",
+   "step": 1,
+   "msg": "toolchain ok (iverilog 12, verilator 5.050); building vlt"
+  },
+  {
+   "t": "2026-10-15T22:01:36+00:00",
+   "state": "running",
+   "step": 2,
+   "msg": "root cause: golden (CtlSim/ctl_plan + BFM mirror) omits ctrl_wr for the rewrite-current-CTRL item; DUT correct (ERR[2] per CTRL write, D19.3)"
+  },
+  {
+   "t": "2026-10-15T22:01:54+00:00",
+   "state": "running",
+   "step": 3,
+   "msg": "fix committed; repro passes; running batches"
+  },
+  {
+   "t": "2026-10-15T22:03:38+00:00",
+   "state": "running",
+   "step": 3,
+   "msg": "result jobs=900 fails=0 clusters=0"
+  },
+  {
+   "t": "2026-10-15T22:05:19+00:00",
+   "state": "done",
+   "step": 5,
+   "msg": "E1/rr0004 = golden+BFM bug (rewrite-CTRL item missed ERR[2]); fixed, 900 jobs 0 fail, rr-replay 0 gating"
+  }
+ ],
+ "task": "E1 ERR[2] mismatch rr0004",
+ "steps": 5,
+ "step": 5,
+ "updated": "2026-10-15T22:05:19+00:00",
+ "branch": "swarm/rr-dbg-e1",
+ "sha": "5c0fb01",
+ "blocker": "",
+ "results": {
+  "jobs": 900,
+  "fails": 0,
+  "clusters": 0,
+  "note": ""
+ }
+}

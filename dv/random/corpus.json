@@ -1,0 +1,62 @@
+[
+ {
+  "id": "rr0001",
+  "config": "iv-loop-x4",
+  "seed": 1,
+  "args": {},
+  "iv": {
+   "tb": "loop",
+   "lanes": 4,
+   "extra": []
+  },
+  "signature": "FAIL: frame N length N, expected N",
+  "status": "fixed",
+  "note": "Cluster D (x4 Rx overload, D9). Before: tb_loop +seed=1 LOOP FAIL 6 errors, RXCNT dropped=4 aborted=4; at +rr_rdy=100 0 drops over 62 seeds. After: x4 sink-ready floor in rr_seed.svh (sink >= MAC duty + 10%) -> LOOP PASS.",
+  "fixed_by": "swarm/rr-dbg-x4 (TB stimulus contract, no DUT change)"
+ },
+ {
+  "id": "rr0002",
+  "config": "iv-scen-x4",
+  "seed": 190720952,
+  "args": {},
+  "iv": {
+   "tb": "scen",
+   "lanes": 4,
+   "extra": []
+  },
+  "signature": "CROSSCHECK FAIL / FAIL: corners frame N len N err N",
+  "status": "fixed",
+  "note": "Cluster E (same root as D). Before (parent TBs): SCEN FAIL 37 errors, timeout waiting for 16 frames. After: SCEN PASS (floor). 200/200 scen seeds pass after the fix.",
+  "fixed_by": "swarm/rr-dbg-x4 (TB stimulus contract, no DUT change)"
+ },
+ {
+  "id": "rr0003",
+  "config": "iv-link-x4",
+  "seed": 909855594,
+  "args": {},
+  "iv": {
+   "tb": "link",
+   "lanes": 4,
+   "extra": []
+  },
+  "signature": "FAIL: P4 all N kills were applied",
+  "status": "fixed",
+  "note": "Cluster F (TB timing). Before: kills=4 of 5, 5th kill requested after all 170 frames were sent (no flit left). After: kills spaced 10+20k flits sent, not pclk -> 5 kills applied, LINK PASS.",
+  "fixed_by": "swarm/rr-dbg-x4 (TB stimulus contract, no DUT change)"
+ },
+ {
+  "id": "rr0004",
+  "config": "vlt",
+  "seed": 1,
+  "args": {
+   "rand_seed": 463099881,
+   "rand_frames": 4,
+   "rand_maxlen": 64,
+   "rand_ctl": 4
+  },
+  "signature": "ERROR [rand]: CSR read-back mismatch (csr[0c] ERR: got 4 want 0)",
+  "status": "fixed",
+  "note": "2026-10-15 envelope batches: 6/1500 jobs, all rand_ctl>0, any config, any sink/mac_gap (default knobs reproduce); unclassified, not debugged (dv/random/findings/2026-10-15-envelope.md cluster E1). Passes with rand_ctl=0. ROOT CAUSE (rr-dbg-e1): golden bug, not DUT. ctl_plan/gen_ctl_plan_ 'rewrite the held CTRL value' item emitted the write without CtlSim.ctrl_wr; bridge_rf sets ERR[2] once per CTRL write requesting P0s (D19.3), so exact ERR read-back expected 0. Before fix: 2 read-back errors (csr[0c] got 4 want 0, op 35/40 after CTRL=0x31 rewrite); after: VLT PASS, 0 errors. 900 random jobs after fix: 0 failing.",
+  "fixed_by": "swarm/rr-dbg-e1 5957d10 (golden CtlSim/BFM: rewrite-CTRL item missed ERR[2]; no DUT change)"
+ }
+]

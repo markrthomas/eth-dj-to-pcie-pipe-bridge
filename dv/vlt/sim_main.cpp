@@ -5,7 +5,10 @@
 // (dv/common/cpp/bridge_bfm.h): PIPE Tx looped to PIPE Rx, PHY control model,
 // CSR sequencer.  Runs the five cross-check scenarios plus two coverage-only
 // scenarios, writes results.json, and (built with --coverage) coverage.dat.
-// Plusargs: +trace (FST dump to logs/vlt.fst), +trace_file=PATH, +trace_from=PS +trace_to=PS (dump window), +seed=N.
+// Plusargs: +trace (FST dump to logs/vlt.fst), +trace_file=PATH, +trace_from=PS +trace_to=PS (dump window), +seed=N,
+//   +mac_gap=PCT (MAC idle-beat %, default 10), +sink_pct=PCT (Eth sink tready %, default 90),
+//   +rand_seed=N [+rand_frames=K (24)] [+rand_maxlen=L (2000)]: append the 'rand' scenario (golden: scenarios.expected_rand);
+//   +rand_ctl=E (0 = off, max 16): E seeded control-plane episodes in 'rand' (B3: CSR / msgbus / reset traffic, scenarios.ctl_plan).
 // Clocks: eth_clk 200 MHz (5 ns), pclk 500 MHz (2 ns); time unit = 1 ps.
 // ============================================================================
 #include <verilated.h>
@@ -14,6 +17,7 @@
 #endif
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <memory>
 #include <string>
 
@@ -98,6 +102,23 @@ int main(int argc, char** argv) {
   h.verbose = true;
   h.mac_gap_pct = 10;
   h.set_sink_default(90);
+  auto plus_int = [&](const char* key, long& v) {   // key includes '='; "+key" is skipped
+    const char* a = ctx->commandArgsPlusMatch(key);
+    if (!a || !*a) return false;
+    v = strtol(a + 1 + strlen(key), nullptr, 0);
+    return true;
+  };
+  long pv = 0;
+  if (plus_int("mac_gap=", pv)) h.mac_gap_pct = int(pv < 0 ? 0 : pv > 100 ? 100 : pv);
+  if (plus_int("sink_pct=", pv)) h.set_sink_default(int(pv < 0 ? 0 : pv > 100 ? 100 : pv));
+  if (plus_int("rand_seed=", pv)) {
+    long fr = 24, ml = 2000;
+    plus_int("rand_frames=", fr);
+    plus_int("rand_maxlen=", ml);
+    long ct = 0;
+    plus_int("rand_ctl=", ct);
+    h.enable_rand(uint32_t(pv), int(fr), int(ml), int(ct < 0 ? 0 : ct > 16 ? 16 : ct));
+  }
 
 #if VM_TRACE
   std::unique_ptr<VerilatedFstC> tfp;

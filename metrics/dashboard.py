@@ -24,6 +24,7 @@ SECTIONS = [
     ("perf", "Performance"),
     ("resource", "Resource (pre-synthesis estimate)"),
     ("power", "Power &amp; area (Nangate45 liberty, OSS flow \u2014 estimate)"),
+    ("rr", "Random regression (dv/random: jobs, per-config pass rate, failure clusters, corpus)"),
     ("swarm", "Agent swarm (agent x model)"),
 ]
 CSS = """

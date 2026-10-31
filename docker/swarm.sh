@@ -1,11 +1,15 @@
 #!/usr/bin/env bash
 # docker/swarm.sh — run the Claude Code agent swarm on this repo (docs/PLAN.md §10).
 #
-#   docker/swarm.sh [--dry-run] [--task FILE] [--model MODEL]
+#   docker/swarm.sh [--dry-run] [--task FILE] [--model MODEL] [--agent NAME]
 #
 # Runs Claude Code non-interactively (-p) and NON-bare, so the project's
 # .claude/agents/ definitions are discoverable; the task (default
-# docker/swarm-task.md) tells the swarm-manager what to dispatch.
+# docker/swarm-task.md) tells the manager what to dispatch. The top-level session runs AS the
+# manager agent (--agent; default swarm-manager, rr-manager for rr-swarm-task.md), so it keeps the
+# Agent tool and can dispatch workers (sub-agents cannot spawn sub-agents). Bash is NOT in
+# --allowedTools: only the commands in .claude/settings.json's allow list run headless, and its
+# deny rules (force-push, push to main, ...) always apply. Add a pattern there if a worker needs more.
 # Needs: `claude` on PATH (npm i -g @anthropic-ai/claude-code; the image has it
 # when built with --build-arg WITH_CLAUDE=1), a credential in the environment -
 # CLAUDE_CODE_OAUTH_TOKEN (what the Railway service uses; the Claude Code CLI reads it
@@ -21,20 +25,27 @@ cd "$(dirname "$0")/.."
 
 task=docker/swarm-task.md
 model="${SWARM_MODEL:-}"
+agent=""
 dry=0
 while [ $# -gt 0 ]; do
   case "$1" in
     --dry-run) dry=1 ;;
     --task) task="$2"; shift ;;
     --model) model="$2"; shift ;;
+    --agent) agent="$2"; shift ;;
     *) echo "swarm.sh: unknown arg $1" >&2; exit 2 ;;
   esac
   shift
 done
 [ -f "$task" ] || { echo "swarm.sh: task file $task not found" >&2; exit 2; }
 
-cmd=(claude -p "$(cat "$task")" --output-format json --permission-mode acceptEdits
-     --allowedTools "Bash Read Edit Write Glob Grep Agent")
+if [ -z "$agent" ]; then
+  case "$task" in *rr-swarm-task*) agent=rr-manager ;; *) agent=swarm-manager ;; esac
+fi
+[ -f ".claude/agents/$agent.md" ] || { echo "swarm.sh: agent $agent not found in .claude/agents" >&2; exit 2; }
+
+cmd=(claude -p "$(cat "$task")" --agent "$agent" --output-format json --permission-mode acceptEdits
+     --allowedTools "Read Edit Write Glob Grep Agent")
 [ -n "$model" ] && cmd+=(--model "$model")
 
 if [ "$dry" = 1 ]; then

@@ -1,0 +1,73 @@
+{
+ "worker": "rr-b3",
+ "state": "done",
+ "history": [
+  {
+   "t": "2026-10-15T17:33:28+00:00",
+   "state": "running",
+   "step": 0,
+   "msg": "started"
+  },
+  {
+   "t": "2026-10-15T17:40:35+00:00",
+   "state": "running",
+   "step": 1,
+   "msg": "toolchain installed (iverilog 12, Verilator 5.050; script exit 141 is only SIGPIPE on the final version print)"
+  },
+  {
+   "t": "2026-10-15T17:42:08+00:00",
+   "state": "running",
+   "step": 2,
+   "msg": "rand_ctl implemented (scenarios.ctl_plan, bridge_bfm gen_ctl_plan_, crosscheck); 40-seed sweep clean; default results.json bit-identical"
+  },
+  {
+   "t": "2026-10-15T17:46:59+00:00",
+   "state": "running",
+   "step": 3,
+   "msg": "make vlt + regress OK (make crosscheck needs uvm/systemc/cocotb results, absent in cloud; vlt+iverilog crosscheck PASS); starting rr batches"
+  },
+  {
+   "t": "2026-10-15T17:52:38+00:00",
+   "state": "running",
+   "step": 3,
+   "msg": "result jobs=200 fails=63 clusters=5"
+  },
+  {
+   "t": "2026-10-15T17:52:38+00:00",
+   "state": "running",
+   "step": 3,
+   "msg": "result jobs=200 fails=63 clusters=5"
+  },
+  {
+   "t": "2026-10-15T17:52:38+00:00",
+   "state": "running",
+   "step": 3,
+   "msg": "result jobs=200 fails=57 clusters=4"
+  },
+  {
+   "t": "2026-10-15T17:52:38+00:00",
+   "state": "running",
+   "step": 4,
+   "msg": "3x rr N=200 (SEED=3101,7777,424242; 600 jobs, 183 fail, 0 new B3-specific). Clusters (all in fixed scenarios, same with rand_ctl=0, driven by +sink_pct<=20 / mac_gap knobs, NOT by B3): c0 [vlt] ERROR [corners]: frame aborted x~110 repro: dv/vlt/obj_dir/Veth_dj_pipe7_bridge +seed=3130 +mac_gap=60 +sink_pct=20 +rand_seed=1930426228 +rand_frames=4 +rand_maxlen=64 +rand_ctl=1; c1 [vlt] scenario op timeout (corners) x6 repro +seed=3219 +mac_gap=10 +sink_pct=5 +rand_seed=1493425728 +rand_frames=12 +rand_maxlen=64 +rand_ctl=0; c2 [vlt-fc] rxovf: credit flow control lost frames x31 repro obj_dir_fc +seed=3242 +mac_gap=90 +sink_pct=50 +rand_seed=1760957206 +rand_frames=4 +rand_maxlen=300 +rand_ctl=4; c3 [vlt-nodpr] corners: frame aborted x33 repro obj_dir_nodpr +seed=3176 +mac_gap=60 +sink_pct=5 +rand_seed=2104391505 +rand_frames=4 +rand_maxlen=64 +rand_ctl=1; c4 [vlt-nodpr] ERROR [rand]: frame aborted x1 (rand_ctl=0!) repro obj_dir_nodpr +seed=7918 +mac_gap=5 +sink_pct=50 +rand_seed=1248023248 +rand_frames=48 +rand_maxlen=9000 +rand_ctl=0. Run dirs dv/random/runs/20261015-175025,175104,175143 (local); make rr-triage RUN=<dir>"
+  },
+  {
+   "t": "2026-10-15T17:52:44+00:00",
+   "state": "done",
+   "step": 5,
+   "msg": "B3 done: +rand_ctl=E in vlt (scenarios.ctl_plan/CtlSim, bridge_bfm gen_ctl_plan_, crosscheck plan-hash + pmcnt/flits ranges). 7 fixed scenarios + default results.json bit-identical; make vlt, regress OK; 100 seeds sweep + 600 rr jobs: no B3-specific failure; remaining clusters are pre-existing low-sink_pct/mac_gap failures in fixed scenarios (see step 4). Not touched: docs/AGENT_HANDOFF.md, rtl/"
+  }
+ ],
+ "task": "B3 random control traffic",
+ "steps": 5,
+ "step": 5,
+ "updated": "2026-10-15T17:52:44+00:00",
+ "branch": "swarm/rr-b3",
+ "sha": "3bcee60",
+ "blocker": "",
+ "results": {
+  "jobs": 200,
+  "fails": 57,
+  "clusters": 4,
+  "note": ""
+ }
+}
