@@ -75,9 +75,11 @@ GitHub origin: `markrthomas/eth-dj-to-pcie-pipe-bridge`.
 - UVM `obj_dir` is ~750 MB; a full disk truncates `Vtb_uvm_top__ALL.a` — delete
   the partial `obj_dir`.
 - Heavy targets (`make uvm`, `make vlt`, `make rr-build`, `make formal`, `make ci`)
-  run one at a time machine-wide, in the background:
-  `flock -w 1800 /tmp/bridge-heavy.lock make <target>` (~5 GB RAM; every worktree
-  gets its own `obj_dir`, delete it when done).
+  run one at a time machine-wide, in the background: `make heavy T=<target>`
+  (flock inside the recipe; ~5 GB RAM; every worktree gets its own `obj_dir`,
+  delete it when done). Don't call `flock` directly: the headless permission
+  checker rejects it. Keep the command a plain `make ...` (no `$?`, no redirects
+  to or reads of `/tmp`) and read results from the log/results paths the target prints.
 - Never `pkill -f <pattern>` from a shell whose own command line contains the
   pattern.
 

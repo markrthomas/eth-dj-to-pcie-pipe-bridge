@@ -34,6 +34,7 @@ help:
 	@echo "  formal     SymbiYosys prove (PDR) + cover on formal/*.sby (Yosys+slang, SBY, yices/z3)"
 	@echo "  iverilog|vlt|uvm|systemc|cocotb   run one DV environment (shared scenarios)"
 	@echo "  crosscheck all five envs agree with dv/common/scenarios.py"
+	@echo "  heavy      make heavy T=<target>: run one heavy target at a time machine-wide (flock; uvm vlt rr-build formal ci)"
 	@echo "  ci         every step of .github/workflows/ci.yml: regress coverage formal envs crosscheck envs-fc vlt-nodpr"
 	@echo "             upf-tb lanes4 wave-check-all pd-emu pd-emu-ret dashboard"
 	@echo "  waves|wave-<test>  run a test with a VCD dump, check + open dv/waves/<test>.gtkw"
@@ -167,6 +168,16 @@ stress:
 	$(MAKE) -C dv/vlt stress STRESS_SEEDS=$(or $(STRESS_SEEDS),20)
 
 # random regression + triage + replay corpus (dv/random/README.md)
+# heavy: run one resource-hungry target at a time, machine-wide (UVM/Verilator builds, formal, ci).
+# `make heavy T=vlt`. The lock lives in the recipe because Claude Code's permission checker cannot
+# match a bare `flock ...` command line, but does allow `make ...`.
+HEAVY_LOCK ?= /tmp/bridge-heavy.lock
+HEAVY_WAIT ?= 1800
+.PHONY: heavy
+heavy:
+	@test -n "$(T)" || { echo "usage: make heavy T=<target>  (e.g. T=vlt)"; exit 2; }
+	flock -w $(HEAVY_WAIT) $(HEAVY_LOCK) $(MAKE) $(T)
+
 N ?= 30
 JOBS ?= 4
 .PHONY: rr-build rr rr-triage rr-replay board board-wait
