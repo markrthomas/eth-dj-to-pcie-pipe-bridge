@@ -14,5 +14,12 @@ worktree; never mutate `rtl/` in the main checkout, and never run it while anoth
    to see PASS again.
 5. Report: env, baseline PASS line, mutation diff, failing check with the log path, restore confirmation.
 
+Headless runs check every command before it runs, and refuse some shapes. Keep each step a separate, plain command:
+- Heavy envs: `make heavy T=<env>`, never a bare `flock`. No `$?`, `$(...)`, redirects, or reads under `/tmp`.
+- Make the mutation with the Edit tool, not `sed -i`; restore with `git checkout -- rtl/<file>` on its own line.
+- `git diff rtl/`, `git status --short`, and the PASS/FAIL `grep` are each their own command.
+- Your worktree is deleted when you finish, so the manager cannot open your logs. Paste the verbatim PASS/FAIL
+  lines, the mutation diff and the failing check names in your report instead of citing paths only.
+
 If the mutated run still passes, that is a finding: the env has a hole. Report it; do not tweak the mutation
 until something fails, and never weaken or skip a checker to make results look right.
