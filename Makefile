@@ -48,6 +48,9 @@ help:
 	@echo "  stress     vlt env, all scenarios x STRESS_SEEDS (default 20) seeds"
 	@echo "  tools      verify toolchain + install missing (TOOLS_HEAVY=1 builds src Verilator); tools-check = verify only"
 	@echo "  clean      remove build artifacts"
+	@echo "  swarm      Swarm A (verification) via Claude Code; swarm-rr = Swarm B (random regression); swarm-dry = show the command"
+	@echo "  batch      the Railway batch (docker/entrypoint.sh ci); board = swarm status; heavy T=<t> = one heavy target at a time"
+	@echo "  swarm-profile / swarm-kit-check   print .claude/swarm.env / check kit drift (shared kit: markrthomas/dv-swarm-kit)"
 	@echo "  note: uvm needs a UVM-capable Verilator (>= 5.03x, e.g. the from-source Verilator in the CI image)"
 
 # ---- real M0 targets --------------------------------------------------------
@@ -168,24 +171,10 @@ stress:
 	$(MAKE) -C dv/vlt stress STRESS_SEEDS=$(or $(STRESS_SEEDS),20)
 
 # random regression + triage + replay corpus (dv/random/README.md)
-# heavy: run one resource-hungry target at a time, machine-wide (UVM/Verilator builds, formal, ci).
-# `make heavy T=vlt`. The lock lives in the recipe because Claude Code's permission checker cannot
-# match a bare `flock ...` command line, but does allow `make ...`.
-HEAVY_LOCK ?= /tmp/bridge-heavy.lock
-HEAVY_WAIT ?= 1800
-.PHONY: heavy
-heavy:
-	@test -n "$(T)" || { echo "usage: make heavy T=<target>  (e.g. T=vlt)"; exit 2; }
-	flock -w $(HEAVY_WAIT) $(HEAVY_LOCK) $(MAKE) $(T)
-
+# heavy / board / board-wait / swarm / swarm-rr / swarm-dry / batch: provided by swarm.mk (dv-swarm-kit)
 N ?= 30
 JOBS ?= 4
-.PHONY: rr-build rr rr-triage rr-replay board board-wait
-# swarm status board (dv/random/board.py): manager view of every worker branch
-board:
-	python3 dv/random/board.py show
-board-wait:
-	python3 dv/random/board.py wait
+.PHONY: rr-build rr rr-triage rr-replay
 rr-build:
 	python3 dv/random/rr.py build
 rr:
@@ -257,3 +246,6 @@ tools:
 	bash tools/check_tools.sh $(if $(TOOLS_HEAVY),--heavy)
 tools-check:
 	bash tools/check_tools.sh --check
+
+# shared swarm/infra targets (markrthomas/dv-swarm-kit)
+include swarm.mk

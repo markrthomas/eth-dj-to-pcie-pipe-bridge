@@ -22,7 +22,7 @@ so it can never regress silently. `rr-replay` is part of `make ci`.
 
 ## Tracking the swarm (status board)
 Cloud workers can only talk through git, so each owns one file on its own branch,
-`dv/random/board/<worker>.json`, written by `dv/random/board.py` (it commits; the worker pushes):
+`dv/random/board/<worker>.json`, written by `tools/swarm/board.py` (shared dv-swarm-kit script) (it commits; the worker pushes):
 
 ```
 board.py start NAME --task TXT --steps N      # first thing a worker does

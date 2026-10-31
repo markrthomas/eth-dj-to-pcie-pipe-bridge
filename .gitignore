@@ -88,3 +88,5 @@ lp/cocotb/*_ret.*
 dv/iverilog/sim_build_nodpr/
 .railway-import/
 dv/random/runs/
+/dv/random/runs/
+/docker/last-run-metrics.json

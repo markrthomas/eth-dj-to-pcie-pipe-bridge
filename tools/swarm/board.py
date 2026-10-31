@@ -2,7 +2,7 @@
 """Swarm status board: how a manager tracks workers that live in other sandboxes (cloud sessions).
 
 Workers can only talk through git.  Each worker owns ONE file on ITS OWN branch,
-dv/random/board/<worker>.json, so boards never conflict.  The manager reads every worker's file
+$RR_DIR/board/<worker>.json, so boards never conflict.  The manager reads every worker's file
 straight from `origin/swarm/*` without checking anything out.
 
 Worker side (run at every milestone, then `git push`; the command commits for you):
@@ -30,9 +30,25 @@ import sys
 import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
-BOARD = os.path.join(HERE, "board")
-REL = "dv/random/board"
+# swarm-kit: the board lives in $RR_DIR/board (from .claude/swarm.env), so the same script works in
+# every repo whatever its DV layout.  board.py itself is shared; run it from anywhere in the repo.
+ROOT = subprocess.run(["git", "-C", HERE, "rev-parse", "--show-toplevel"],
+                      capture_output=True, text=True).stdout.strip() or os.path.abspath(os.path.join(HERE, "..", ".."))
+
+
+def _profile(key, default):
+    try:
+        for line in open(os.path.join(ROOT, ".claude", "swarm.env")):
+            k, _, v = line.split("#", 1)[0].strip().partition("=")
+            if k == key and v:
+                return v.strip().strip('"').strip("'")
+    except OSError:
+        pass
+    return default
+
+
+BOARD = os.path.join(ROOT, _profile("RR_DIR", "dv/random"), "board")
+REL = os.path.relpath(BOARD, ROOT)
 TASKS = os.path.join(BOARD, "tasks.json")
 
 

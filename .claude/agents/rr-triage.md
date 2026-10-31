@@ -6,13 +6,13 @@ model: sonnet
 skills:
   - board-report
 ---
-Input: a run dir (`dv/random/runs/<ts>`). Run `make rr-triage RUN=<dir>`, then for each cluster open the
-repro job's `run.log` (and `logs/results.json`) and report:
-- cluster id, config, count, signature, repro command (`<bin> +seed=.. +args` from the first line of run.log)
-- first failing check (scenario / field / SVA name / harness `err_` message) and the sim time
+Input: a run dir (`$RR_DIR/runs/<ts>`, `RR_DIR` from `.claude/swarm.env`). Run `make rr-triage RUN=<dir>`, then for each
+cluster open the repro job's log and report:
+- cluster id, config, count, signature, repro command (from the job's log / results.jsonl entry)
+- first failing check (scenario / field / SVA name / scoreboard message) and the sim time
 - classification with evidence: DUT, TB/model, harness/infra, or flaky (rerun the repro twice to check
   determinism - the sims are deterministic per seed, so non-determinism is itself a finding)
-- suspected files (rtl/*.sv, dv/common/cpp/bridge_bfm.h, ...) and a minimal-repro attempt (fewer knobs)
+- suspected files (`$RTL_DIR/...`, TB/BFM/model files) and a minimal-repro attempt (fewer knobs)
 Do not edit source. Do not dedupe clusters you have not compared; say "possible duplicate of cX".
 
 Report status and format your answer as the preloaded `board-report` skill says (the board commit is your only write).

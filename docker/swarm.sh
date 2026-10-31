@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# docker/swarm.sh — run the Claude Code agent swarm on this repo (docs/PLAN.md §10).
+# docker/swarm.sh — run the Claude Code agent swarm on this repo.  [swarm-kit: shared file, do not fork per repo;
+#   repo specifics come from .claude/swarm.env - see markrthomas/dv-swarm-kit]
 #
 #   docker/swarm.sh [--dry-run] [--task FILE] [--model MODEL] [--agent NAME]
 #
@@ -22,6 +23,9 @@
 # the CLI output, so the agent column is recorded as "all".
 set -euo pipefail
 cd "$(dirname "$0")/.."
+# repo profile (PROJECT, DV_ENVS, ...): exported so the agents' Bash sees the same values; env vars win
+. docker/profile.sh
+PROJECT="${PROJECT:-$(basename "$PWD")}"
 
 task=docker/swarm-task.md
 model="${SWARM_MODEL:-}"
@@ -49,7 +53,7 @@ cmd=(claude -p "$(cat "$task")" --agent "$agent" --output-format json --permissi
 [ -n "$model" ] && cmd+=(--model "$model")
 
 if [ "$dry" = 1 ]; then
-  echo "swarm.sh (dry run): would run in $(pwd):"
+  echo "swarm.sh (dry run): would run in $(pwd) [$PROJECT, envs: ${DV_ENVS:-none}, rr: ${RR_STATUS:-unset}]:"
   printf '  %q' "${cmd[@]:0:1}"; echo " -p <$(wc -c < "$task") bytes from $task> ${cmd[*]:3}"
   echo "  agents: $(ls .claude/agents/*.md | xargs -n1 basename | tr '\n' ' ')"
   exit 0
@@ -63,8 +67,8 @@ fi
 
 if [ -n "${GITHUB_TOKEN:-}" ]; then   # lets the swarm push a branch / open a draft PR
   git config --global url."https://x-access-token:${GITHUB_TOKEN}@github.com/".insteadOf "https://github.com/"
-  git config --global user.name  "${GIT_AUTHOR_NAME:-bridge-swarm}"
-  git config --global user.email "${GIT_AUTHOR_EMAIL:-bridge-swarm@users.noreply.github.com}"
+  git config --global user.name  "${GIT_AUTHOR_NAME:-${PROJECT}-swarm}"
+  git config --global user.email "${GIT_AUTHOR_EMAIL:-${PROJECT}-swarm@users.noreply.github.com}"
 fi
 
 out=$(mktemp)

@@ -342,9 +342,12 @@ ran, commit/PR trailers as in the existing history.
 
 Details and backlog (B1-B5): [`dv/random/README.md`](../dv/random/README.md).
 
-- Agents (`.claude/agents/rr-*.md`): rr-manager (opus) dispatches rr-runner (haiku), rr-triage (sonnet),
+- Since 2026-10-31 the agents, skills, `docker/swarm.sh`, `swarm.mk` and `tools/swarm/board.py` come from the shared
+  dv-swarm-kit (`.claude/swarm-kit.version`); this repo's settings are `.claude/swarm.env`. Edit the kit, then re-sync.
+- Agents (`.claude/agents/rr-*.md`): rr-manager (sonnet) dispatches rr-runner (haiku), rr-triage (sonnet),
   rr-debugger (opus), rr-test-author (sonnet). Task brief: `docker/rr-swarm-task.md`.
-- Run the swarm: `docker/swarm.sh --task docker/rr-swarm-task.md` (`--dry-run` to preview). Weekly Railway
+- Run the swarm: `make swarm-rr` (= `docker/swarm.sh --task docker/rr-swarm-task.md`; `make swarm-dry` to preview),
+  or Actions -> swarm, or a Codespace. Weekly Railway
   recipe (docs only, not deployed): `docs/railway.md`.
 - By hand: `make rr-build`; `make rr N=60 JOBS=6` -> `dv/random/runs/<ts>/results.jsonl`;
   `make rr-triage RUN=<dir>`; `make rr-replay` (gates on corpus entries marked `fixed`; part of `make ci`

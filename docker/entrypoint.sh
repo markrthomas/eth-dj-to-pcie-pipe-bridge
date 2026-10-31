@@ -1,17 +1,22 @@
 #!/usr/bin/env bash
-# docker/entrypoint.sh — container entrypoint (Railway batch job / local run).
-#   (no args) | ci : run + time every flow (make metrics), 5-env crosscheck,
-#                    render the dashboard; exit non-zero if anything failed
-#   swarm          : run the agent swarm (docker/swarm.sh; needs CLAUDE_CODE_OAUTH_TOKEN or ANTHROPIC_API_KEY)
+# docker/entrypoint.sh — container entrypoint (Railway batch job / Codespaces / local run).
+# [swarm-kit: shared file, do not fork per repo; repo specifics come from .claude/swarm.env]
+#   (no args) | ci : the repo's full batch, then publish the results to the `metrics-data` branch:
+#                      METRICS=yes -> make metrics (+ CROSSCHECK_TARGET) + make dashboard
+#                      otherwise   -> make $CI_TARGET, log kept in logs/batch.log
+#                    exit non-zero if anything failed
+#   swarm [args]   : run the agent swarm (docker/swarm.sh; needs CLAUDE_CODE_OAUTH_TOKEN or ANTHROPIC_API_KEY)
 #   <cmd...>       : run an arbitrary command inside the image
 set -euo pipefail
-# the image keeps the repo at /repo; outside the image (a local checkout) use the checkout this script lives in
-if [ -d /repo ]; then cd /repo; else cd "$(dirname "$0")/.."; fi
+# the image keeps the repo at /repo; outside the image (a checkout / Codespace) use the checkout this script lives in
+if [ -d /repo ] && [ -f /repo/.claude/swarm.env ]; then cd /repo; else cd "$(dirname "$0")/.."; fi
+. docker/profile.sh
+CI_TARGET="${CI_TARGET:-ci}"
 
-# Build parallelism.  The DV Makefiles default to `JOBS ?= $(nproc)`, and in a container nproc reports the
-# HOST's cores (dozens) while the memory limit is a few GB: a UVM / Verilator build then runs that many
-# g++ jobs at once and the container sits at its memory limit (thrashing / killed).  Unless JOBS is set,
-# derive it from the cgroup memory limit (about 3 GB per job), capped by the visible cores.
+# Build parallelism.  DV Makefiles often default to `JOBS ?= $(nproc)`, and in a container nproc reports the
+# HOST's cores while the memory limit is a few GB: a UVM / Verilator build then runs that many g++ jobs at once
+# and the container thrashes or is killed.  Unless JOBS is set, derive it from the cgroup memory limit
+# (about 3 GB per job), capped by the visible cores.
 if [ -z "${JOBS:-}" ]; then
   cores="$(nproc 2>/dev/null || echo 4)"
   lim="$(cat /sys/fs/cgroup/memory.max 2>/dev/null || cat /sys/fs/cgroup/memory/memory.limit_in_bytes 2>/dev/null || echo max)"
@@ -25,21 +30,25 @@ if [ -z "${JOBS:-}" ]; then
   export JOBS="$jobs"
   echo "entrypoint: JOBS=$JOBS (cores=$cores, memory limit=$lim; set JOBS to override)"
 fi
+
 mode="${1:-ci}"
 case "$mode" in
   ci)
     rc=0
-    make metrics METRICS_FLOWS="${METRICS_FLOWS:-regress,coverage,systemc,cocotb,uvm,formal,upf-tb}" \
-                 METRICS_NOTE="${METRICS_NOTE:-container run}" || rc=$?
-    # crosscheck needs all five envs; with a reduced METRICS_FLOWS (a quick test run) it would always
-    # fail on "no results for required env", so it only runs for the default flow list or RUN_CROSSCHECK=1
-    if [ "${RUN_CROSSCHECK:-}" = "1" ] || { [ -z "${RUN_CROSSCHECK:-}" ] && [ -z "${METRICS_FLOWS:-}" ]; }; then
-      make crosscheck || rc=$?
+    mkdir -p logs
+    if [ "${METRICS:-no}" = "yes" ] && [ -f metrics/collect.py ]; then
+      # METRICS_FLOWS default comes from swarm.env; a Railway variable overrides it
+      make metrics METRICS_FLOWS="${METRICS_FLOWS:-$CI_TARGET}" METRICS_NOTE="${METRICS_NOTE:-container run}" || rc=$?
+      # a cross-check needs every env; with a reduced METRICS_FLOWS it would always fail, so it runs only
+      # for the profile's default flow list or RUN_CROSSCHECK=1
+      if [ -n "${CROSSCHECK_TARGET:-}" ] && { [ "${RUN_CROSSCHECK:-}" = "1" ] || [[ " $SWARM_ENV_OVERRIDES " != *" METRICS_FLOWS "* ]]; }; then
+        make "$CROSSCHECK_TARGET" || rc=$?
+      fi
+      make dashboard || rc=$?
     else
-      echo "entrypoint: crosscheck skipped (METRICS_FLOWS=${METRICS_FLOWS:-}; set RUN_CROSSCHECK=1 to force it)"
+      echo "entrypoint: make $CI_TARGET (log: logs/batch.log)"
+      make "$CI_TARGET" 2>&1 | tee logs/batch.log || rc=$?     # pipefail: rc is make's status
     fi
-    make dashboard || rc=$?
-    cp -f metrics/metrics.db metrics/dashboard.html "${ARTIFACT_DIR:-/tmp}/" 2>/dev/null || true
     # the container is ephemeral: publish the results to the repo's metrics-data branch (docs/railway.md);
     # a publishing problem is reported but does not change the run's exit code
     docker/publish_metrics.sh "$rc" || echo "entrypoint: WARNING: publishing the results failed (see above)"
