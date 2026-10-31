@@ -51,7 +51,12 @@ case "$mode" in
     fi
     # the container is ephemeral: publish the results to the repo's metrics-data branch (docs/railway.md);
     # a publishing problem is reported but does not change the run's exit code
-    docker/publish_metrics.sh "$rc" || echo "entrypoint: WARNING: publishing the results failed (see above)"
+    # PUBLISH_METRICS: unset = publish when a token is available (Railway); 1 = publish; empty or 0 = don't
+    # (the Codespace sets 0, an Actions batch with publish unticked passes '')
+    case "${PUBLISH_METRICS-auto}" in
+      ""|0) echo "entrypoint: publishing off (PUBLISH_METRICS='${PUBLISH_METRICS}')" ;;
+      *)    docker/publish_metrics.sh "$rc" || echo "entrypoint: WARNING: publishing the results failed (see above)" ;;
+    esac
     echo "entrypoint: done (rc=$rc)"
     exit "$rc"
     ;;

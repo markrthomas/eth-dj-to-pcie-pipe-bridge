@@ -8,7 +8,7 @@
 // The repo is mounted (not baked in), so edits are live.
 //
 // Secrets: add CLAUDE_CODE_OAUTH_TOKEN at github.com/settings/codespaces (Codespaces secrets) and tick this
-// repo. Codespaces injects a GITHUB_TOKEN itself, so `make batch` can publish to the metrics-data branch.
+// repo. Codespaces injects a GITHUB_TOKEN itself, so `PUBLISH_METRICS=1 make batch` can publish to metrics-data.
 // Cold start builds the toolchain from source (Verilator/Yosys: ~20-40 min); enable Codespaces prebuilds on the
 // repo to cache it. UVM/Verilator builds are memory-hungry: pick a 4-core / 16 GB machine or larger.
 {
@@ -19,6 +19,8 @@
     "target": "tools",
     "args": { "WITH_CLAUDE": "1" }
   },
+  // `make batch` here does not publish unless asked: PUBLISH_METRICS=1 make batch
+  "remoteEnv": { "PUBLISH_METRICS": "0" },
   "hostRequirements": { "cpus": 4, "memory": "16gb" },
   "postCreateCommand": "make swarm-profile && (verilator --version; iverilog -V 2>&1 | head -1; claude --version) || true",
   "customizations": {
