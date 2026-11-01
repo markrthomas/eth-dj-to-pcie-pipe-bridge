@@ -190,8 +190,9 @@ the tools on a local machine, see [`docs/TOOLCHAIN.md`](docs/TOOLCHAIN.md).
 See [`docs/PLAN.md` §4](docs/PLAN.md). In brief: `rtl/` (design), `dv/`
 (five verification environments: `iverilog/`, `vlt/`, `uvm/`, `systemc/`,
 `cocotb/`), `dv/sva/` (assertions), `formal/` (SymbiYosys), `lp/` (UPF power
-intent), `metrics/` (dashboard), `docker/` + `.claude/agents/` (agent swarm),
-`.github/workflows/` (CI), `docs/` (this plan).
+intent), `metrics/` (dashboard), `docker/` + `.claude/` + `swarm.mk` + `.devcontainer/` (agent swarm and
+run environment: the shared [dv-swarm-kit](https://github.com/markrthomas/dv-swarm-kit), configured by
+`.claude/swarm.env`; `make swarm`, `make swarm-rr`, `make batch`), `.github/workflows/` (CI), `docs/` (this plan).
 
 ## Workspace conventions
 

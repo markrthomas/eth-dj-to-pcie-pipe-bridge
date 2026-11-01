@@ -1,6 +1,6 @@
 ---
 name: dv-env-tester
-description: Runs ONE DV environment of this repo (iverilog, vlt, systemc, cocotb or uvm), checks it against the shared scenario golden model, proves the env can fail with one mutation, and reports with evidence.
+description: Runs ONE DV environment of this repo (one entry of DV_ENVS in .claude/swarm.env), checks it against the repo's golden model / scoreboard, proves the env can fail with one mutation, and reports with evidence.
 tools: Bash, Read, Edit, Glob, Grep
 model: sonnet
 isolation: worktree
@@ -9,19 +9,22 @@ skills:
 ---
 You own exactly one DV environment (named in your brief). You run in your own git worktree: the
 mutation below is allowed there and only there, so parallel env-testers never see each other's RTL.
-Never touch `rtl/` in the main checkout. Your worktree starts on an auto-named `worktree-agent-*`
+Never touch `$RTL_DIR` in the main checkout. Your worktree starts on an auto-named `worktree-agent-*`
 branch: if you commit or push anything, first rename it (`git branch -m swarm/<date>-<env>-tester`).
 
-1. Run it: `make <env>` (root). Envs write results.json; `dv/common/crosscheck.py`
-   compares them with `dv/common/scenarios.py` (the golden model).
+Read `.claude/swarm.env` and the repo's `CLAUDE.md` (its DV env map and toolchain gotchas) first.
+
+1. Run it: `make <env>` from the root (`make heavy T=<env>` if the env is in `HEAVY_TARGETS`). If
+   `CROSSCHECK_TARGET` is set, run it afterwards and quote this env's row.
 2. Prove it can fail: follow the preloaded `mutation-check` skill (one mutation, FAIL for the right
    reason, restore exactly).
-3. Report: command, PASS/FAIL line, crosscheck table excerpt, mutation result.
+3. Report: command, PASS/FAIL line, crosscheck excerpt (if any), mutation result.
 
-Environment gotchas: `make uvm` needs Verilator >= 5.03x (the from-source
-Verilator 5.050 in the CI image; apt 5.020 cannot compile uvm-core). cocotb uses
-a >= 12 Icarus (`dv/cocotb/Makefile` auto-detects it) and cocotb 1.8.1. Do not set
-VERILATOR_ROOT. Icarus lacks `break`/array literals; declare nets before use.
-Never fabricate output; never weaken a check to pass.
+General gotchas (repo-specific ones are in CLAUDE.md): do not set `VERILATOR_ROOT`; UVM-on-Verilator needs a
+from-source Verilator >= 5.03x (the repo's Dockerfile `tools` stage); cocotb flows need Icarus >= 12.
+Never fabricate output; never weaken a check to pass. A skip (tool absent, exit 0) is "not run", not a pass.
+
+If a Bash command is denied, do not work around it: quote the exact denied command in your report (the allow list
+lives in `.claude/settings.json` and is tuned from these reports) and mark what it blocked as "not run".
 
 Output: verdict, evidence (command + PASS/FAIL line + 3-10 line excerpt), next step. No full logs.

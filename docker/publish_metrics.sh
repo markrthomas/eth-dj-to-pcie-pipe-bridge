@@ -4,7 +4,7 @@
 # dashboard with `make railway-import`.  Called by docker/entrypoint.sh (ci mode) after the run.
 #
 # Layout on the branch (an orphan branch holding no source):
-#   runs/<UTC>-<sha7>/{metrics.db,dashboard.html,run.json}   one directory per run (never rewritten)
+#   runs/<UTC>-<sha7>/{run.json, metrics.db, dashboard.html | batch.log}   one directory per run (never rewritten)
 #   latest/{...}                                              copy of the newest run
 # run.json holds only non-secret run facts (time, commit, Railway service / environment / deployment
 # ids from the RAILWAY_* variables Railway injects, exit code).
@@ -12,12 +12,16 @@
 # Needs GITHUB_TOKEN (a fine-grained token limited to THIS repo, Contents: read+write) as a Railway
 # service variable.  Without it this prints a notice and exits 0 (results stay in the container).
 # The token is passed to git as an http header: it is never put in a URL, a git config file or the log.
-# Env: PUBLISH_REPO (owner/name), PUBLISH_BRANCH (default metrics-data), PUBLISH_URL (override, tests).
+# What is published: metrics/metrics.db + metrics/dashboard.html when the repo has the metrics flow (METRICS=yes),
+# otherwise the tail of logs/batch.log; plus docker/last-run-metrics.json after a swarm run.
+# [swarm-kit: shared file, do not fork per repo; repo specifics come from .claude/swarm.env]
+# Env: PUBLISH_REPO (owner/name; default GH_REPO from the profile), PUBLISH_BRANCH (default metrics-data), PUBLISH_URL (override, tests).
 set -euo pipefail
 cd "$(dirname "$0")/.."
+. docker/profile.sh
 src="$PWD"
 rc="${1:-0}"
-repo="${PUBLISH_REPO:-markrthomas/eth-dj-to-pcie-pipe-bridge}"
+repo="${PUBLISH_REPO:-${GH_REPO:?set GH_REPO in .claude/swarm.env or PUBLISH_REPO}}"
 branch="${PUBLISH_BRANCH:-metrics-data}"
 url="${PUBLISH_URL:-https://github.com/${repo}.git}"
 
@@ -25,9 +29,16 @@ if [ -z "${GITHUB_TOKEN:-}" ] && [ -z "${PUBLISH_URL:-}" ]; then
   echo "publish: GITHUB_TOKEN not set - results stay in the container (see docs/railway.md)"
   exit 0
 fi
-for f in metrics/metrics.db metrics/dashboard.html; do
-  [ -f "$f" ] || { echo "publish: $f missing - nothing to publish" >&2; exit 1; }
-done
+files=()
+if [ "${METRICS:-no}" = "yes" ]; then
+  for f in metrics/metrics.db metrics/dashboard.html; do
+    [ -f "$f" ] || { echo "publish: $f missing - nothing to publish" >&2; exit 1; }
+    files+=("$f")
+  done
+fi
+[ -f logs/batch.log ] && files+=(logs/batch.log)
+[ -f docker/last-run-metrics.json ] && files+=(docker/last-run-metrics.json)
+[ "${#files[@]}" -gt 0 ] || { echo "publish: no results found - nothing to publish" >&2; exit 1; }
 
 hdr=""
 [ -n "${GITHUB_TOKEN:-}" ] && hdr="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GITHUB_TOKEN" | base64 -w0)"
@@ -45,8 +56,8 @@ else
   command git -C "$work/repo" checkout -q --orphan "$branch"
 fi
 cd "$work/repo"
-git config user.name  "${GIT_AUTHOR_NAME:-bridge-railway}"
-git config user.email "${GIT_AUTHOR_EMAIL:-bridge-railway@users.noreply.github.com}"
+git config user.name  "${GIT_AUTHOR_NAME:-${PROJECT:-dv}-railway}"
+git config user.email "${GIT_AUTHOR_EMAIL:-${PROJECT:-dv}-railway@users.noreply.github.com}"
 
 mkdir -p "$dir" latest
 python3 - "$dir/run.json" "$ts" "$sha" "$rc" <<'PY'
@@ -59,7 +70,9 @@ json.dump({"ts_utc": ts, "git_sha": sha, "exit_code": int(rc),
            "deployment_id": env("RAILWAY_DEPLOYMENT_ID") or "",
            "note": env("METRICS_NOTE") or ""}, open(out, "w"), indent=1)
 PY
-for f in metrics.db dashboard.html; do cp "$src/metrics/$f" "$dir/$f"; done
+for f in "${files[@]}"; do
+  case "$f" in logs/batch.log) tail -n 3000 "$src/$f" > "$dir/batch.log" ;; *) cp "$src/$f" "$dir/" ;; esac
+done
 rm -rf latest && mkdir latest && cp "$dir"/* latest/
 git add -A
 git commit -q -m "metrics: run ${ts} ${sha} rc=${rc}"
