@@ -11,7 +11,7 @@
 # policy and cron: keep Restart Policy = Never and the Cron Schedule field EMPTY there.
 [build]
 builder = "DOCKERFILE"
-dockerfilePath = "Dockerfile"
+dockerfilePath = "docker/Dockerfile.railway"   # prebuilt toolchain from CI; see that file
 # gitignore-style; a `!` rule only removes what an earlier rule matched.  Docs/markdown/CI-only pushes don't run.
 watchPatterns = ["**", "!**/*.md", "!docs/**", "!doc/**", "!.github/**", "!LICENSE*"]
 
