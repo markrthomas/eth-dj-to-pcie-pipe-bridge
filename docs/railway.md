@@ -1,14 +1,18 @@
 # Railway: getting its data back and into the dashboard
 
-The Railway service is a **batch job** (`railway.toml`: weekly cron, Sundays 03:17 UTC, restart never). A container
-lives for one run and is thrown away, so before this change everything it measured (`metrics.db`,
+The Railway service is a **batch job** (`railway.toml`: on demand - Redeploy, or a push to `main` that changes more
+than docs - restart never). Railway builds `docker/Dockerfile.railway`, which starts FROM the toolchain image CI
+publishes (`ghcr.io/markrthomas/eth-dj-to-pcie-pipe-bridge/dv-tools:tools-main`) and only adds the repo: Railway
+stops builds at ~40 min, and compiling the toolchain there could exceed that. That GHCR package must be **public**
+(open-source tools only, no repo source). After a merge that changes the `Dockerfile`, Redeploy once CI's
+`build-image` job is green. A container lives for one run and is thrown away, so before this change everything it measured (`metrics.db`,
 `dashboard.html`) vanished when it exited. This page describes how that data now leaves the
 container, how it is merged into the dashboard, and what was deliberately not done.
 
 ## Data flow
 
 ```
-Railway cron -> container: docker/entrypoint.sh (ci)
+Railway deploy -> container: docker/entrypoint.sh (ci)
                  make metrics + crosscheck + dashboard
                  docker/publish_metrics.sh  --push-->  GitHub branch `metrics-data`
                                                          runs/<UTC>-<sha>/{metrics.db,dashboard.html,run.json}

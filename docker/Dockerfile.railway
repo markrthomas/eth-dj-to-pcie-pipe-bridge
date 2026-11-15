@@ -1,0 +1,22 @@
+# docker/Dockerfile.railway - the Railway batch image, built in about a minute.
+#
+# Railway stops any build that runs longer than ~40 minutes, and compiling the toolchain from source (Verilator,
+# Yosys + slang, SymbiYosys; the Dockerfile `builder`/`tools` stages) can exceed that whenever Railway's layer cache
+# misses.  So Railway does not compile anything: it starts from the toolchain image CI already builds and publishes
+# (.github/workflows/ci.yml, job build-image) and adds the repo on top - exactly what the Dockerfile `full` stage does.
+# Railway and CI therefore run the same tools.
+#
+# TOOLS_IMAGE: CI re-tags the current toolchain as `tools-main` on every push to main.  A Railway service variable
+# of the same name overrides it (Railway passes service variables to Dockerfile ARGs), e.g. to pin a
+# `tools-<hash>` tag.  The package must be public (Railway pulls it without credentials) - it holds only the
+# open-source toolchain, no repo source.
+# Note: after a merge that changes the Dockerfile, Railway can start before CI has re-tagged `tools-main`; click
+# Redeploy once CI's build-image job is green to pick up the new toolchain.
+ARG TOOLS_IMAGE=ghcr.io/markrthomas/eth-dj-to-pcie-pipe-bridge/dv-tools:tools-main
+FROM ${TOOLS_IMAGE}
+
+WORKDIR /repo
+COPY . /repo
+RUN chmod +x docker/*.sh
+
+ENTRYPOINT ["/repo/docker/entrypoint.sh"]
