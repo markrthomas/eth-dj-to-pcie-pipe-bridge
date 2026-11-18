@@ -136,6 +136,12 @@ runs *after* a completed gate. Never fold it into `regress`/`ci`, and never make
 DV env do extra work to produce a number — measurement must not change the thing
 it measures.
 
+## CI cost (private repo: Actions minutes are capped)
+PRs and pushes to `main` run only `build-image` + `regress`; the heavy tier (coverage, systemc, uvm, cocotb,
+formal, crosscheck) runs when the PR has the **`full-ci`** label or on Actions -> ci -> Run workflow. Railway runs
+the full gate after every merge to `main` (results on `metrics-data`). Docs-only changes skip CI; a newer push
+to a PR cancels its older run. Before merging RTL/DV changes, add `full-ci` (or check the Railway result).
+
 ## Agent swarms (repo notes)
 The swarm itself is the shared kit described in the block below; this repo's profile is `.claude/swarm.env`
 (5 envs, `crosscheck`, metrics on, random regression present). Repo-specific doctrine: SVA lives in `dv/sva/`, bound
